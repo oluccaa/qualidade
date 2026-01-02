@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole } from '../types.ts';
-import { MOCK_USERS } from './mockData.ts';
+import { User } from '../types.ts';
+import * as userService from './userService.ts';
 
 interface AuthContextType {
   user: User | null;
@@ -13,7 +14,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  // CRITICAL: Start true to block rendering until we check localStorage
   const [isLoading, setIsLoading] = useState(true); 
 
   // Restore session on load
@@ -22,14 +22,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const storedUser = localStorage.getItem('acos_vital_user');
       if (storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          // Re-validate user existence/status on reload
+          try {
+              // We mimic a "token validation" by re-fetching/authenticating or just checking existence
+              // For simplicity in this mock, we trust the storage but update status if needed
+              setUser(parsedUser);
+          } catch {
+             localStorage.removeItem('acos_vital_user');
+          }
         } catch (e) {
           console.error("Failed to parse user session");
           localStorage.removeItem('acos_vital_user');
         }
       }
-      // Small delay to ensure smooth transition if needed, or remove for instant load
-      // await new Promise(r => setTimeout(r, 500)); 
       setIsLoading(false);
     };
 
@@ -38,15 +44,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string): Promise<boolean> => {
     setIsLoading(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const foundUser = MOCK_USERS.find(u => u.email === email);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('acos_vital_user', JSON.stringify(foundUser));
-      setIsLoading(false);
-      return true;
+    try {
+        const foundUser = await userService.authenticate(email);
+        
+        if (foundUser) {
+          setUser(foundUser);
+          localStorage.setItem('acos_vital_user', JSON.stringify(foundUser));
+          setIsLoading(false);
+          return true;
+        }
+    } catch (error) {
+        console.error("Login error", error);
     }
     
     setIsLoading(false);

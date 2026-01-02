@@ -1,5 +1,8 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../services/authContext.tsx';
+import { CookieBanner } from '../components/CookieBanner.tsx';
+import { PrivacyModal } from '../components/PrivacyModal.tsx';
 import { 
   ShieldCheck, 
   Loader2, 
@@ -15,6 +18,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState(''); // Visual only for the demo
   const [error, setError] = useState('');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const { login, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +45,10 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-white">
       
+      {/* Components */}
+      <CookieBanner />
+      <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+
       {/* Lado Esquerdo - Visual / Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden">
         {/* Imagem de Fundo (Indústria/Aço) */}
@@ -80,8 +88,10 @@ const Login: React.FC = () => {
                 </div>
             </div>
 
-            <div className="text-sm text-slate-500">
-                &copy; {new Date().getFullYear()} Aços Vital S.A. Todos os direitos reservados.
+            <div className="text-sm text-slate-500 flex items-center gap-6">
+                <span>&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-400 transition-colors">Política de Privacidade</button>
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-400 transition-colors">Termos de Uso</button>
             </div>
         </div>
       </div>
@@ -195,6 +205,12 @@ const Login: React.FC = () => {
                         </button>
                     ))}
                 </div>
+            </div>
+
+            {/* Mobile Footer Links */}
+            <div className="lg:hidden mt-6 text-center text-xs text-slate-400 flex flex-col gap-2">
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-600">Política de Privacidade</button>
+                <span>&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
             </div>
 
         </div>
