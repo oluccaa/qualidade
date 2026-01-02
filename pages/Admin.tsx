@@ -433,7 +433,7 @@ const Admin: React.FC = () => {
                           <label className="text-sm font-semibold text-slate-700">Nome Completo</label>
                           <input 
                               required 
-                              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
                               placeholder="Ex: Maria Silva"
                               value={formData.name}
                               onChange={e => setFormData({...formData, name: e.target.value})}
@@ -444,7 +444,7 @@ const Admin: React.FC = () => {
                           <input 
                               type="email"
                               required 
-                              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-900 placeholder:text-slate-400 font-medium"
                               placeholder="Ex: maria@empresa.com"
                               value={formData.email}
                               onChange={e => setFormData({...formData, email: e.target.value})}
@@ -454,26 +454,36 @@ const Admin: React.FC = () => {
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
                               <label className="text-sm font-semibold text-slate-700">Perfil de Acesso</label>
-                              <select 
-                                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                  value={formData.role}
-                                  onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
-                              >
-                                  <option value={UserRole.CLIENT}>Cliente (Externo)</option>
-                                  <option value={UserRole.QUALITY}>Analista Qualidade</option>
-                                  <option value={UserRole.ADMIN}>Administrador</option>
-                              </select>
+                              <div className="relative">
+                                  <select 
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 outline-none appearance-none transition-all text-slate-900 font-medium cursor-pointer"
+                                      value={formData.role}
+                                      onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
+                                  >
+                                      <option value={UserRole.CLIENT}>Cliente (Externo)</option>
+                                      <option value={UserRole.QUALITY}>Analista Qualidade</option>
+                                      <option value={UserRole.ADMIN}>Administrador</option>
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                  </div>
+                              </div>
                           </div>
                           <div className="space-y-1">
                               <label className="text-sm font-semibold text-slate-700">Status</label>
-                              <select 
-                                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                  value={formData.status}
-                                  onChange={e => setFormData({...formData, status: e.target.value})}
-                              >
-                                  <option value="ACTIVE">Ativo</option>
-                                  <option value="BLOCKED">Bloqueado</option>
-                              </select>
+                              <div className="relative">
+                                  <select 
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 outline-none appearance-none transition-all text-slate-900 font-medium cursor-pointer"
+                                      value={formData.status}
+                                      onChange={e => setFormData({...formData, status: e.target.value})}
+                                  >
+                                      <option value="ACTIVE">Ativo</option>
+                                      <option value="BLOCKED">Bloqueado</option>
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                  </div>
+                              </div>
                           </div>
                       </div>
 
@@ -481,20 +491,25 @@ const Admin: React.FC = () => {
                       {formData.role === UserRole.CLIENT && (
                           <div className="space-y-1 pt-2 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
                               <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                                  <Building2 size={16} /> Vínculo Empresarial
+                                  <Building2 size={16} className="text-blue-600" /> Vínculo Empresarial
                               </label>
-                              <select 
-                                  required
-                                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                  value={formData.clientId}
-                                  onChange={e => setFormData({...formData, clientId: e.target.value})}
-                              >
-                                  <option value="">Selecione uma empresa...</option>
-                                  {clientsList.map(c => (
-                                      <option key={c.id} value={c.id}>{c.name}</option>
-                                  ))}
-                              </select>
-                              <p className="text-xs text-slate-500">Este usuário só verá documentos desta empresa.</p>
+                              <div className="relative">
+                                  <select 
+                                      required
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 outline-none appearance-none transition-all text-slate-900 font-medium cursor-pointer"
+                                      value={formData.clientId}
+                                      onChange={e => setFormData({...formData, clientId: e.target.value})}
+                                  >
+                                      <option value="">Selecione uma empresa...</option>
+                                      {clientsList.map(c => (
+                                          <option key={c.id} value={c.id}>{c.name}</option>
+                                      ))}
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                  </div>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1">Este usuário só verá documentos desta empresa.</p>
                           </div>
                       )}
 
@@ -502,13 +517,13 @@ const Admin: React.FC = () => {
                           <button 
                               type="button" 
                               onClick={() => setIsUserModalOpen(false)}
-                              className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors"
+                              className="px-4 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
                           >
                               Cancelar
                           </button>
                           <button 
                               type="submit" 
-                              className="px-6 py-2 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 flex items-center gap-2"
+                              className="px-6 py-2.5 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 flex items-center gap-2"
                           >
                               <Save size={18} /> Salvar Usuário
                           </button>
