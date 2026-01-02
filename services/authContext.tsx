@@ -13,18 +13,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // CRITICAL: Start true to block rendering until we check localStorage
+  const [isLoading, setIsLoading] = useState(true); 
 
   // Restore session on load
   useEffect(() => {
-    const storedUser = localStorage.getItem('acos_vital_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user session");
+    const initSession = async () => {
+      const storedUser = localStorage.getItem('acos_vital_user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error("Failed to parse user session");
+          localStorage.removeItem('acos_vital_user');
+        }
       }
-    }
+      // Small delay to ensure smooth transition if needed, or remove for instant load
+      // await new Promise(r => setTimeout(r, 500)); 
+      setIsLoading(false);
+    };
+
+    initSession();
   }, []);
 
   const login = async (email: string): Promise<boolean> => {
