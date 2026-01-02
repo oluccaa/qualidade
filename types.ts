@@ -1,7 +1,16 @@
+
 export enum UserRole {
   ADMIN = 'ADMIN',
   QUALITY = 'QUALITY',
   CLIENT = 'CLIENT'
+}
+
+export interface ClientOrganization {
+  id: string;
+  name: string;
+  cnpj: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  contractDate: string;
 }
 
 export interface User {
@@ -10,6 +19,8 @@ export interface User {
   email: string;
   role: UserRole;
   clientId?: string; // If CLIENT, restricts access to this Organization ID
+  status?: 'ACTIVE' | 'BLOCKED';
+  lastLogin?: string;
 }
 
 export enum FileType {
@@ -39,7 +50,7 @@ export interface AuditLog {
   id: string;
   userId: string;
   userName: string;
-  action: 'LOGIN' | 'DOWNLOAD' | 'PREVIEW' | 'UPLOAD' | 'DELETE';
+  action: 'LOGIN' | 'DOWNLOAD' | 'PREVIEW' | 'UPLOAD' | 'DELETE' | 'CREATE_USER' | 'UPDATE_SYSTEM';
   target: string; // File name or Folder name
   timestamp: string;
 }
