@@ -1,6 +1,6 @@
 
 import { FileNode, User, UserRole, AuditLog, FileType, LibraryFilters, FileMetadata } from '../types.ts';
-import { MOCK_FILES, MOCK_LOGS } from './mockData.ts';
+import { MOCK_FILES, MOCK_LOGS, MASTER_ORG_ID } from './mockData.ts';
 
 // Simulate a database state
 let currentFiles = [...MOCK_FILES];
@@ -62,7 +62,7 @@ export const getFiles = async (user: User, folderId: string | null): Promise<Fil
       return file.ownerId === user.clientId;
     }
 
-    // Admin and Quality can see everything
+    // Admin and Quality can see everything (Including Master Org)
     return true;
   });
 
@@ -72,7 +72,33 @@ export const getFiles = async (user: User, folderId: string | null): Promise<Fil
 
 export const getFilesByOwner = async (ownerId: string): Promise<FileNode[]> => {
     // Helper to get root folder for a specific client to start navigation
-    return currentFiles.filter(f => f.ownerId === ownerId && f.parentId === null);
+    return currentFiles.filter(f => f.ownerId === ownerId);
+};
+
+// NEW: Get all Master Library Files (Flat list for the modal)
+export const getMasterLibraryFiles = async (): Promise<FileNode[]> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    // Return all files (not folders) belonging to Master Org
+    return currentFiles.filter(f => f.ownerId === MASTER_ORG_ID && f.type !== FileType.FOLDER);
+};
+
+// NEW: Import/Copy files from Master to Client
+export const importFilesFromMaster = async (user: User, fileIds: string[], targetFolderId: string, targetOwnerId: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulating "Copying" process
+
+    const masterFiles = currentFiles.filter(f => fileIds.includes(f.id));
+    
+    const newFiles: FileNode[] = masterFiles.map(mf => ({
+        ...mf,
+        id: `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // New ID
+        parentId: targetFolderId, // Move to client folder
+        ownerId: targetOwnerId, // Assign ownership to client
+        updatedAt: new Date().toISOString().split('T')[0], // Fresh date
+        name: mf.name // Keep original name (or could append "Copy")
+    }));
+
+    currentFiles.push(...newFiles);
+    await logAction(user, 'UPLOAD', `Importou ${newFiles.length} arquivos do Repositório Mestre`);
 };
 
 // Get recent files (flat list) for dashboard or history view

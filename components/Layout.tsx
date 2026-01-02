@@ -5,6 +5,7 @@ import * as notificationService from '../services/notificationService.ts';
 import { AppNotification, UserRole } from '../types.ts';
 import { CookieBanner } from './CookieBanner.tsx';
 import { PrivacyModal } from './PrivacyModal.tsx';
+import { useTranslation } from 'react-i18next';
 import { 
   LogOut, 
   LayoutDashboard, 
@@ -29,7 +30,8 @@ import {
   Star,
   Home,
   Library,
-  Shield
+  Shield,
+  Globe
 } from 'lucide-react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 
@@ -53,6 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   
   // State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -123,11 +126,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       localStorage.setItem('sidebar_collapsed', String(newState));
   };
 
-  const roleLabel = {
-    [UserRole.ADMIN]: 'Administrador',
-    [UserRole.QUALITY]: 'Analista de Qualidade',
-    [UserRole.CLIENT]: 'Cliente Parceiro'
-  }[user?.role || UserRole.CLIENT];
+  const changeLanguage = (lng: string) => {
+      i18n.changeLanguage(lng);
+  };
+
+  const roleLabel = user ? t(`roles.${user.role}`) : '';
 
   // Configuração de Menus
   const getMenuConfig = (): MenuSection[] => {
@@ -136,17 +139,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     if (role === UserRole.CLIENT) {
       return [
         {
-          title: 'Principal',
+          title: t('menu.main'),
           items: [
-            { label: 'Início', icon: Home, path: '/dashboard' },
-            { label: 'Biblioteca', icon: Library, path: '/dashboard?view=files' },
+            { label: t('menu.home'), icon: Home, path: '/dashboard' },
+            { label: t('menu.library'), icon: Library, path: '/dashboard?view=files' },
           ]
         },
         {
-          title: 'Acesso Rápido',
+          title: t('menu.quickAccess'),
           items: [
-            { label: 'Recentes', icon: History, path: '/dashboard?view=recent' },
-            { label: 'Favoritos', icon: Star, path: '/dashboard?view=favorites' },
+            { label: t('menu.recent'), icon: History, path: '/dashboard?view=recent' },
+            { label: t('menu.favorites'), icon: Star, path: '/dashboard?view=favorites' },
           ]
         }
       ];
@@ -155,10 +158,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     if (role === UserRole.QUALITY) {
       return [
         {
-          title: 'Operação',
+          title: t('menu.operation'),
           items: [
-            { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-            { label: 'Documentos', icon: FolderOpen, path: '/quality' },
+            { label: t('menu.dashboard'), icon: LayoutDashboard, path: '/dashboard' },
+            { label: t('menu.documents'), icon: FolderOpen, path: '/quality' },
           ]
         }
       ];
@@ -167,16 +170,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     // ADMIN
     return [
       {
-        title: 'Gestão',
+        title: t('menu.management'),
         items: [
-          { label: 'Painel Geral', icon: LayoutDashboard, path: '/admin' },
-          { label: 'Arquivos', icon: FolderOpen, path: '/quality' },
+          { label: t('menu.generalPanel'), icon: LayoutDashboard, path: '/admin' },
+          { label: t('menu.files'), icon: FolderOpen, path: '/quality' },
         ]
       },
       {
-        title: 'Sistema',
+        title: t('menu.system'),
         items: [
-          { label: 'Configurações', icon: Settings, path: '/settings' }
+          { label: t('menu.settings'), icon: Settings, path: '/settings' }
         ]
       }
     ];
@@ -208,12 +211,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
               <ShieldCheck size={48} className="text-blue-400" />
           </div>
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Precisa de Ajuda?</h4>
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('menu.help')}?</h4>
           <p className="text-xs text-slate-400 mb-3 leading-relaxed">
               Dúvidas sobre um certificado ou lote específico?
           </p>
           <button className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-              <Phone size={14} /> Falar com Qualidade
+              <Phone size={14} /> {t('menu.support')}
           </button>
       </div>
     );
@@ -231,17 +234,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         className={`
           hidden md:flex flex-col 
           bg-slate-900 text-slate-300 
-          shadow-2xl z-30 relative transition-all duration-300 ease-in-out
+          shadow-2xl z-[60] relative transition-all duration-300 ease-in-out
           ${isCollapsed ? 'w-20' : 'w-72'}
+          overflow-visible
         `}
       >
         {/* Toggle Button (Floating) */}
         <button 
             onClick={toggleSidebar}
-            className="absolute -right-3 top-9 z-50 bg-white text-slate-600 border border-slate-200 rounded-full p-1 shadow-md hover:text-blue-600 hover:border-blue-200 transition-colors"
-            title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
+            className="absolute -right-4 top-9 z-[70] bg-white text-slate-600 border border-slate-200 rounded-full h-8 w-8 flex items-center justify-center shadow-lg hover:text-blue-600 hover:border-blue-400 hover:scale-110 transition-all cursor-pointer ring-4 ring-slate-50/50"
+            title={isCollapsed ? "Expandir" : "Recolher"}
         >
-            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            {isCollapsed ? <ChevronRight size={16} strokeWidth={3} /> : <ChevronLeft size={16} strokeWidth={3} />}
         </button>
 
         {/* Brand Area */}
@@ -316,19 +320,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           {/* Área Específica para Clientes: Widget de Suporte */}
           {user?.role === UserRole.CLIENT && renderClientSupportWidget()}
           
-          {/* Help Button Icon-Only when collapsed */}
-          {user?.role === UserRole.CLIENT && isCollapsed && (
-               <div className="px-3 mt-4">
-                    <button className="w-full flex justify-center items-center py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors group relative">
-                        <HelpCircle size={20} />
-                        <div className="absolute left-full ml-4 px-2 py-1 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-slate-700">
-                                Ajuda
-                                <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
-                        </div>
-                    </button>
-               </div>
-          )}
-
         </nav>
 
         {/* User Profile Footer */}
@@ -357,43 +348,37 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {!isCollapsed && isUserMenuOpen && (
                 <div className="absolute bottom-full left-0 mb-3 w-full bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
                     <button onClick={() => setIsPrivacyOpen(true)} className="w-full text-left px-4 py-3 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2">
-                        <Shield size={14} /> Privacidade e Termos
+                        <Shield size={14} /> {t('common.privacy')}
                     </button>
                     <div className="h-px bg-slate-700" />
                     <button onClick={logout} className="w-full text-left px-4 py-3 text-xs font-medium text-red-400 hover:bg-red-900/20 flex items-center gap-2">
-                        <LogOut size={14} /> Sair do Sistema
+                        <LogOut size={14} /> {t('common.logout')}
                     </button>
                 </div>
             )}
-
-            {/* Logout Button Logic (Icon Only) */}
-            {isCollapsed ? (
-                null 
-            ) : (
+            
+            {/* Settings Icon (Visible if collapsed) */}
+            {isCollapsed && (
                 <div className="p-2 text-slate-400 hover:text-white transition-colors absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
                     <Settings size={16} />
                 </div>
             )}
           </div>
-          
-          {/* Explicit Logout for Collapsed State */}
-          {isCollapsed && (
+
+           {/* Explicit Logout for Collapsed State */}
+           {isCollapsed && (
              <button 
                 onClick={logout}
                 className="mt-3 w-full flex justify-center items-center py-2 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-lg transition-colors group relative"
             >
                 <LogOut size={18} />
-                 <div className="absolute left-full ml-4 px-2 py-1 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-slate-700">
-                    Sair
-                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
-                </div>
             </button>
           )}
         </div>
       </aside>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 w-full min-w-0">
         
         {/* Mobile Header */}
         <header className="md:hidden h-16 bg-slate-900 text-white flex items-center justify-between px-4 shadow-md z-20 shrink-0">
@@ -410,7 +395,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         {isMobileMenuOpen && (
            <div className="md:hidden absolute inset-0 bg-slate-900/95 z-50 p-6 flex flex-col animate-in fade-in slide-in-from-top-5 duration-200">
               <div className="flex justify-between items-center mb-8">
-                 <span className="text-xl font-bold text-white">Menu</span>
+                 <span className="text-xl font-bold text-white">{t('menu.main')}</span>
                  <button onClick={() => setIsMobileMenuOpen(false)}><X size={24} className="text-white"/></button>
               </div>
               
@@ -433,18 +418,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                 ))}
               </div>
 
+               {/* Mobile Language Switcher */}
+               <div className="flex bg-slate-800 rounded-lg p-2 mb-4">
+                     {['pt', 'en', 'es'].map(lang => (
+                         <button 
+                            key={lang}
+                            onClick={() => changeLanguage(lang)}
+                            className={`flex-1 text-sm font-bold uppercase py-2 rounded transition-colors ${i18n.language === lang ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                         >
+                             {lang}
+                         </button>
+                     ))}
+               </div>
+
               <div className="mt-auto pt-6 border-t border-slate-800 space-y-3">
                  <button
                     onClick={() => { setIsPrivacyOpen(true); setIsMobileMenuOpen(false); }}
                     className="flex items-center gap-3 px-4 py-3 text-base font-medium w-full text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl"
                  >
-                    <Shield size={20} /> Privacidade e Termos
+                    <Shield size={20} /> {t('common.privacy')}
                  </button>
                  <button
                   onClick={logout}
                   className="flex items-center gap-3 px-4 py-3 text-base font-medium w-full text-red-400 hover:bg-red-900/20 rounded-xl"
                 >
-                  <LogOut size={20} /> Sair do Sistema
+                  <LogOut size={20} /> {t('common.logout')}
                 </button>
               </div>
            </div>
@@ -472,12 +470,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
                     <input 
                         type="text" 
-                        placeholder={user?.role === UserRole.CLIENT ? "Buscar lote ou nota fiscal..." : "Pesquisar..."}
+                        placeholder={t('common.search')}
                         className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 group-focus-within:w-80"
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                        <span className="text-[10px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">⌘K</span>
-                    </div>
+                </div>
+
+                <div className="h-8 w-px bg-slate-200" />
+                
+                {/* Language Switcher (Top Header) */}
+                <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
+                    {['pt', 'en', 'es'].map(lang => (
+                        <button 
+                        key={lang}
+                        onClick={() => changeLanguage(lang)}
+                        className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-colors ${i18n.language === lang ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200/50'}`}
+                        >
+                            {lang}
+                        </button>
+                    ))}
                 </div>
 
                 <div className="h-8 w-px bg-slate-200" />
@@ -547,11 +557,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                                     </div>
                                 )}
                             </div>
-                            <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
-                                <button className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">
-                                    Ver histórico completo
-                                </button>
-                            </div>
                         </div>
                     )}
                 </div>
@@ -561,7 +566,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         {/* Content Scroll Area */}
         <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 custom-scrollbar">
             {/* Added animation wrapper for content changes */}
-            <div className="max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10 h-full">
+            <div className="max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10 min-h-full">
                 {children}
             </div>
         </main>

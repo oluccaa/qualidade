@@ -3,9 +3,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer, FileExplorerHandle } from '../components/FileExplorer.tsx';
 import { FilePreviewModal } from '../components/FilePreviewModal.tsx'; // Import
-import { MOCK_CLIENTS, MOCK_FILES } from '../services/mockData.ts';
+import { MOCK_CLIENTS, MOCK_FILES, MASTER_ORG_ID } from '../services/mockData.ts';
 import { FileNode, ClientOrganization, FileType } from '../types.ts';
 import { useAuth } from '../services/authContext.tsx';
+import { useTranslation } from 'react-i18next';
 import { 
     FileText, 
     UploadCloud, 
@@ -32,12 +33,16 @@ import {
     ArrowLeft,
     ChevronLeft,
     ListFilter,
-    FolderPlus
+    FolderPlus,
+    Database,
+    Copy,
+    ArrowRight
 } from 'lucide-react';
 import * as fileService from '../services/fileService.ts';
 
 const Quality: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   
   // -- STATE: Layout & Navigation --
   const [selectedClient, setSelectedClient] = useState<ClientOrganization | null>(null);
@@ -56,6 +61,7 @@ const Quality: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); // NEW
   const [newFolderName, setNewFolderName] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -68,12 +74,28 @@ const Quality: React.FC = () => {
       status: 'APPROVED',
       file: null as File | null
   });
+  
+  // NEW: State for Import Modal
+  const [masterFiles, setMasterFiles] = useState<FileNode[]>([]);
+  const [selectedMasterFiles, setSelectedMasterFiles] = useState<Set<string>>(new Set());
+  const [isImporting, setIsImporting] = useState(false);
 
   // Derived: Filtered Clients List
   const filteredClients = MOCK_CLIENTS.filter(c => 
       c.name.toLowerCase().includes(clientSearch.toLowerCase()) || 
       c.cnpj.includes(clientSearch)
   );
+
+  // Mock Master Org Object for UI consistency
+  const MASTER_ORG: ClientOrganization = {
+      id: MASTER_ORG_ID,
+      name: t('quality.masterRepo'),
+      cnpj: 'INTERNO',
+      status: 'ACTIVE',
+      contractDate: '-'
+  };
+
+  const isMasterSelected = selectedClient?.id === MASTER_ORG_ID;
 
   // Helper to get current folder name (for toolbar since breadcrumbs are gone)
   const currentFolderName = useMemo(() => {
@@ -93,6 +115,17 @@ const Quality: React.FC = () => {
       }
       
       const findRoot = async () => {
+          // If Master is selected, find master root
+          if (selectedClient.id === MASTER_ORG_ID) {
+              const files = await fileService.getFilesByOwner(MASTER_ORG_ID);
+              const root = files.find(f => f.type === FileType.FOLDER && f.parentId === null);
+              if (root) {
+                  setRootFolderId(root.id);
+                  setCurrentFolderId(root.id);
+              }
+              return;
+          }
+
           const files = await fileService.getFilesByOwner(selectedClient.id);
           const root = files.find(f => f.type === FileType.FOLDER && f.parentId === null);
           if (root) {
@@ -112,6 +145,14 @@ const Quality: React.FC = () => {
   }, [selectedClient, user]);
 
   const handleRefresh = () => setRefreshTrigger(prev => prev + 1);
+
+  // Load Master Files when Import Modal opens
+  useEffect(() => {
+      if (isImportModalOpen) {
+          fileService.getMasterLibraryFiles().then(setMasterFiles);
+          setSelectedMasterFiles(new Set());
+      }
+  }, [isImportModalOpen]);
 
   // -- HANDLERS: Navigation --
   const handleNavigate = (folderId: string | null) => {
@@ -166,6 +207,21 @@ const Quality: React.FC = () => {
       await fileService.uploadFile(user, newFile, selectedClient.id);
       setIsUploadModalOpen(false);
       resetUploadForm();
+      handleRefresh();
+  };
+
+  const handleImportSubmit = async () => {
+      if (!user || !selectedClient || !currentFolderId || selectedMasterFiles.size === 0) return;
+      
+      setIsImporting(true);
+      await fileService.importFilesFromMaster(
+          user, 
+          Array.from(selectedMasterFiles), 
+          currentFolderId, 
+          selectedClient.id
+      );
+      setIsImporting(false);
+      setIsImportModalOpen(false);
       handleRefresh();
   };
 
@@ -254,7 +310,7 @@ const Quality: React.FC = () => {
   };
 
   return (
-    <Layout title="Gestão de Qualidade">
+    <Layout title={t('menu.documents')}>
         
         {/* PREVIEW MODAL */}
         <FilePreviewModal 
@@ -263,8 +319,8 @@ const Quality: React.FC = () => {
             onClose={() => setPreviewFile(null)}
         />
 
-        {/* Main Workspace */}
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-130px)] md:h-[calc(100vh-160px)] bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden relative">
+        {/* Main Workspace - Dynamic Height for Mobile */}
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden relative">
             
             {/* 1. LEFT PANE: Client Selector / Navigation */}
             <div className={`
@@ -272,12 +328,12 @@ const Quality: React.FC = () => {
                 ${selectedClient ? '-translate-x-full lg:translate-x-0 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto' : 'translate-x-0 opacity-100 pointer-events-auto'}
             `}>
                 <div className="p-4 border-b border-slate-200">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Empresas Parceiras</h3>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{t('quality.partners')}</h3>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input 
                             type="text"
-                            placeholder="Buscar cliente..."
+                            placeholder={t('quality.searchClient')}
                             className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             value={clientSearch}
                             onChange={e => setClientSearch(e.target.value)}
@@ -286,6 +342,25 @@ const Quality: React.FC = () => {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {/* MASTER LIBRARY PINNED */}
+                    <div 
+                        onClick={() => setSelectedClient(MASTER_ORG)}
+                        className={`
+                            mx-2 mt-2 mb-4 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md flex items-center gap-3
+                            ${selectedClient?.id === MASTER_ORG_ID ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-white border-slate-200 hover:border-indigo-300'}
+                        `}
+                    >
+                         <div className={`p-2 rounded-lg ${selectedClient?.id === MASTER_ORG_ID ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                             <Database size={20} />
+                         </div>
+                         <div>
+                             <span className={`block font-bold text-sm ${selectedClient?.id === MASTER_ORG_ID ? 'text-white' : 'text-slate-800'}`}>{t('quality.masterRepo')}</span>
+                             <span className={`text-[10px] ${selectedClient?.id === MASTER_ORG_ID ? 'text-indigo-200' : 'text-slate-500'}`}>{t('quality.masterLib')}</span>
+                         </div>
+                    </div>
+
+                    <div className="px-4 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clientes</div>
+
                     {filteredClients.map(client => {
                         const pending = getPendingCount(client.id);
                         const isSelected = selectedClient?.id === client.id;
@@ -332,7 +407,7 @@ const Quality: React.FC = () => {
                                 <button 
                                     onClick={() => setSelectedClient(null)} 
                                     className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0"
-                                    title="Voltar para lista de clientes"
+                                    title={t('common.back')}
                                 >
                                     <ArrowLeft size={20} />
                                 </button>
@@ -341,28 +416,28 @@ const Quality: React.FC = () => {
                                     <button 
                                         onClick={handleGoUp}
                                         className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 text-sm font-medium transition-colors shrink-0"
-                                        title="Subir Nível"
+                                        title={t('common.back')}
                                     >
                                         <ChevronLeft size={18} />
-                                        <span className="hidden sm:inline">Voltar</span>
+                                        <span className="hidden sm:inline">{t('common.back')}</span>
                                     </button>
                                 )}
 
                                 <div className="flex items-center gap-2 min-w-0">
-                                    {currentFolderId === rootFolderId ? (
-                                        <Building2 size={16} className="text-blue-500 shrink-0" />
+                                    {selectedClient.id === MASTER_ORG_ID ? (
+                                         <Database size={16} className="text-indigo-600 shrink-0" />
                                     ) : (
-                                        <FolderOpen size={16} className="text-blue-500 shrink-0" />
+                                         <Building2 size={16} className="text-blue-500 shrink-0" />
                                     )}
-                                    <span className="font-bold text-slate-700 text-sm truncate">{currentFolderName || 'Carregando...'}</span>
+                                    <span className="font-bold text-slate-700 text-sm truncate">{currentFolderName || '...'}</span>
                                 </div>
                              </div>
 
                              {/* Right Group: Actions */}
-                             <div className="flex items-center gap-3 shrink-0">
+                             <div className="flex items-center gap-2 md:gap-3 shrink-0">
                                 
                                 {/* Improved Segmented Control Filter */}
-                                <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 overflow-x-auto no-scrollbar">
+                                <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 overflow-x-auto no-scrollbar max-w-[120px] md:max-w-none">
                                     <button 
                                         onClick={() => setActiveTab('ALL')}
                                         className={`
@@ -373,7 +448,7 @@ const Quality: React.FC = () => {
                                         `}
                                     >
                                         <ListFilter size={14} /> 
-                                        Todos
+                                        All
                                     </button>
                                     <button 
                                         onClick={() => setActiveTab('PENDING')}
@@ -385,7 +460,7 @@ const Quality: React.FC = () => {
                                         `}
                                     >
                                         <Clock size={14} className={activeTab === 'PENDING' ? 'text-orange-500' : ''} /> 
-                                        <span className="hidden xl:inline">Pendentes</span>
+                                        <span className="hidden xl:inline">Pending</span>
                                         <span className="xl:hidden">Pend.</span>
                                     </button>
                                 </div>
@@ -397,22 +472,33 @@ const Quality: React.FC = () => {
                                         onClick={() => fileExplorerRef.current?.triggerBulkDownload()}
                                         className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm whitespace-nowrap animate-in fade-in zoom-in-95"
                                     >
-                                        <Download size={14} /> Baixar ({selectionCount})
+                                        <Download size={14} /> <span className="hidden md:inline">{t('files.bulkDownload')}</span> ({selectionCount})
                                     </button>
                                 ) : (
                                     <>
                                         <button 
                                             onClick={() => setIsFolderModalOpen(true)}
                                             className="p-2 text-slate-500 hover:bg-slate-100 hover:text-blue-600 rounded-lg transition-colors"
-                                            title="Nova Pasta"
+                                            title={t('quality.newFolder')}
                                         >
                                             <FolderPlus size={20} />
                                         </button>
+
+                                        {/* IMPORT BUTTON (Visible only if NOT master) */}
+                                        {!isMasterSelected && (
+                                            <button 
+                                                onClick={() => setIsImportModalOpen(true)}
+                                                className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+                                            >
+                                                <Copy size={14} /> <span className="hidden sm:inline">{t('quality.importMaster')}</span>
+                                            </button>
+                                        )}
+
                                         <button 
                                             onClick={() => setIsUploadModalOpen(true)}
                                             className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
                                         >
-                                            <FileUp size={14} /> <span className="hidden sm:inline">Upload</span>
+                                            <FileUp size={14} /> <span className="hidden sm:inline">{t('quality.upload')}</span>
                                         </button>
                                     </>
                                 )}
@@ -439,7 +525,7 @@ const Quality: React.FC = () => {
                 ) : (
                     <div className="hidden lg:flex flex-1 flex-col items-center justify-center text-slate-300">
                         <Building2 size={64} className="mb-4 text-slate-100" />
-                        <p className="font-medium text-slate-400">Selecione um cliente para iniciar</p>
+                        <p className="font-medium text-slate-400">{t('quality.selectClient')}</p>
                     </div>
                 )}
             </div>
@@ -473,7 +559,7 @@ const Quality: React.FC = () => {
                                     ${inspectorFile.metadata?.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}
                                 `}
                             >
-                                <CheckCircle2 size={12} /> Aprovar
+                                <CheckCircle2 size={12} /> {t('quality.approve')}
                             </button>
                             <button 
                                 onClick={() => handleQuickStatusChange('REJECTED')}
@@ -481,7 +567,7 @@ const Quality: React.FC = () => {
                                     ${inspectorFile.metadata?.status === 'REJECTED' ? 'bg-red-100 text-red-700 shadow-sm' : 'text-slate-400 hover:text-slate-600'}
                                 `}
                             >
-                                <X size={12} /> Rejeitar
+                                <X size={12} /> {t('quality.reject')}
                             </button>
                         </div>
                     </div>
@@ -490,20 +576,20 @@ const Quality: React.FC = () => {
                         {/* Metadata Group */}
                         <div>
                             <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <Activity size={12} /> Dados Técnicos
+                                <Activity size={12} /> {t('quality.techData')}
                             </h5>
                             <div className="space-y-3">
                                 <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Produto</span>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{t('quality.product')}</span>
                                     <span className="text-sm font-medium text-slate-800">{inspectorFile.metadata?.productName || '-'}</span>
                                 </div>
                                 <div className="flex gap-3">
                                     <div className="flex-1 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Corrida/Lote</span>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{t('quality.batch')}</span>
                                         <span className="text-sm font-mono text-slate-700">{inspectorFile.metadata?.batchNumber || '-'}</span>
                                     </div>
                                     <div className="flex-1 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Nota Fiscal</span>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{t('quality.invoice')}</span>
                                         <span className="text-sm font-mono text-slate-700">{inspectorFile.metadata?.invoiceNumber || '-'}</span>
                                     </div>
                                 </div>
@@ -517,14 +603,14 @@ const Quality: React.FC = () => {
                             onClick={() => openEditModal(inspectorFile)}
                             className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
                         >
-                             <Filter size={14} /> Editar Dados
+                             <Filter size={14} /> {t('quality.editData')}
                          </button>
                          <div className="flex gap-2">
                              <button 
                                 onClick={handlePreviewOpen} // Opens the NEW Preview Modal
                                 className="flex-1 py-2.5 border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-600 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
                              >
-                                 <Eye size={14} /> Preview
+                                 <Eye size={14} /> {t('quality.preview')}
                              </button>
                              <button 
                                 onClick={() => handleDelete(inspectorFile)}
@@ -543,12 +629,126 @@ const Quality: React.FC = () => {
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
                         <MoreHorizontal size={32} />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-600">Nenhum arquivo selecionado</h4>
-                    <p className="text-xs text-slate-400 mt-2">Clique em um documento na lista para ver detalhes, aprovar ou editar metadados.</p>
+                    <h4 className="text-sm font-bold text-slate-600">{t('quality.noSelection')}</h4>
+                    <p className="text-xs text-slate-400 mt-2">{t('quality.clickToView')}</p>
                 </div>
             )}
 
         </div>
+
+        {/* MODAL: Import from Master */}
+        {isImportModalOpen && (
+             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <div>
+                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Database className="text-indigo-600" size={20}/> {t('quality.importModal.title')}
+                             </h3>
+                             <p className="text-xs text-slate-500">{t('quality.importModal.desc')} <strong>{selectedClient?.name}</strong></p>
+                        </div>
+                        <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-0">
+                        {masterFiles.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400">
+                                <Database size={48} className="mx-auto mb-2 opacity-20" />
+                                <p>{t('quality.importModal.empty')}</p>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-4 py-3 w-10 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedMasterFiles.size === masterFiles.length && masterFiles.length > 0}
+                                                onChange={() => {
+                                                    if (selectedMasterFiles.size === masterFiles.length) {
+                                                        setSelectedMasterFiles(new Set());
+                                                    } else {
+                                                        setSelectedMasterFiles(new Set(masterFiles.map(f => f.id)));
+                                                    }
+                                                }}
+                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </th>
+                                        <th className="px-4 py-3 font-medium">{t('quality.importModal.filename')}</th>
+                                        <th className="px-4 py-3 font-medium">{t('quality.importModal.ref')}</th>
+                                        <th className="px-4 py-3 font-medium text-right">{t('quality.importModal.size')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {masterFiles.map(file => {
+                                        const isSelected = selectedMasterFiles.has(file.id);
+                                        return (
+                                            <tr 
+                                                key={file.id} 
+                                                onClick={() => {
+                                                    const newSet = new Set(selectedMasterFiles);
+                                                    if(newSet.has(file.id)) newSet.delete(file.id);
+                                                    else newSet.add(file.id);
+                                                    setSelectedMasterFiles(newSet);
+                                                }}
+                                                className={`cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 hover:bg-indigo-100' : 'hover:bg-slate-50'}`}
+                                            >
+                                                <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => {
+                                                            const newSet = new Set(selectedMasterFiles);
+                                                            if(newSet.has(file.id)) newSet.delete(file.id);
+                                                            else newSet.add(file.id);
+                                                            setSelectedMasterFiles(newSet);
+                                                        }}
+                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 flex items-center gap-2">
+                                                    <FileText size={16} className="text-slate-400" />
+                                                    <span className="font-medium text-slate-700">{file.name}</span>
+                                                </td>
+                                                <td className="px-4 py-3 font-mono text-slate-500 text-xs">
+                                                    {file.metadata?.batchNumber || '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-slate-500 text-xs">
+                                                    {file.size || '-'}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+
+                    <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <span className="text-xs text-slate-500 font-medium">
+                            {selectedMasterFiles.size} {t('quality.importModal.selected')}
+                        </span>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsImportModalOpen(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-medium transition-colors"
+                            >
+                                {t('common.cancel')}
+                            </button>
+                            <button 
+                                onClick={handleImportSubmit}
+                                disabled={selectedMasterFiles.size === 0 || isImporting}
+                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-lg shadow-indigo-900/20 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isImporting ? t('common.loading') : <><Copy size={16} /> {t('quality.importModal.btnImport')}</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+             </div>
+        )}
 
         {/* MODAL: New Folder */}
         {isFolderModalOpen && (
@@ -556,7 +756,7 @@ const Quality: React.FC = () => {
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                         <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <FolderPlus className="text-blue-500" size={20}/> Nova Pasta
+                            <FolderPlus className="text-blue-500" size={20}/> {t('quality.newFolder')}
                         </h3>
                         <button onClick={() => setIsFolderModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
                             <X size={20} />
@@ -564,7 +764,7 @@ const Quality: React.FC = () => {
                     </div>
                     <form onSubmit={handleCreateFolder} className="p-6">
                         <div className="space-y-1 mb-4">
-                            <label className="text-sm font-semibold text-slate-700">Nome da Pasta</label>
+                            <label className="text-sm font-semibold text-slate-700">Folder Name</label>
                             <input 
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                 placeholder="Ex: Certificados 2024"
@@ -580,13 +780,13 @@ const Quality: React.FC = () => {
                                 onClick={() => setIsFolderModalOpen(false)}
                                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
                             >
-                                Cancelar
+                                {t('common.cancel')}
                             </button>
                             <button 
                                 type="submit"
                                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg shadow-blue-900/20"
                             >
-                                Criar
+                                {t('common.create')}
                             </button>
                         </div>
                     </form>
@@ -600,7 +800,7 @@ const Quality: React.FC = () => {
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                         <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            {isEditModalOpen ? <><FileText className="text-blue-500"/> Editar Metadados</> : <><FileUp className="text-blue-500"/> Novo Upload</>}
+                            {isEditModalOpen ? <><FileText className="text-blue-500"/> {t('quality.uploadModal.titleEdit')}</> : <><FileUp className="text-blue-500"/> {t('quality.uploadModal.titleNew')}</>}
                         </h3>
                         <button onClick={() => { setIsUploadModalOpen(false); setIsEditModalOpen(false); }} className="text-slate-400 hover:text-red-500 transition-colors">
                             <X size={20} />
@@ -612,7 +812,7 @@ const Quality: React.FC = () => {
                             
                             {/* File Name / Rename */}
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Nome do Arquivo/Pasta</label>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">{t('files.name')}</label>
                                 <input 
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
                                     placeholder="Nome do arquivo..."
@@ -625,7 +825,7 @@ const Quality: React.FC = () => {
                             {/* File Selection (Upload Only) */}
                             {!isEditModalOpen && (
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Arquivo Original (PDF)</label>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">{t('quality.uploadModal.originalFile')}</label>
                                     <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center hover:bg-slate-50 hover:border-blue-400 transition-colors cursor-pointer group relative">
                                         <input 
                                             type="file" 
@@ -639,16 +839,16 @@ const Quality: React.FC = () => {
                                         />
                                         <UploadCloud size={32} className="text-slate-400 group-hover:text-blue-500 mb-2" />
                                         <p className="text-sm font-medium text-slate-600 group-hover:text-blue-600">
-                                            {uploadFormData.file ? uploadFormData.file.name : "Clique para selecionar ou arraste aqui"}
+                                            {uploadFormData.file ? uploadFormData.file.name : t('quality.uploadModal.dragDrop')}
                                         </p>
-                                        <p className="text-xs text-slate-400 mt-1">PDF até 10MB</p>
+                                        <p className="text-xs text-slate-400 mt-1">PDF max 10MB</p>
                                     </div>
                                 </div>
                             )}
 
                             {/* Metadata Fields (Only relevant if not just a folder structure, but keeping visible for simplicity or if editing file) */}
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">Identificação do Produto</label>
+                                <label className="text-sm font-semibold text-slate-700">{t('quality.product')}</label>
                                 <input 
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                     placeholder="Ex: Barra Aço SAE 1045"
@@ -657,7 +857,7 @@ const Quality: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">Número do Lote / Corrida</label>
+                                <label className="text-sm font-semibold text-slate-700">{t('quality.batch')}</label>
                                 <input 
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono"
                                     placeholder="Ex: L-99855"
@@ -666,7 +866,7 @@ const Quality: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">Nota Fiscal (Opcional)</label>
+                                <label className="text-sm font-semibold text-slate-700">{t('quality.invoice')} (Optional)</label>
                                 <input 
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono"
                                     placeholder="Ex: NF-102030"
@@ -675,15 +875,15 @@ const Quality: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">Status de Aprovação</label>
+                                <label className="text-sm font-semibold text-slate-700">{t('common.status')}</label>
                                 <select 
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"
                                     value={uploadFormData.status}
                                     onChange={e => setUploadFormData({...uploadFormData, status: e.target.value})}
                                 >
-                                    <option value="APPROVED">Aprovado (Visível ao Cliente)</option>
-                                    <option value="PENDING">Em Análise (Interno)</option>
-                                    <option value="REJECTED">Rejeitado/Obsoleto</option>
+                                    <option value="APPROVED">{t('common.status')} {t('dashboard.active')}</option>
+                                    <option value="PENDING">Pending (Internal)</option>
+                                    <option value="REJECTED">Rejected</option>
                                 </select>
                             </div>
                         </div>
@@ -692,8 +892,8 @@ const Quality: React.FC = () => {
                         <div className="mt-6 bg-blue-50 p-3 rounded-lg flex gap-3 text-xs text-blue-800 border border-blue-100">
                              <AlertCircle size={16} className="shrink-0 mt-0.5" />
                              <div>
-                                 <p className="font-bold">Confirmação de Integridade</p>
-                                 <p>Ao salvar, você confirma que os dados conferem com o documento físico original, garantindo a rastreabilidade conforme ISO 9001.</p>
+                                 <p className="font-bold">{t('quality.uploadModal.integrity')}</p>
+                                 <p>{t('quality.uploadModal.integrityText')}</p>
                              </div>
                         </div>
 
@@ -703,14 +903,14 @@ const Quality: React.FC = () => {
                                 onClick={() => { setIsUploadModalOpen(false); setIsEditModalOpen(false); }}
                                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
                             >
-                                Cancelar
+                                {t('common.cancel')}
                             </button>
                             <button 
                                 type="submit"
                                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg shadow-blue-900/20 flex items-center gap-2 transition-transform active:scale-95"
                             >
                                 <Save size={18} />
-                                {isEditModalOpen ? 'Salvar Alterações' : 'Confirmar Upload'}
+                                {t('common.save')}
                             </button>
                         </div>
                     </form>

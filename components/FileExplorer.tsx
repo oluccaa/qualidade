@@ -4,6 +4,7 @@ import { FileNode, FileType, UserRole } from '../types.ts';
 import { useAuth } from '../services/authContext.tsx';
 import * as fileService from '../services/fileService.ts';
 import { FilePreviewModal } from './FilePreviewModal.tsx';
+import { useTranslation } from 'react-i18next';
 import { 
   Folder, 
   FileText, 
@@ -60,6 +61,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
   onSelectionChange
 }, ref) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   
   // Internal state is used ONLY if controlled props are not provided
   const [internalFolderId, setInternalFolderId] = useState<string | null>(initialFolderId);
@@ -122,7 +124,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
             let result;
             if (searchQuery.length > 0) {
                 result = await fileService.searchFiles(user, searchQuery);
-                if (!hideToolbar) setBreadcrumbs([{ id: 'search', name: `Resultados para: "${searchQuery}"` }]);
+                if (!hideToolbar) setBreadcrumbs([{ id: 'search', name: `"${searchQuery}"` }]);
             } else {
                 result = await fileService.getFiles(user, activeFolderId);
                 if (!hideToolbar) setBreadcrumbs(fileService.getBreadcrumbs(activeFolderId));
@@ -294,8 +296,8 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
 
   const renderStatusBadge = (status?: string) => {
       if (!status) return null;
-      if (status === 'APPROVED') return <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"><CheckCircle2 size={10} /> Aprovado</span>;
-      if (status === 'PENDING') return <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100"><Clock size={10} /> Análise</span>;
+      if (status === 'APPROVED') return <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"><CheckCircle2 size={10} /> {t('common.status')} OK</span>;
+      if (status === 'PENDING') return <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100"><Clock size={10} /> Pending</span>;
       return null;
   };
 
@@ -318,7 +320,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
             onDrop={handleDrop}
           >
               <ArrowUp size={48} className="text-blue-600 mb-4 animate-bounce" />
-              <p className="text-xl font-semibold text-blue-700">Solte os arquivos aqui</p>
+              <p className="text-xl font-semibold text-blue-700">{t('files.dropZone')}</p>
           </div>
       )}
 
@@ -346,7 +348,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                 </div>
             )) : (
                 <span className="font-bold text-slate-800 text-base">
-                    {displayedFiles.length} documento(s) encontrado(s)
+                    {displayedFiles.length} docs found
                 </span>
             )}
             </div>
@@ -357,7 +359,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                     onClick={handleBulkDownload}
                     className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium animate-in fade-in zoom-in-95 shadow-md shadow-blue-900/10"
                 >
-                    <Download size={16} /> Baixar ({selectedFiles.size})
+                    <Download size={16} /> {t('files.bulkDownload')} ({selectedFiles.size})
                 </button>
             )}
 
@@ -366,7 +368,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500" size={18} />
                     <input 
                     type="text"
-                    placeholder={isClient ? "Busque por lote..." : "Buscar..."}
+                    placeholder={t('common.search')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64 bg-slate-50 focus:bg-white transition-all"
@@ -380,7 +382,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                 <ArrowUp size={18} />
-                <span className="hidden sm:inline">Upload</span>
+                <span className="hidden sm:inline">{t('common.upload')}</span>
                 </button>
             )}
 
@@ -413,8 +415,8 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
         ) : displayedFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
                 <Folder size={64} className="mb-4 text-slate-200" />
-                <p>Nenhum item encontrado.</p>
-                {flatMode && <p className="text-sm mt-2">Tente ajustar os filtros acima.</p>}
+                <p>{t('files.noItems')}</p>
+                {flatMode && <p className="text-sm mt-2">Check filters.</p>}
             </div>
         ) : viewMode === 'grid' ? (
              /* GRID VIEW */
@@ -454,9 +456,9 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                                  </button>
                                  {activeActionId === file.id && (
                                      <div className="absolute left-0 top-8 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-left">
-                                         <button onClick={() => { if(onEdit) onEdit(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"><Edit2 size={14} /> Editar</button>
+                                         <button onClick={() => { if(onEdit) onEdit(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"><Edit2 size={14} /> {t('common.edit')}</button>
                                          <div className="h-px bg-slate-100 my-1" />
-                                         <button onClick={() => { if(onDelete) onDelete(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> Excluir</button>
+                                         <button onClick={() => { if(onDelete) onDelete(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> {t('common.delete')}</button>
                                      </div>
                                  )}
                              </div>
@@ -480,11 +482,11 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                                     </div>
                                 </th>
                                 <th className="w-10 px-0 py-3 text-center border-b border-slate-200"></th>
-                                <th className="px-4 py-3 font-medium border-b border-slate-200">Nome do Arquivo</th>
-                                {isClient && <th className="px-4 py-3 font-medium hidden lg:table-cell border-b border-slate-200">Produto / Lote</th>}
-                                <th className="px-4 py-3 font-medium w-32 hidden xl:table-cell border-b border-slate-200">Data</th>
-                                <th className="px-4 py-3 font-medium w-24 hidden lg:table-cell border-b border-slate-200">Status</th>
-                                <th className="px-4 py-3 font-medium w-16 text-right border-b border-slate-200">Ações</th>
+                                <th className="px-4 py-3 font-medium border-b border-slate-200">{t('files.name')}</th>
+                                {isClient && <th className="px-4 py-3 font-medium hidden lg:table-cell border-b border-slate-200">{t('files.productBatch')}</th>}
+                                <th className="px-4 py-3 font-medium w-32 hidden xl:table-cell border-b border-slate-200">{t('files.date')}</th>
+                                <th className="px-4 py-3 font-medium w-24 hidden lg:table-cell border-b border-slate-200">{t('files.status')}</th>
+                                <th className="px-4 py-3 font-medium w-16 text-right border-b border-slate-200">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -536,7 +538,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                                         <td className="px-4 py-3 hidden lg:table-cell">
                                             <div className="flex flex-col">
                                                 <span className="text-slate-700 font-medium text-xs">{file.metadata?.productName || '-'}</span>
-                                                <span className="text-slate-400 text-[10px] font-mono">Lote: {file.metadata?.batchNumber || '-'}</span>
+                                                <span className="text-slate-400 text-[10px] font-mono">{t('quality.batch')}: {file.metadata?.batchNumber || '-'}</span>
                                             </div>
                                         </td>
                                     )}
@@ -559,15 +561,15 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                                                     </button>
                                                     {activeActionId === file.id && (
                                                         <div className="absolute right-0 top-8 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                            <button onClick={() => { if(onEdit) onEdit(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"><Edit2 size={14} /> Editar</button>
+                                                            <button onClick={() => { if(onEdit) onEdit(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2"><Edit2 size={14} /> {t('common.edit')}</button>
                                                             <div className="h-px bg-slate-100 my-1" />
-                                                            <button onClick={() => { if(onDelete) onDelete(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> Excluir</button>
+                                                            <button onClick={() => { if(onDelete) onDelete(file); setActiveActionId(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> {t('common.delete')}</button>
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
                                             {file.type !== FileType.FOLDER && (
-                                                <button onClick={(e) => handleDownload(e, file)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all" title="Download"><Download size={18} /></button>
+                                                <button onClick={(e) => handleDownload(e, file)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all" title={t('common.download')}><Download size={18} /></button>
                                             )}
                                         </div>
                                     </td>

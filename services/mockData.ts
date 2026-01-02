@@ -1,6 +1,8 @@
 
-
 import { FileNode, FileType, User, UserRole, AuditLog, ClientOrganization, AppNotification } from '../types.ts';
+
+// ID Constante para o Repositório Mestre
+export const MASTER_ORG_ID = 'org-master-library';
 
 // Mock Clients (Organizations)
 export const MOCK_CLIENTS: ClientOrganization[] = [
@@ -29,6 +31,42 @@ export const MOCK_USERS: User[] = [
 // Mock File System
 // Structure: Root -> Client Folder -> Year -> Category
 export const MOCK_FILES: FileNode[] = [
+  // --- MASTER LIBRARY (Repositório Central) ---
+  { id: 'master-root', parentId: null, name: 'Repositório Central', type: FileType.FOLDER, updatedAt: '2023-01-01', ownerId: MASTER_ORG_ID },
+  { 
+    id: 'm-doc1', 
+    parentId: 'master-root', 
+    name: 'Certificado_Padrao_ISO9001.pdf', 
+    type: FileType.PDF, 
+    size: '1.2 MB', 
+    updatedAt: '2023-10-01', 
+    ownerId: MASTER_ORG_ID, 
+    tags: ['Modelo', 'ISO'],
+    metadata: { batchNumber: 'MODELO-001', productName: 'Certificado Genérico', status: 'APPROVED' }
+  },
+  { 
+    id: 'm-doc2', 
+    parentId: 'master-root', 
+    name: 'Especificacao_Tecnica_SAE1045.pdf', 
+    type: FileType.PDF, 
+    size: '2.5 MB', 
+    updatedAt: '2023-10-05', 
+    ownerId: MASTER_ORG_ID, 
+    tags: ['Técnico', 'SAE 1045'],
+    metadata: { batchNumber: 'REF-1045', productName: 'Aço SAE 1045', status: 'APPROVED' }
+  },
+  { 
+    id: 'm-doc3', 
+    parentId: 'master-root', 
+    name: 'Procedimento_Soldagem_WPS.pdf', 
+    type: FileType.PDF, 
+    size: '4.0 MB', 
+    updatedAt: '2023-10-10', 
+    ownerId: MASTER_ORG_ID, 
+    tags: ['Solda', 'Procedimento'],
+    metadata: { batchNumber: 'WPS-General', productName: 'Procedimento Solda', status: 'APPROVED' }
+  },
+
   // Client 1 Structure (Empresa X)
   { id: 'f1', parentId: null, name: 'Empresa X', type: FileType.FOLDER, updatedAt: '2023-10-01', ownerId: 'c1' },
   { id: 'f1-1', parentId: 'f1', name: 'Certificados de Qualidade', type: FileType.FOLDER, updatedAt: '2023-10-02', ownerId: 'c1' },

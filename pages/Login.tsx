@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../services/authContext.tsx';
 import { CookieBanner } from '../components/CookieBanner.tsx';
 import { PrivacyModal } from '../components/PrivacyModal.tsx';
+import { useTranslation } from 'react-i18next';
 import { 
   ShieldCheck, 
   Loader2, 
@@ -10,7 +11,7 @@ import {
   Lock, 
   ArrowRight, 
   CheckCircle2, 
-  Building2 
+  Globe 
 } from 'lucide-react';
 
 const Login: React.FC = () => {
@@ -20,6 +21,11 @@ const Login: React.FC = () => {
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const { login, isLoading } = useAuth();
+  const { t, i18n } = useTranslation();
+
+  const changeLanguage = (lng: string) => {
+      i18n.changeLanguage(lng);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,8 +49,28 @@ const Login: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-white relative">
       
+      {/* LANGUAGE SELECTOR (FLOATING TOP RIGHT) */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+          <div className="bg-white/80 backdrop-blur-md border border-slate-200 p-1 rounded-lg shadow-sm flex">
+              {['pt', 'en', 'es'].map((lang) => (
+                  <button
+                      key={lang}
+                      onClick={() => changeLanguage(lang)}
+                      className={`
+                          px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all
+                          ${i18n.language === lang 
+                              ? 'bg-slate-900 text-white shadow-sm' 
+                              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}
+                      `}
+                  >
+                      {lang}
+                  </button>
+              ))}
+          </div>
+      </div>
+
       {/* Components */}
       <CookieBanner />
       <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
@@ -71,14 +97,14 @@ const Login: React.FC = () => {
             </div>
 
             <div className="space-y-6 max-w-lg">
-                <h1 className="text-5xl font-bold leading-tight">
-                    Excelência e precisão em cada detalhe.
+                <h1 className="text-4xl xl:text-5xl font-bold leading-tight">
+                    {t('login.sloganTitle')}
                 </h1>
-                <p className="text-lg text-slate-300 font-light leading-relaxed">
-                    Acesse o Portal da Qualidade para gerenciar certificados, laudos técnicos e rastreabilidade de materiais com segurança total.
+                <p className="text-base xl:text-lg text-slate-300 font-light leading-relaxed">
+                    {t('login.sloganText')}
                 </p>
                 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-wrap gap-4 pt-4">
                      <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-800/50 px-4 py-2 rounded-full border border-slate-700/50">
                         <CheckCircle2 size={16} className="text-green-500" /> ISO 9001
                      </div>
@@ -90,36 +116,36 @@ const Login: React.FC = () => {
 
             <div className="text-sm text-slate-500 flex items-center gap-6">
                 <span>&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
-                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-400 transition-colors">Política de Privacidade</button>
-                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-400 transition-colors">Termos de Uso</button>
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-400 transition-colors">{t('common.privacy')}</button>
             </div>
         </div>
       </div>
 
       {/* Lado Direito - Formulário */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50">
-        <div className="w-full max-w-md space-y-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 bg-slate-50 overflow-y-auto">
+        <div className="w-full max-w-md space-y-8 my-auto">
             
             {/* Cabeçalho Mobile */}
-            <div className="lg:hidden flex justify-center mb-8">
-                <div className="flex items-center gap-2">
+            <div className="lg:hidden flex flex-col items-center mb-8 mt-10">
+                <div className="flex items-center gap-2 mb-2">
                     <div className="bg-blue-600 p-2 rounded-lg text-white">
-                        <ShieldCheck size={24} />
+                        <ShieldCheck size={32} />
                     </div>
-                    <span className="text-xl font-bold text-slate-900">Aços Vital</span>
+                    <span className="text-2xl font-bold text-slate-900">Aços Vital</span>
                 </div>
+                <p className="text-slate-500 text-sm text-center px-4">{t('login.sloganTitle')}</p>
             </div>
 
             <div className="text-center lg:text-left">
-                <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Bem-vindo de volta</h2>
-                <p className="mt-2 text-slate-500">Insira suas credenciais corporativas para acessar.</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">{t('login.welcomeBack')}</h2>
+                <p className="mt-2 text-slate-500">{t('login.enterCredentials')}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
                 
                 {/* Input Email */}
                 <div className="space-y-1">
-                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 ml-1">Email Corporativo</label>
+                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 ml-1">{t('login.emailLabel')}</label>
                     <div 
                         className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
                         ${focusedInput === 'email' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
@@ -144,8 +170,8 @@ const Login: React.FC = () => {
                 {/* Input Password (Visual) */}
                 <div className="space-y-1">
                     <div className="flex justify-between ml-1">
-                         <label htmlFor="password" className="block text-sm font-medium text-slate-700">Senha</label>
-                         <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">Esqueceu a senha?</a>
+                         <label htmlFor="password" className="block text-sm font-medium text-slate-700">{t('login.passwordLabel')}</label>
+                         <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">{t('login.forgotPassword')}</a>
                     </div>
                     <div 
                         className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
@@ -183,7 +209,7 @@ const Login: React.FC = () => {
                         <Loader2 className="animate-spin text-slate-400" />
                     ) : (
                         <>
-                            <span>Acessar Portal</span>
+                            <span>{t('login.accessPortal')}</span>
                             <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                         </>
                     )}
@@ -192,7 +218,7 @@ const Login: React.FC = () => {
 
             {/* Demo Credentials Footer */}
             <div className="pt-8 border-t border-slate-200">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 text-center">Ambiente de Demonstração</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 text-center">{t('login.demoEnv')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {demoAccounts.map((acc) => (
                         <button
@@ -208,8 +234,8 @@ const Login: React.FC = () => {
             </div>
 
             {/* Mobile Footer Links */}
-            <div className="lg:hidden mt-6 text-center text-xs text-slate-400 flex flex-col gap-2">
-                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-600">Política de Privacidade</button>
+            <div className="lg:hidden mt-6 text-center text-xs text-slate-400 flex flex-col gap-2 pb-6">
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-600">{t('common.privacy')}</button>
                 <span>&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
             </div>
 
