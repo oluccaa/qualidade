@@ -51,18 +51,21 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex bg-white relative">
       
-      {/* LANGUAGE SELECTOR (FLOATING TOP RIGHT) */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-          <div className="bg-white/80 backdrop-blur-md border border-slate-200 p-1 rounded-lg shadow-sm flex">
+      {/* LANGUAGE SELECTOR - ENHANCED MOBILE/DESKTOP */}
+      <div className="absolute top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 p-1.5 rounded-full shadow-lg shadow-slate-200/50 flex items-center gap-1">
+              <div className="pl-2 pr-1 text-slate-400">
+                  <Globe size={16} />
+              </div>
               {['pt', 'en', 'es'].map((lang) => (
                   <button
                       key={lang}
                       onClick={() => changeLanguage(lang)}
                       className={`
-                          px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all
+                          px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase rounded-full transition-all duration-300 ease-out
                           ${i18n.language === lang 
-                              ? 'bg-slate-900 text-white shadow-sm' 
-                              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}
+                              ? 'bg-slate-900 text-white shadow-md transform scale-105 ring-2 ring-slate-100' 
+                              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}
                       `}
                   >
                       {lang}
