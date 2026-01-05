@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   ADMIN = 'ADMIN',
   QUALITY = 'QUALITY',
@@ -21,6 +20,7 @@ export interface User {
   role: UserRole;
   clientId?: string; // If CLIENT, restricts access to this Organization ID
   status?: 'ACTIVE' | 'BLOCKED';
+  department?: string; // New field
   lastLogin?: string;
 }
 
@@ -58,11 +58,21 @@ export interface BreadcrumbItem {
 
 export interface AuditLog {
   id: string;
+  timestamp: string;
   userId: string;
   userName: string;
-  action: 'LOGIN' | 'DOWNLOAD' | 'PREVIEW' | 'UPLOAD' | 'DELETE' | 'CREATE_USER' | 'UPDATE_SYSTEM' | 'BULK_DOWNLOAD';
-  target: string; // File name or Folder name
-  timestamp: string;
+  userRole: string;
+  action: string;
+  category: 'AUTH' | 'DATA' | 'SYSTEM' | 'SECURITY';
+  target: string; 
+  severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+  status: 'SUCCESS' | 'FAILURE';
+  ip: string;
+  location: string;
+  userAgent: string;
+  device: string;
+  metadata: Record<string, any>; // JSON stringifiable data for deep inspection
+  requestId: string;
 }
 
 export interface LibraryFilters {
@@ -81,4 +91,47 @@ export interface AppNotification {
   isRead: boolean;
   timestamp: string;
   link?: string; // Optional navigation link
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userName: string;
+  subject: string;
+  description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  createdAt: string;
+}
+
+export interface MaintenanceEvent {
+  id: string;
+  title: string;
+  scheduledDate: string;
+  durationMinutes: number;
+  description: string;
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  createdBy: string;
+}
+
+// NEW: Network Security Types
+export interface NetworkPort {
+  port: number;
+  service: string; // e.g., SSH, HTTP, POSTGRES
+  protocol: 'TCP' | 'UDP';
+  status: 'OPEN' | 'CLOSED' | 'FILTERED';
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  exposedTo: 'PUBLIC' | 'INTERNAL' | 'VPN';
+}
+
+export interface FirewallRule {
+  id: string;
+  name: string;
+  type: 'INBOUND' | 'OUTBOUND';
+  protocol: 'TCP' | 'UDP' | 'ANY';
+  port: string; // "80", "443", "ANY"
+  source: string; // IP or CIDR
+  action: 'ALLOW' | 'DENY';
+  active: boolean;
+  priority: number;
 }

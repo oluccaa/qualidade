@@ -12,7 +12,7 @@ export const getNotifications = async (user: User): Promise<AppNotification[]> =
     return currentNotifications.filter(n => 
         n.userId === user.id || n.userId === 'ALL'
     ).sort((a, b) => {
-        // Simple sort logic: Unread first, then by "timestamp" (mock string)
+        // Simple sort logic: Unread first, then by "timestamp" (mock string logic replaced by insertion order for new ones)
         if (a.isRead === b.isRead) return 0;
         return a.isRead ? 1 : -1;
     });
@@ -37,4 +37,25 @@ export const markAllAsRead = async (user: User): Promise<void> => {
         }
         return n;
     });
+};
+
+// NEW: Add a notification dynamically
+export const addNotification = async (
+    targetUserId: string, 
+    title: string, 
+    message: string, 
+    type: AppNotification['type'],
+    link?: string
+): Promise<void> => {
+    const newNotif: AppNotification = {
+        id: `notif-${Date.now()}-${Math.random()}`,
+        userId: targetUserId,
+        title,
+        message,
+        type,
+        isRead: false,
+        timestamp: 'Agora mesmo', // In a real app, use ISO string
+        link
+    };
+    currentNotifications.unshift(newNotif);
 };

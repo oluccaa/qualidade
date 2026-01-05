@@ -21,15 +21,17 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
   // Reset scale when file changes
   useEffect(() => {
       if (isOpen) {
-          setScale(1);
+          // Ajuste inicial de zoom baseado na largura da tela para melhor experiência mobile
+          const isMobile = window.innerWidth < 768;
+          setScale(isMobile ? 0.6 : 1);
       }
   }, [isOpen, file]);
 
   if (!isOpen || !file) return null;
 
-  const handleZoomIn = () => setScale(prev => Math.min(prev + 0.25, 2.5)); // Max 250%
-  const handleZoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.5)); // Min 50%
-  const handleResetZoom = () => setScale(1);
+  const handleZoomIn = () => setScale(prev => Math.min(prev + 0.1, 2.0)); // Smoother steps
+  const handleZoomOut = () => setScale(prev => Math.max(prev - 0.1, 0.4)); // Allow smaller zoom for mobile
+  const handleResetZoom = () => setScale(window.innerWidth < 768 ? 0.6 : 1);
 
   const handleDownload = async () => {
       if(!user) return;
@@ -39,7 +41,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
         await fileService.getFileSignedUrl(user, file.id);
         
         // 2. Generate a Mock Blob to simulate real file download behavior
-        // In a real app, you would fetch(url) and get the blob.
         const mockContent = `
             ${t('preview.title').toUpperCase()}
             --------------------------------
@@ -68,7 +69,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
         document.body.removeChild(a);
 
       } catch (err) {
-        alert("Erro ao solicitar download. Verifique suas permissões.");
+        alert(t('files.permissionError'));
       } finally {
         setIsDownloading(false);
       }
@@ -94,24 +95,24 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
       // PDF / Document Simulation (Certificado de Qualidade Mock)
       return (
         <div 
-            className="flex justify-center min-h-full transition-transform duration-200 ease-out origin-top py-8"
+            className="flex justify-center min-h-full transition-transform duration-200 ease-out origin-top py-4 md:py-8"
             style={{ transform: `scale(${scale})` }}
         >
-            <div className="bg-white w-[21cm] min-h-[29.7cm] shadow-2xl p-12 text-slate-800 relative flex flex-col shrink-0">
+            <div className="bg-white w-[21cm] min-h-[29.7cm] shadow-2xl p-6 md:p-12 text-slate-800 relative flex flex-col shrink-0">
                 
                 {/* Header */}
-                <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
+                <div className="border-b-2 border-slate-800 pb-6 mb-8 flex flex-col md:flex-row justify-between items-start gap-4 md:gap-0">
                     <div className="flex items-center gap-4">
                         <div className="bg-slate-900 text-white p-3 rounded-lg">
                             <FileText size={32} />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold uppercase tracking-wide">{t('preview.title')}</h1>
+                            <h1 className="text-xl md:text-2xl font-bold uppercase tracking-wide">{t('preview.title')}</h1>
                             <p className="text-xs text-slate-500 font-medium mt-1">{t('preview.subtitle')}</p>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <div className="text-sm font-bold text-slate-900">Aços Vital S.A.</div>
+                    <div className="text-left md:text-right w-full md:w-auto">
+                        <div className="text-sm font-bold text-slate-900">{t('menu.brand')} S.A.</div>
                         <div className="text-xs text-slate-500">CNPJ: 00.123.456/0001-00</div>
                         <div className="text-xs text-slate-500">São Paulo, SP</div>
                     </div>
@@ -125,7 +126,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
                 )}
 
                 {/* Product Info */}
-                <div className="grid grid-cols-2 gap-8 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-8">
                     <div className="space-y-1">
                         <p className="text-xs font-bold text-slate-400 uppercase">{t('preview.client')}</p>
                         <p className="text-sm font-semibold border p-2 rounded bg-slate-50">Empresa Parceira LTDA</p>
@@ -147,60 +148,64 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
                 {/* Technical Results Table (Mock) */}
                 <div className="mb-8">
                     <h3 className="text-sm font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1">{t('preview.chemResults')}</h3>
-                    <table className="w-full text-xs text-center border border-slate-200">
-                        <thead className="bg-slate-100 font-bold">
-                            <tr>
-                                <th className="border p-2">C %</th>
-                                <th className="border p-2">Mn %</th>
-                                <th className="border p-2">Si %</th>
-                                <th className="border p-2">P %</th>
-                                <th className="border p-2">S %</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td className="border p-2">0.45</td>
-                                <td className="border p-2">0.75</td>
-                                <td className="border p-2">0.25</td>
-                                <td className="border p-2">0.015</td>
-                                <td className="border p-2">0.010</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-center border border-slate-200">
+                            <thead className="bg-slate-100 font-bold">
+                                <tr>
+                                    <th className="border p-2">C %</th>
+                                    <th className="border p-2">Mn %</th>
+                                    <th className="border p-2">Si %</th>
+                                    <th className="border p-2">P %</th>
+                                    <th className="border p-2">S %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="border p-2">0.45</td>
+                                    <td className="border p-2">0.75</td>
+                                    <td className="border p-2">0.25</td>
+                                    <td className="border p-2">0.015</td>
+                                    <td className="border p-2">0.010</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div className="mb-8">
                     <h3 className="text-sm font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1">{t('preview.mechProps')}</h3>
-                    <table className="w-full text-xs text-center border border-slate-200">
-                        <thead className="bg-slate-100 font-bold">
-                            <tr>
-                                <th className="border p-2">Limite Escoamento (MPa)</th>
-                                <th className="border p-2">Limite Resistência (MPa)</th>
-                                <th className="border p-2">Alongamento (%)</th>
-                                <th className="border p-2">Dureza (HB)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td className="border p-2">380</td>
-                                <td className="border p-2">620</td>
-                                <td className="border p-2">18</td>
-                                <td className="border p-2">210</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-center border border-slate-200">
+                            <thead className="bg-slate-100 font-bold">
+                                <tr>
+                                    <th className="border p-2">{t('preview.table.yield')}</th>
+                                    <th className="border p-2">{t('preview.table.tensile')}</th>
+                                    <th className="border p-2">{t('preview.table.elongation')}</th>
+                                    <th className="border p-2">{t('preview.table.hardness')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="border p-2">380</td>
+                                    <td className="border p-2">620</td>
+                                    <td className="border p-2">18</td>
+                                    <td className="border p-2">210</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div className="flex-1"></div>
 
                 {/* Footer / Signature */}
-                <div className="mt-12 flex justify-between items-end text-xs text-slate-500">
-                    <div>
+                <div className="mt-12 flex flex-col sm:flex-row justify-between items-center sm:items-end text-xs text-slate-500 gap-6 sm:gap-0">
+                    <div className="text-center sm:text-left">
                         <p>{t('preview.emissionDate')}: {file.updatedAt}</p>
                         <p>{t('preview.generated')}</p>
                     </div>
                     <div className="text-center">
-                        <div className="h-12 w-32 mb-2 border-b border-slate-300 flex items-end justify-center">
+                        <div className="h-12 w-32 mb-2 border-b border-slate-300 flex items-end justify-center mx-auto sm:mx-0">
                             <span className="font-script text-lg text-blue-900 italic">Carlos Silva</span>
                         </div>
                         <p className="font-bold">{t('preview.engineer')}</p>
@@ -216,55 +221,40 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
       
-      {/* Toolbar */}
-      <div className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-6 shrink-0 shadow-lg z-20">
-          <div className="flex items-center gap-4 text-white overflow-hidden">
-              <div className="p-2 bg-slate-800 rounded-lg shrink-0">
+      {/* 1. TOP TOOLBAR (RESPONSIVE) */}
+      <div className="h-14 md:h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-3 md:px-6 shrink-0 shadow-lg z-20">
+          
+          {/* File Info */}
+          <div className="flex items-center gap-3 md:gap-4 text-white overflow-hidden flex-1 min-w-0 mr-2">
+              <div className="p-1.5 md:p-2 bg-slate-800 rounded-lg shrink-0">
                   <FileText className="text-blue-400" size={20} />
               </div>
               <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-sm truncate max-w-[150px] md:max-w-md">{file.name}</span>
-                  <span className="text-xs text-slate-400 truncate hidden md:inline-block">
-                    {file.metadata?.batchNumber ? `${t('preview.batch')}: ${file.metadata.batchNumber}` : 'Visualização Segura'}
+                  <span className="font-bold text-sm truncate pr-2">{file.name}</span>
+                  <span className="text-[10px] md:text-xs text-slate-400 truncate hidden sm:inline-block">
+                    {file.metadata?.batchNumber ? `${t('preview.batch')}: ${file.metadata.batchNumber}` : t('preview.secureView')}
                   </span>
               </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Desktop Controls (Hidden on Mobile) */}
+          <div className="hidden md:flex items-center gap-2">
               <div className="bg-slate-800 rounded-lg flex items-center p-0.5 border border-slate-700">
-                  <button 
-                    onClick={handleZoomOut}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors" 
-                    title="Diminuir Zoom"
-                  >
+                  <button onClick={handleZoomOut} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors" title={t('preview.zoomOut')}>
                       <ZoomOut size={18} />
                   </button>
-                  <span className="text-xs font-mono text-slate-300 w-12 text-center select-none">
-                      {Math.round(scale * 100)}%
-                  </span>
-                  <button 
-                    onClick={handleZoomIn}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors" 
-                    title="Aumentar Zoom"
-                  >
+                  <span className="text-xs font-mono text-slate-300 w-12 text-center select-none">{Math.round(scale * 100)}%</span>
+                  <button onClick={handleZoomIn} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors" title={t('preview.zoomIn')}>
                       <ZoomIn size={18} />
                   </button>
-                  <button 
-                    onClick={handleResetZoom}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors border-l border-slate-700 ml-1" 
-                    title="Resetar Zoom"
-                  >
+                  <button onClick={handleResetZoom} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-colors border-l border-slate-700 ml-1" title={t('preview.resetZoom')}>
                       <RotateCcw size={16} />
                   </button>
               </div>
 
-              <div className="w-px h-6 bg-slate-700 mx-2 hidden md:block"></div>
+              <div className="w-px h-6 bg-slate-700 mx-2"></div>
               
-              <button 
-                onClick={handlePrint}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors hidden md:block" 
-                title={t('files.download')} // Using Print icon but semantically close
-              >
+              <button onClick={handlePrint} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title={t('preview.print')}>
                   <Printer size={20} />
               </button>
               
@@ -274,20 +264,58 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                   {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-                  <span className="hidden sm:inline">{isDownloading ? t('common.loading') : t('common.download')}</span>
+                  <span>{isDownloading ? t('common.loading') : t('common.download')}</span>
               </button>
               
               <div className="w-px h-6 bg-slate-700 mx-2"></div>
-              
-              <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
-                  <X size={24} />
-              </button>
           </div>
+
+          {/* Close Button (Always Visible) */}
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors shrink-0">
+              <X size={24} />
+          </button>
       </div>
 
-      {/* Main Preview Area */}
-      <div className="flex-1 overflow-auto bg-slate-800/50 custom-scrollbar p-4 md:p-8 flex items-start justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      {/* 2. MAIN PREVIEW AREA */}
+      <div 
+        className="flex-1 overflow-auto bg-slate-800/50 custom-scrollbar p-0 md:p-8 flex items-start justify-center pb-24 md:pb-8" 
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
           {renderContent()}
+      </div>
+
+      {/* 3. MOBILE FLOATING CONTROLS (Bottom Bar) */}
+      <div className="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-slate-900/90 backdrop-blur-xl border border-slate-700 p-1.5 rounded-full shadow-2xl animate-in slide-in-from-bottom-10">
+          <button 
+            onClick={handleZoomOut}
+            className="w-10 h-10 flex items-center justify-center text-slate-300 active:text-white active:bg-slate-700 rounded-full transition-colors"
+          >
+              <ZoomOut size={20} />
+          </button>
+          
+          <button 
+            onClick={handleResetZoom}
+            className="w-10 h-10 flex items-center justify-center text-slate-300 active:text-white active:bg-slate-700 rounded-full transition-colors border-l border-r border-slate-700/50 rounded-none px-2"
+          >
+              <RotateCcw size={18} />
+          </button>
+          
+          <button 
+            onClick={handleZoomIn}
+            className="w-10 h-10 flex items-center justify-center text-slate-300 active:text-white active:bg-slate-700 rounded-full transition-colors"
+          >
+              <ZoomIn size={20} />
+          </button>
+
+          <div className="w-px h-6 bg-slate-700 mx-1"></div>
+
+          <button 
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/40 active:scale-90 transition-transform disabled:opacity-50"
+          >
+             {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+          </button>
       </div>
 
     </div>

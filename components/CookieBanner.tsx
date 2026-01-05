@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Cookie, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const CookieBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const consent = localStorage.getItem('lgpd_consent');
@@ -33,11 +35,10 @@ export const CookieBanner: React.FC = () => {
         <div className="flex-1">
             <h4 className="text-lg font-bold mb-2 flex items-center gap-2">
                 <Cookie className="text-blue-400 md:hidden" size={20} />
-                Privacidade e Cookies
+                {t('cookie.title')}
             </h4>
             <p className="text-sm text-slate-300 leading-relaxed">
-                Utilizamos cookies essenciais para garantir a segurança, autenticação e o correto funcionamento do Portal da Qualidade. 
-                Ao continuar navegando, você concorda com nossa <button className="text-blue-400 hover:text-blue-300 underline underline-offset-2 font-medium">Política de Privacidade</button> e o tratamento de dados para fins de rastreabilidade industrial.
+                {t('cookie.text')}
             </p>
         </div>
 
@@ -46,7 +47,7 @@ export const CookieBanner: React.FC = () => {
                 onClick={handleAccept}
                 className="flex-1 md:flex-none px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
             >
-                Aceitar e Continuar
+                {t('cookie.accept')}
             </button>
             <button 
                 onClick={() => setIsVisible(false)}

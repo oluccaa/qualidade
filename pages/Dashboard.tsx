@@ -94,7 +94,7 @@ const Dashboard: React.FC = () => {
                           {t('dashboard.hello')}, {user?.name.split(' ')[0]}. {t('dashboard.whatLookingFor')}
                       </h1>
                       <p className="text-slate-500 mb-6">
-                          Localize certificados de qualidade pelo número do lote, corrida ou nota fiscal.
+                          {t('dashboard.whatLookingFor')}
                       </p>
 
                       <div className="relative group max-w-2xl">
@@ -212,8 +212,8 @@ const Dashboard: React.FC = () => {
                     </button>
                  </div>
 
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
-                     <FileExplorer allowUpload={false} />
+                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[500px]">
+                     <FileExplorer allowUpload={false} autoHeight={true} />
                  </div>
           </div>
 
@@ -250,7 +250,7 @@ const Dashboard: React.FC = () => {
                             <input 
                                 type="text" 
                                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                                placeholder="Lote, Nota Fiscal, Produto..."
+                                placeholder={t('dashboard.searchPlaceholder')}
                                 value={filters.search}
                                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                             />
@@ -289,9 +289,9 @@ const Dashboard: React.FC = () => {
                             value={filters.status}
                             onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
                         >
-                            <option value="ALL">Todos</option>
-                            <option value="APPROVED">Aprovado ✅</option>
-                            <option value="PENDING">Pendente ⏳</option>
+                            <option value="ALL">{t('common.all')}</option>
+                            <option value="APPROVED">{t('common.status')} {t('dashboard.active')}</option>
+                            <option value="PENDING">{t('common.status')} Pendente</option>
                         </select>
                     </div>
 
@@ -320,7 +320,7 @@ const Dashboard: React.FC = () => {
                         </span>
                     </div>
                     {currentView === 'favorites' && (
-                        <p className="text-xs text-slate-400 hidden sm:block">Itens marcados para acesso rápido</p>
+                        <p className="text-xs text-slate-400 hidden sm:block">{t('dashboard.quickAccessItems')}</p>
                     )}
                 </div>
                 

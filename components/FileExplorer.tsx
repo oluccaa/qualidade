@@ -19,7 +19,8 @@ import {
   MoreVertical,
   Trash2,
   Edit2,
-  Check
+  Check,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export interface FileExplorerHandle {
@@ -42,6 +43,7 @@ interface FileExplorerProps {
   hideToolbar?: boolean; // New prop to hide internal breadcrumbs/search
   filterStatus?: 'ALL' | 'PENDING' | 'APPROVED'; // New prop for instant filtering
   onSelectionChange?: (count: number) => void; // Callback to notify parent about selection count
+  autoHeight?: boolean; // NEW: If true, component grows with content instead of scrolling internally
 }
 
 export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({ 
@@ -58,7 +60,8 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
   onFileSelect,
   hideToolbar = false,
   filterStatus = 'ALL',
-  onSelectionChange
+  onSelectionChange,
+  autoHeight = false
 }, ref) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -193,9 +196,9 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
       if(!user) return;
       try {
         await fileService.getFileSignedUrl(user, file.id);
-        alert(`Iniciando download seguro: ${file.name}`);
+        alert(`${t('files.downloading')} ${file.name}`);
       } catch (err) {
-        alert("Erro de permissão ou arquivo não encontrado.");
+        alert(t('files.permissionError'));
       }
   };
 
@@ -203,7 +206,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
       if(!user || selectedFiles.size === 0) return;
       const fileNames = files.filter(f => selectedFiles.has(f.id)).map(f => f.name).join(', ');
       await fileService.logAction(user, 'BULK_DOWNLOAD', `${selectedFiles.size} arquivos`);
-      alert(`Gerando pacote ZIP contendo:\n${fileNames}`);
+      alert(`${t('files.zipGenerating')}\n${fileNames}`);
   };
 
   const toggleSelection = (fileId: string) => {
@@ -245,7 +248,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
       if (onUploadClick) {
           onUploadClick(activeFolderId);
       } else {
-          alert("Feature de Upload simulada.");
+          alert(t('files.uploadFeature'));
       }
   };
 
@@ -265,7 +268,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
       setDragActive(false);
       if (e.dataTransfer.files && e.dataTransfer.files[0] && allowUpload && user) {
           const file = e.dataTransfer.files[0];
-          alert(`Detectado arquivo: ${file.name}.\nPor favor, use o botão "Upload" para preencher os metadados corretamente.`);
+          alert(`${t('files.fileDetected')}: ${file.name}.\n${t('quality.uploadModal.dragDrop')}`);
       }
   };
 
@@ -275,7 +278,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
     <div 
         onClick={(e) => { e.stopPropagation(); onChange(); }}
         className={`
-            w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer shadow-sm
+            w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0
             ${checked 
                 ? 'bg-blue-600 border-blue-600 text-white' 
                 : 'bg-white border-slate-300 hover:border-blue-400'
@@ -288,16 +291,17 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
 
   const renderFileIcon = (type: FileType) => {
     switch (type) {
-      case FileType.FOLDER: return <Folder className="text-blue-500" size={isClient ? 24 : 40} />;
-      case FileType.PDF: return <FileText className="text-red-500" size={isClient ? 24 : 40} />;
-      default: return <FileText className="text-slate-400" size={isClient ? 24 : 40} />;
+      case FileType.FOLDER: return <Folder className="text-blue-500" size={24} />;
+      case FileType.PDF: return <FileText className="text-red-500" size={24} />;
+      case FileType.IMAGE: return <ImageIcon className="text-purple-500" size={24} />;
+      default: return <FileText className="text-slate-400" size={24} />;
     }
   };
 
   const renderStatusBadge = (status?: string) => {
       if (!status) return null;
-      if (status === 'APPROVED') return <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100"><CheckCircle2 size={10} /> {t('common.status')} OK</span>;
-      if (status === 'PENDING') return <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100"><Clock size={10} /> Pending</span>;
+      if (status === 'APPROVED') return <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 whitespace-nowrap"><CheckCircle2 size={10} /> OK</span>;
+      if (status === 'PENDING') return <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 whitespace-nowrap"><Clock size={10} /> {t('files.status')}</span>;
       return null;
   };
 
@@ -307,7 +311,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
 
   return (
     <div 
-        className="bg-white rounded-xl flex flex-col h-full relative"
+        className={`bg-white rounded-xl flex flex-col relative ${autoHeight ? '' : 'h-full'}`}
         onDragEnter={allowUpload ? handleDrag : undefined}
         onClick={() => setActiveActionId(null)}
     >
@@ -348,7 +352,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                 </div>
             )) : (
                 <span className="font-bold text-slate-800 text-base">
-                    {displayedFiles.length} docs found
+                    {displayedFiles.length} {t('files.docsFound')}
                 </span>
             )}
             </div>
@@ -407,7 +411,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
       )}
 
       {/* Content Area */}
-      <div className="flex-1 p-0 md:p-2 bg-slate-50/50 overflow-hidden">
+      <div className={`flex-1 p-0 md:p-2 bg-slate-50/50 ${autoHeight ? '' : 'overflow-hidden'}`}>
         {loading ? (
             <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -416,11 +420,11 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
             <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
                 <Folder size={64} className="mb-4 text-slate-200" />
                 <p>{t('files.noItems')}</p>
-                {flatMode && <p className="text-sm mt-2">Check filters.</p>}
+                {flatMode && <p className="text-sm mt-2">{t('files.checkFilters')}</p>}
             </div>
         ) : viewMode === 'grid' ? (
-             /* GRID VIEW */
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 overflow-y-auto max-h-full custom-scrollbar">
+             /* GRID VIEW (Desktop/Tablet preferred) */
+            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 custom-scrollbar ${autoHeight ? '' : 'overflow-y-auto max-h-full'}`}>
                 {displayedFiles.map(file => (
                     <div 
                         key={file.id}
@@ -468,9 +472,135 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
             </div>
         ) : (
             /* LIST VIEW */
-            <div className="bg-white md:rounded-lg border-t md:border border-slate-200 overflow-hidden h-full flex flex-col">
-                <div className="overflow-auto custom-scrollbar flex-1">
-                    <table className="w-full text-left text-sm border-separate border-spacing-0">
+            <div className={`bg-white md:rounded-lg border-t md:border border-slate-200 flex flex-col ${autoHeight ? '' : 'h-full overflow-hidden'}`}>
+                <div className={`custom-scrollbar ${autoHeight ? '' : 'overflow-y-auto flex-1'}`}>
+                    
+                    {/* MOBILE CARD VIEW (Visible < md) - REFACTORED FOR BETTER UX */}
+                    <div className="md:hidden flex flex-col space-y-3 p-3">
+                         {/* Mobile Select All Header */}
+                         <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-3 sticky top-0 z-10 shadow-sm">
+                            <div 
+                                className="flex items-center gap-2"
+                                onClick={toggleSelectAll}
+                            >
+                                {renderCheckbox(
+                                    displayedFiles.length > 0 && selectedFiles.size === displayedFiles.length && displayedFiles.filter(f => f.type !== FileType.FOLDER).length > 0,
+                                    () => {} // Handled by parent div
+                                )}
+                                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                    {selectedFiles.size > 0 ? `${selectedFiles.size} ${t('files.selected')}` : t('common.actions')}
+                                </span>
+                            </div>
+                         </div>
+
+                        {displayedFiles.map(file => {
+                             const isSelected = selectedFiles.has(file.id);
+                             return (
+                                <div 
+                                    key={file.id} 
+                                    className={`
+                                        rounded-xl border transition-all duration-200 relative overflow-hidden
+                                        ${isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}
+                                    `}
+                                >
+                                    <div className="flex items-stretch">
+                                        
+                                        {/* ZONE 1: SELECTION (Left - Icon & Checkbox) */}
+                                        <div 
+                                            className="flex flex-col items-center justify-center p-3 w-16 bg-slate-50 border-r border-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                // If it's a folder, icon click navigates. If file, it toggles selection.
+                                                if (file.type === FileType.FOLDER) handleNavigate(file.id);
+                                                else toggleSelection(file.id);
+                                            }}
+                                        >
+                                            <div className="mb-2 pointer-events-none">
+                                                {renderFileIcon(file.type)}
+                                            </div>
+                                            {file.type !== FileType.FOLDER && (
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                                                    {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* ZONE 2: ACTION (Center - Open File) */}
+                                        <div 
+                                            className="flex-1 p-3 min-w-0 active:bg-slate-50 transition-colors cursor-pointer"
+                                            onClick={() => file.type === FileType.FOLDER ? handleNavigate(file.id) : handleFileClick(file)}
+                                        >
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h4 className={`font-semibold text-sm truncate pr-2 ${file.type === FileType.FOLDER ? 'text-blue-700' : 'text-slate-800'}`}>
+                                                    {file.name}
+                                                </h4>
+                                                {showActions && (
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setActiveActionId(activeActionId === file.id ? null : file.id); }} 
+                                                        className="p-1 -mr-2 -mt-1 text-slate-400 hover:text-blue-600 active:scale-95 transition-transform"
+                                                    >
+                                                       <MoreVertical size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex flex-col gap-1">
+                                                {file.metadata?.productName && <span className="text-xs text-slate-500 truncate">{file.metadata.productName}</span>}
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {file.metadata?.batchNumber && (
+                                                        <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                                            {file.metadata.batchNumber}
+                                                        </span>
+                                                    )}
+                                                    {renderStatusBadge(file.metadata?.status)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* ZONE 3: FOOTER ACTIONS (Bottom Strip) */}
+                                    <div className="flex items-center justify-end gap-3 px-3 py-2 bg-slate-50/50 border-t border-slate-100">
+                                         {file.type !== FileType.FOLDER && (
+                                             <button 
+                                                onClick={(e) => handleToggleFavorite(e, file)} 
+                                                className={`p-1.5 active:scale-90 transition-transform ${file.isFavorite ? 'text-yellow-400' : 'text-slate-300'}`}
+                                            >
+                                                <Star size={18} fill={file.isFavorite ? "currentColor" : "none"} />
+                                             </button>
+                                         )}
+                                         {file.type !== FileType.FOLDER && (
+                                             <button 
+                                                onClick={(e) => handleDownload(e, file)} 
+                                                className="p-1.5 text-blue-600 bg-blue-50 rounded-lg active:bg-blue-200 transition-colors"
+                                            >
+                                                <Download size={16} />
+                                             </button>
+                                         )}
+                                    </div>
+
+                                    {/* Mobile Context Menu Overlay */}
+                                    {activeActionId === file.id && (
+                                        <div className="absolute inset-x-0 bottom-0 top-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-200">
+                                            <div className="flex gap-4">
+                                                <button onClick={() => { if(onEdit) onEdit(file); setActiveActionId(null); }} className="flex flex-col items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl shadow-sm active:scale-95">
+                                                    <Edit2 size={20} className="text-blue-600" />
+                                                    <span className="text-xs font-bold text-slate-600">{t('common.edit')}</span>
+                                                </button>
+                                                <button onClick={() => { if(onDelete) onDelete(file); setActiveActionId(null); }} className="flex flex-col items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl shadow-sm active:scale-95">
+                                                    <Trash2 size={20} className="text-red-600" />
+                                                    <span className="text-xs font-bold text-slate-600">{t('common.delete')}</span>
+                                                </button>
+                                            </div>
+                                            <button onClick={(e) => {e.stopPropagation(); setActiveActionId(null);}} className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">{t('common.close')}</button>
+                                        </div>
+                                    )}
+                                </div>
+                             );
+                        })}
+                    </div>
+
+                    {/* DESKTOP TABLE VIEW (Visible >= md) */}
+                    <table className="w-full text-left text-sm border-separate border-spacing-0 hidden md:table">
                         <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th className="w-12 px-4 py-3 text-center border-b border-slate-200">
@@ -483,9 +613,9 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                                 </th>
                                 <th className="w-10 px-0 py-3 text-center border-b border-slate-200"></th>
                                 <th className="px-4 py-3 font-medium border-b border-slate-200">{t('files.name')}</th>
-                                {isClient && <th className="px-4 py-3 font-medium hidden lg:table-cell border-b border-slate-200">{t('files.productBatch')}</th>}
+                                {isClient && <th className="px-4 py-3 font-medium hidden md:table-cell border-b border-slate-200">{t('files.productBatch')}</th>}
                                 <th className="px-4 py-3 font-medium w-32 hidden xl:table-cell border-b border-slate-200">{t('files.date')}</th>
-                                <th className="px-4 py-3 font-medium w-24 hidden lg:table-cell border-b border-slate-200">{t('files.status')}</th>
+                                <th className="px-4 py-3 font-medium w-24 border-b border-slate-200">{t('files.status')}</th>
                                 <th className="px-4 py-3 font-medium w-16 text-right border-b border-slate-200">{t('common.actions')}</th>
                             </tr>
                         </thead>
@@ -527,15 +657,12 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                                                 <span className={`font-medium truncate block ${file.type === FileType.FOLDER ? 'text-blue-700' : 'text-slate-700'}`}>
                                                     {file.name}
                                                 </span>
-                                                <div className="lg:hidden text-xs text-slate-400 mt-0.5 truncate">
-                                                    {file.metadata?.productName} • {file.metadata?.batchNumber}
-                                                </div>
                                             </div>
                                         </div>
                                     </td>
                                     
                                     {isClient && (
-                                        <td className="px-4 py-3 hidden lg:table-cell">
+                                        <td className="px-4 py-3 hidden md:table-cell">
                                             <div className="flex flex-col">
                                                 <span className="text-slate-700 font-medium text-xs">{file.metadata?.productName || '-'}</span>
                                                 <span className="text-slate-400 text-[10px] font-mono">{t('quality.batch')}: {file.metadata?.batchNumber || '-'}</span>
@@ -545,7 +672,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
 
                                     <td className="px-4 py-3 text-slate-500 text-xs hidden xl:table-cell">{file.updatedAt}</td>
                                     
-                                    <td className="px-4 py-3 hidden lg:table-cell">
+                                    <td className="px-4 py-3">
                                         {renderStatusBadge(file.metadata?.status)}
                                     </td>
 

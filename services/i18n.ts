@@ -21,11 +21,33 @@ const resources = {
         date: "Data",
         actions: "Ações",
         privacy: "Privacidade e Termos",
+        changePassword: "Alterar Senha",
         logout: "Sair do Sistema",
         back: "Voltar",
         close: "Fechar",
         confirm: "Confirmar",
-        required: "Obrigatório"
+        required: "Obrigatório",
+        expand: "Expandir",
+        collapse: "Recolher",
+        menu: "Menu",
+        all: "Todos",
+        filter: "Filtrar",
+        description: "Descrição",
+        priority: "Prioridade"
+      },
+      layout: {
+        supportQuestion: "Precisa de ajuda com algum laudo ou certificado? Entre em contato com nossa equipe técnica.",
+      },
+      notifications: {
+        title: "Notificações",
+        empty: "Nenhuma notificação nova.",
+        markAll: "Marcar todas",
+        viewHistory: "Ver histórico completo"
+      },
+      cookie: {
+        title: "Privacidade e Cookies",
+        text: "Utilizamos cookies essenciais para garantir a segurança, autenticação e o correto funcionamento do Portal da Qualidade. Ao continuar navegando, você concorda com nossa Política de Privacidade e o tratamento de dados para fins de rastreabilidade industrial.",
+        accept: "Aceitar e Continuar"
       },
       menu: {
         main: "Principal",
@@ -43,7 +65,9 @@ const resources = {
         system: "Sistema",
         settings: "Configurações",
         help: "Ajuda",
-        support: "Falar com Qualidade"
+        support: "Falar com Qualidade",
+        portalName: "Portal da Qualidade",
+        brand: "Aços Vital"
       },
       dashboard: {
         hello: "Olá",
@@ -67,7 +91,8 @@ const resources = {
         filters: "Filtros",
         textSearch: "Busca Textual",
         period: "Período",
-        clear: "Limpar"
+        clear: "Limpar",
+        quickAccessItems: "Itens marcados para acesso rápido"
       },
       admin: {
         tabs: {
@@ -75,7 +100,8 @@ const resources = {
           users: "Usuários",
           clients: "Empresas",
           logs: "Logs de Segurança",
-          settings: "Configurações"
+          settings: "Configurações",
+          tickets: "Chamados"
         },
         stats: {
           totalUsers: "Usuários Totais",
@@ -83,7 +109,90 @@ const resources = {
           storage: "Armazenamento",
           activities: "Atividades Hoje",
           recentActivity: "Atividade Recente",
-          systemHealth: "Saúde do Sistema"
+          systemHealth: "Saúde do Sistema",
+          b2bContracts: "Contratos B2B",
+          loggedActions: "Ações registradas",
+          cpuLoad: "Carga da CPU",
+          memoryUsage: "Uso de Memória",
+          dbConnections: "Conexões DB",
+          allOperational: "Todos os serviços operacionais",
+          auditTrail: "Trilha de Auditoria",
+          exportCsv: "Exportar CSV",
+          headers: {
+             timestamp: "Carimbo de Tempo",
+             user: "Usuário",
+             action: "Ação",
+             target: "Alvo"
+          }
+        },
+        settings: {
+           securityTitle: "Segurança",
+           security2FA: "Imposição de 2FA",
+           security2FADesc: "Forçar 2FA para admins e equipe de qualidade.",
+           sessionTimeout: "Timeout de Sessão",
+           sessionTimeoutDesc: "Deslogar usuários inativos após 30 minutos.",
+           maintenance: "Modo de Manutenção",
+           maintenanceDesc: "Gerenciar janelas de manutenção e disponibilidade.",
+           scheduleMaintenance: "Agendar Manutenção",
+           techSupport: "Suporte do Sistema (Externo)",
+           techSupportDesc: "Solicitar alterações estruturais, correções de dados ou melhorias de infraestrutura ao fornecedor.",
+           openTicket: "Abrir Solicitação Externa",
+           version: "Versão do Portal"
+        },
+        n3Support: {
+            title: "Solicitação de Serviço Externo",
+            subtitle: "Use este formulário para solicitar intervenções técnicas ao provedor da plataforma.",
+            component: "Categoria de Serviço",
+            impact: "Urgência / Impacto",
+            context: "Origem do Problema",
+            module: "Módulo Afetado",
+            steps: "Passos para Reprodução",
+            components: {
+                DB_MOD: "Correção de Dados (Banco de Dados)",
+                INFRA_UP: "Upgrade de Infraestrutura (Scaling)",
+                SECURITY_INC: "Incidente de Segurança / Firewall",
+                BACKUP_RESTORE: "Restauração de Backup",
+                CUSTOM_DEV: "Desenvolvimento Personalizado"
+            },
+            contexts: {
+                SYSTEM: "Sistema Global (Todos)",
+                CLIENT: "Cliente Específico (B2B)",
+                INTERNAL: "Equipe Interna (Qualidade)"
+            },
+            modules: {
+                AUTH: "Autenticação / Login",
+                DASHBOARD: "Dashboard / KPIs",
+                FILES: "Gestão de Arquivos / PDF",
+                API: "Integração API / ERP"
+            },
+            submit: "Enviar Ordem de Serviço",
+            success: "Ordem de Serviço registrada no sistema do parceiro. Protocolo:",
+        },
+        tickets: {
+            subject: "Assunto",
+            requester: "Solicitante",
+            newTicket: "Novo Chamado",
+            resolve: "Resolver",
+            open: "Reabrir",
+            status: {
+                OPEN: "Aberto",
+                IN_PROGRESS: "Em Andamento",
+                RESOLVED: "Resolvido"
+            },
+            priority: {
+                LOW: "Baixa",
+                MEDIUM: "Média",
+                HIGH: "Alta",
+                CRITICAL: "Crítica"
+            }
+        },
+        maintenance: {
+            title: "Título do Evento",
+            scheduledDate: "Data Agendada",
+            duration: "Duração (min)",
+            history: "Histórico de Manutenções",
+            schedule: "Agendar",
+            cancel: "Cancelar"
         },
         users: {
           filters: "Filtros",
@@ -103,14 +212,19 @@ const resources = {
           permissions: "Permissões e Vínculos",
           name: "Nome Completo",
           email: "Email Corporativo",
+          department: "Departamento",
           roleLabel: "Função no Sistema",
           statusLabel: "Status da Conta",
           orgLink: "Vínculo Empresarial",
-          orgLinkDesc: "O usuário terá acesso restrito apenas aos documentos desta organização."
+          orgLinkDesc: "O usuário terá acesso restrito apenas aos documentos desta organização.",
+          confirmDelete: "Atenção: Esta ação é irreversível. Deseja excluir este usuário?",
+          resetSent: "Email de redefinição enviado.",
+          allRoles: "Todas as Funções",
+          allStatus: "Todos os Status"
         }
       },
       quality: {
-        partners: "Empresas Parceiras",
+        partners: "Clientes",
         searchClient: "Buscar cliente...",
         masterRepo: "Repositório Central",
         masterLib: "Biblioteca Mestra",
@@ -118,6 +232,8 @@ const resources = {
         noSelection: "Nenhum arquivo selecionado",
         clickToView: "Clique em um documento na lista para ver detalhes, aprovar ou editar metadados.",
         newFolder: "Nova Pasta",
+        folderName: "Nome da Pasta",
+        folderPlaceholder: "Ex: Certificados 2024",
         importMaster: "Importar do Mestre",
         upload: "Upload",
         techData: "Dados Técnicos",
@@ -133,7 +249,7 @@ const resources = {
           desc: "Selecione os arquivos para enviar para:",
           empty: "O repositório mestre está vazio.",
           filename: "Nome do Arquivo",
-          ref: "Lote / Referência",
+          ref: "Lote / Referencia",
           size: "Tamanho",
           selected: "arquivo(s) selecionado(s)",
           btnImport: "Importar Arquivos"
@@ -144,7 +260,8 @@ const resources = {
           originalFile: "Arquivo Original (PDF)",
           dragDrop: "Clique para selecionar ou arraste aqui",
           integrity: "Confirmação de Integridade",
-          integrityText: "Ao salvar, você confirma que os dados conferem com o documento físico original, garantindo a rastreabilidade conforme ISO 9001."
+          integrityText: "Ao salvar, você confirma que os dados conferem com o documento físico original, garantindo a rastreabilidade conforme ISO 9001.",
+          pdfMax: "PDF máx 10MB"
         }
       },
       files: {
@@ -156,7 +273,15 @@ const resources = {
         download: "Baixar",
         bulkDownload: "Baixar Selecionados",
         noItems: "Nenhum item encontrado",
-        dropZone: "Solte os arquivos aqui"
+        dropZone: "Solte os arquivos aqui",
+        docsFound: "documentos encontrados",
+        selected: "selecionados",
+        downloading: "Iniciando download seguro:",
+        permissionError: "Erro de permissão ou arquivo não encontrado.",
+        zipGenerating: "Gerando pacote ZIP contendo:",
+        uploadFeature: "Feature de Upload simulada.",
+        fileDetected: "Detectado arquivo",
+        checkFilters: "Verifique os filtros."
       },
       preview: {
         title: "Certificado de Qualidade",
@@ -170,7 +295,18 @@ const resources = {
         mechProps: "Propriedades Mecânicas",
         emissionDate: "Data de Emissão",
         generated: "Certificado gerado eletronicamente.",
-        engineer: "Engenheiro de Qualidade"
+        engineer: "Engenheiro de Qualidade",
+        print: "Imprimir",
+        zoomIn: "Aumentar Zoom",
+        zoomOut: "Diminuir Zoom",
+        resetZoom: "Resetar Zoom",
+        secureView: "Visualização Segura",
+        table: {
+            yield: "Escoamento (MPa)",
+            tensile: "Resistência (MPa)",
+            elongation: "Along. (%)",
+            hardness: "Dureza (HB)"
+        }
       },
       login: {
         welcomeBack: "Bem-vindo de volta",
@@ -181,386 +317,36 @@ const resources = {
         accessPortal: "Acessar Portal",
         demoEnv: "Ambiente de Demonstração",
         sloganTitle: "Excelência e precisão em cada detalhe.",
-        sloganText: "Acesse o Portal da Qualidade para gerenciar certificados, laudos técnicos e rastreabilidade de materiais com segurança total."
+        sloganText: "Acesse o Portal da Qualidade para gerenciar certificados, laudos técnicos e rastreabilidade de materiais com segurança total.",
+        roleDesc: {
+            admin: "Gestão Total",
+            quality: "Operacional",
+            client: "Visualização"
+        }
       },
       roles: {
         ADMIN: "Administrador",
         QUALITY: "Analista de Qualidade",
-        CLIENT: "Cliente Parceiro"
-      }
-    }
-  },
-  en: {
-    translation: {
-      common: {
-        welcome: "Welcome",
-        search: "Search...",
-        loading: "Loading...",
-        save: "Save",
-        cancel: "Cancel",
-        delete: "Delete",
-        edit: "Edit",
-        download: "Download",
-        upload: "Upload",
-        import: "Import",
-        create: "Create",
-        status: "Status",
-        date: "Date",
-        actions: "Actions",
-        privacy: "Privacy & Terms",
-        logout: "Logout",
-        back: "Back",
-        close: "Close",
-        confirm: "Confirm",
-        required: "Required"
+        CLIENT: "Cliente"
       },
-      menu: {
-        main: "Main",
-        home: "Home",
-        library: "Library",
-        quickAccess: "Quick Access",
-        recent: "Recent",
-        favorites: "Favorites",
-        operation: "Operation",
-        dashboard: "Dashboard",
-        documents: "Documents",
-        management: "Management",
-        generalPanel: "General Panel",
-        files: "Files",
-        system: "System",
-        settings: "Settings",
-        help: "Help",
-        support: "Contact Quality"
+      privacy: {
+         title: "Privacidade e Termos de Uso",
+         subtitle: "Em conformidade com a LGPD (Lei Nº 13.709/2018)",
+         section1: "1. Objetivo e Escopo",
+         section2: "2. Coleta de Dados",
+         section3: "3. Segurança e Armazenamento",
+         section4: "4. Uso de Cookies",
+         section5: "5. Seus Direitos (LGPD)",
+         close: "Entendido e Fechar"
       },
-      dashboard: {
-        hello: "Hello",
-        whatLookingFor: "What are you looking for today?",
-        searchPlaceholder: "Enter Batch No, Heat or Invoice...",
-        suggestions: "Suggestions",
-        pendingCerts: "Pending Certificates",
-        accountStatus: "Account Status",
-        verified: "VERIFIED",
-        regular: "Regular",
-        active: "Active",
-        statusDesc: "All received batches have valid certification according to ISO 9001.",
-        docCompliance: "Doc Compliance",
-        auditedBatches: "Audited Batches",
-        pendencies: "Pending Issues",
-        folderNav: "Folder Navigation",
-        viewFullLib: "View full library",
-        libraryTitle: "Certificate Library",
-        favoritesTitle: "My Favorites",
-        historyTitle: "Access History",
-        filters: "Filters",
-        textSearch: "Text Search",
-        period: "Period",
-        clear: "Clear"
-      },
-      admin: {
-        tabs: {
-          overview: "Overview",
-          users: "Users",
-          clients: "Companies",
-          logs: "Security Logs",
-          settings: "Settings"
-        },
-        stats: {
-          totalUsers: "Total Users",
-          organizations: "Organizations",
-          storage: "Storage",
-          activities: "Activities Today",
-          recentActivity: "Recent Activity",
-          systemHealth: "System Health"
-        },
-        users: {
-          filters: "Filters",
-          newAccess: "New Access",
-          identity: "Identity",
-          role: "Role",
-          org: "Organization",
-          lastLogin: "Last Login",
-          editAccess: "Edit Access",
-          blockAccess: "Block Access",
-          unblockAccess: "Unblock",
-          resetPassword: "Reset Password",
-          deleteUser: "Delete User",
-          createTitle: "Create New Access",
-          editTitle: "Edit Access",
-          personalData: "Personal Data",
-          permissions: "Permissions & Links",
-          name: "Full Name",
-          email: "Corporate Email",
-          roleLabel: "System Role",
-          statusLabel: "Account Status",
-          orgLink: "Business Link",
-          orgLinkDesc: "User will have restricted access only to this organization's documents."
-        }
-      },
-      quality: {
-        partners: "Partner Companies",
-        searchClient: "Search client...",
-        masterRepo: "Central Repository",
-        masterLib: "Master Library",
-        selectClient: "Select a client to start",
-        noSelection: "No file selected",
-        clickToView: "Click on a document in the list to view details, approve, or edit metadata.",
-        newFolder: "New Folder",
-        importMaster: "Import from Master",
-        upload: "Upload",
-        techData: "Technical Data",
-        product: "Product",
-        batch: "Heat/Batch",
-        invoice: "Invoice",
-        approve: "Approve",
-        reject: "Reject",
-        editData: "Edit Data",
-        preview: "Preview",
-        importModal: {
-          title: "Central Repository",
-          desc: "Select files to send to:",
-          empty: "The master repository is empty.",
-          filename: "File Name",
-          ref: "Batch / Reference",
-          size: "Size",
-          selected: "file(s) selected",
-          btnImport: "Import Files"
-        },
-        uploadModal: {
-          titleNew: "New Upload",
-          titleEdit: "Edit Metadata",
-          originalFile: "Original File (PDF)",
-          dragDrop: "Click to select or drag here",
-          integrity: "Integrity Confirmation",
-          integrityText: "By saving, you confirm that data matches the original physical document, ensuring traceability per ISO 9001."
-        }
-      },
-      files: {
-        name: "File Name",
-        productBatch: "Product / Batch",
-        date: "Date",
-        status: "Status",
-        size: "Size",
-        download: "Download",
-        bulkDownload: "Download Selected",
-        noItems: "No items found",
-        dropZone: "Drop files here"
-      },
-      preview: {
-        title: "Quality Certificate",
-        subtitle: "According to ISO 10474 / EN 10204 - 3.1",
-        approvedStamp: "QC Approved",
-        client: "Client",
-        invoice: "Invoice",
-        product: "Product",
-        batch: "Heat / Batch",
-        chemResults: "Chemical Results",
-        mechProps: "Mechanical Properties",
-        emissionDate: "Issue Date",
-        generated: "Electronically generated certificate.",
-        engineer: "Quality Engineer"
-      },
-      login: {
-        welcomeBack: "Welcome back",
-        enterCredentials: "Enter your corporate credentials to access.",
-        emailLabel: "Corporate Email",
-        passwordLabel: "Password",
-        forgotPassword: "Forgot password?",
-        accessPortal: "Access Portal",
-        demoEnv: "Demo Environment",
-        sloganTitle: "Excellence and precision in every detail.",
-        sloganText: "Access the Quality Portal to manage certificates, technical reports, and material traceability with total security."
-      },
-      roles: {
-        ADMIN: "Administrator",
-        QUALITY: "Quality Analyst",
-        CLIENT: "Partner Client"
-      }
-    }
-  },
-  es: {
-    translation: {
-      common: {
-        welcome: "Bienvenido",
-        search: "Buscar...",
-        loading: "Cargando...",
-        save: "Guardar",
-        cancel: "Cancelar",
-        delete: "Eliminar",
-        edit: "Editar",
-        download: "Descargar",
-        upload: "Subir",
-        import: "Importar",
-        create: "Crear",
-        status: "Estado",
-        date: "Fecha",
-        actions: "Acciones",
-        privacy: "Privacidad y Términos",
-        logout: "Cerrar Sesión",
-        back: "Volver",
-        close: "Cerrar",
-        confirm: "Confirmar",
-        required: "Obligatorio"
-      },
-      menu: {
-        main: "Principal",
-        home: "Inicio",
-        library: "Biblioteca",
-        quickAccess: "Acceso Rápido",
-        recent: "Recientes",
-        favorites: "Favoritos",
-        operation: "Operación",
-        dashboard: "Tablero",
-        documents: "Documentos",
-        management: "Gestión",
-        generalPanel: "Panel General",
-        files: "Archivos",
-        system: "Sistema",
-        settings: "Configuración",
-        help: "Ayuda",
-        support: "Contactar Calidad"
-      },
-      dashboard: {
-        hello: "Hola",
-        whatLookingFor: "¿Qué estás buscando hoy?",
-        searchPlaceholder: "Ingrese N° de Lote, Colada o Factura...",
-        suggestions: "Sugerencias",
-        pendingCerts: "Certificados Pendientes",
-        accountStatus: "Estado de Cuenta",
-        verified: "VERIFICADO",
-        regular: "Regular",
-        active: "Activo",
-        statusDesc: "Todos los lotes recibidos tienen certificación válida según ISO 9001.",
-        docCompliance: "Conformidad Doc.",
-        auditedBatches: "Lotes Auditados",
-        pendencies: "Pendientes",
-        folderNav: "Navegación de Carpetas",
-        viewFullLib: "Ver biblioteca completa",
-        libraryTitle: "Biblioteca de Certificados",
-        favoritesTitle: "Mis Favoritos",
-        historyTitle: "Historial de Acceso",
-        filters: "Filtros",
-        textSearch: "Búsqueda de Texto",
-        period: "Período",
-        clear: "Limpiar"
-      },
-      admin: {
-        tabs: {
-          overview: "Visión General",
-          users: "Usuarios",
-          clients: "Empresas",
-          logs: "Registros de Seguridad",
-          settings: "Configuración"
-        },
-        stats: {
-          totalUsers: "Total Usuarios",
-          organizations: "Organizaciones",
-          storage: "Almacenamiento",
-          activities: "Actividades Hoy",
-          recentActivity: "Actividad Reciente",
-          systemHealth: "Salud del Sistema"
-        },
-        users: {
-          filters: "Filtros",
-          newAccess: "Nuevo Acceso",
-          identity: "Identificación",
-          role: "Rol",
-          org: "Organización",
-          lastLogin: "Último Acceso",
-          editAccess: "Editar Acceso",
-          blockAccess: "Bloquear Acceso",
-          unblockAccess: "Desbloquear",
-          resetPassword: "Restablecer Contraseña",
-          deleteUser: "Eliminar Usuario",
-          createTitle: "Crear Nuevo Acceso",
-          editTitle: "Editar Acceso",
-          personalData: "Datos Personales",
-          permissions: "Permisos y Vínculos",
-          name: "Nombre Completo",
-          email: "Correo Corporativo",
-          roleLabel: "Rol en el Sistema",
-          statusLabel: "Estado de Cuenta",
-          orgLink: "Vínculo Empresarial",
-          orgLinkDesc: "El usuario tendrá acceso restringido solo a los documentos de esta organización."
-        }
-      },
-      quality: {
-        partners: "Empresas Asociadas",
-        searchClient: "Buscar cliente...",
-        masterRepo: "Repositorio Central",
-        masterLib: "Biblioteca Maestra",
-        selectClient: "Seleccione un cliente para iniciar",
-        noSelection: "Ningún archivo seleccionado",
-        clickToView: "Haga clic en un documento para ver detalles, aprobar o editar metadatos.",
-        newFolder: "Nueva Carpeta",
-        importMaster: "Importar del Maestro",
-        upload: "Subir",
-        techData: "Datos Técnicos",
-        product: "Producto",
-        batch: "Colada/Lote",
-        invoice: "Factura",
-        approve: "Aprobar",
-        reject: "Rechazar",
-        editData: "Editar Datos",
-        preview: "Previsualizar",
-        importModal: {
-          title: "Repositorio Central",
-          desc: "Seleccione archivos para enviar a:",
-          empty: "El repositorio maestro está vacío.",
-          filename: "Nombre del Archivo",
-          ref: "Lote / Referencia",
-          size: "Tamaño",
-          selected: "archivo(s) seleccionado(s)",
-          btnImport: "Importar Archivos"
-        },
-        uploadModal: {
-          titleNew: "Nueva Carga",
-          titleEdit: "Editar Metadatos",
-          originalFile: "Archivo Original (PDF)",
-          dragDrop: "Haga clic para seleccionar o arrastre aquí",
-          integrity: "Confirmación de Integridad",
-          integrityText: "Al guardar, confirma que los datos coinciden con el documento físico original, garantizando la trazabilidad según ISO 9001."
-        }
-      },
-      files: {
-        name: "Nombre del Archivo",
-        productBatch: "Producto / Lote",
-        date: "Fecha",
-        status: "Estado",
-        size: "Tamaño",
-        download: "Descargar",
-        bulkDownload: "Descargar Seleccionados",
-        noItems: "No se encontraron elementos",
-        dropZone: "Suelte los archivos aquí"
-      },
-      preview: {
-        title: "Certificado de Calidad",
-        subtitle: "Conforme ISO 10474 / EN 10204 - 3.1",
-        approvedStamp: "Aprobado CC",
-        client: "Cliente",
-        invoice: "Factura",
-        product: "Producto",
-        batch: "Colada / Lote",
-        chemResults: "Resultados Químicos",
-        mechProps: "Propiedades Mecánicas",
-        emissionDate: "Fecha de Emisión",
-        generated: "Certificado generado electrónicamente.",
-        engineer: "Ingeniero de Calidad"
-      },
-      login: {
-        welcomeBack: "Bienvenido de nuevo",
-        enterCredentials: "Ingrese sus credenciales corporativas para acceder.",
-        emailLabel: "Correo Corporativo",
-        passwordLabel: "Contraseña",
-        forgotPassword: "¿Olvidó su contraseña?",
-        accessPortal: "Acceder al Portal",
-        demoEnv: "Entorno de Demostración",
-        sloganTitle: "Excelencia y precisión en cada detalle.",
-        sloganText: "Acceda al Portal de Calidad para gestionar certificados, informes técnicos y trazabilidad de materiales con total seguridad."
-      },
-      roles: {
-        ADMIN: "Administrador",
-        QUALITY: "Analista de Calidad",
-        CLIENT: "Cliente Socio"
+      changePassword: {
+          title: "Alterar Senha",
+          current: "Senha Atual",
+          new: "Nova Senha",
+          confirm: "Confirmar Nova Senha",
+          matchError: "As senhas não conferem.",
+          success: "Senha alterada com sucesso.",
+          submit: "Atualizar Senha"
       }
     }
   }

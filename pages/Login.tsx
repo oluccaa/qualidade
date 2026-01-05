@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../services/authContext.tsx';
 import { CookieBanner } from '../components/CookieBanner.tsx';
 import { PrivacyModal } from '../components/PrivacyModal.tsx';
@@ -11,15 +11,25 @@ import {
   Lock, 
   ArrowRight, 
   CheckCircle2, 
-  Globe 
+  Globe,
+  Eye,
+  EyeOff,
+  AlertOctagon
 } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // Visual only for the demo
+  const [password, setPassword] = useState(''); 
   const [error, setError] = useState('');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Security State (Rate Limiting)
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockTimer, setLockTimer] = useState(0);
+
   const { login, isLoading } = useAuth();
   const { t, i18n } = useTranslation();
 
@@ -27,18 +37,45 @@ const Login: React.FC = () => {
       i18n.changeLanguage(lng);
   };
 
+  // Timer Effect for Lockout
+  useEffect(() => {
+      let interval: any;
+      if (isLocked && lockTimer > 0) {
+          interval = setInterval(() => {
+              setLockTimer((prev) => prev - 1);
+          }, 1000);
+      } else if (lockTimer === 0 && isLocked) {
+          setIsLocked(false);
+          setFailedAttempts(0);
+      }
+      return () => clearInterval(interval);
+  }, [isLocked, lockTimer]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
+
     setError('');
     
-    // Simulating password validation logic visually
-    if (password.length < 1) {
-       // In a real app we would validate here, but for this demo we proceed
+    // Basic validation
+    if (!email || !password) {
+        setError('Preencha todos os campos.');
+        return;
     }
 
-    const success = await login(email);
-    if (!success) {
-      setError('Acesso negado. Verifique suas credenciais.');
+    const result = await login(email, password);
+    
+    if (!result.success) {
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      setError(result.error || 'Acesso negado.');
+
+      // Security Lockout Policy: 3 Failed Attempts = 30s Lock
+      if (newAttempts >= 3) {
+          setIsLocked(true);
+          setLockTimer(30); // 30 seconds lockout
+          setError('Muitas tentativas falhas. Aguarde para tentar novamente.');
+      }
     }
   };
 
@@ -47,6 +84,20 @@ const Login: React.FC = () => {
     { label: 'Qualidade', email: 'joao@acosvital.com', role: 'Operacional' },
     { label: 'Cliente', email: 'compras@empresax.com', role: 'Visualização' },
   ];
+
+  const handleDemoFill = (accEmail: string) => {
+      if (isLocked) return;
+      setEmail(accEmail);
+      
+      // Set correct password based on user type (Admin has specific password in mock data)
+      if (accEmail === 'admin@acosvital.com') {
+          setPassword('Admin@123');
+      } else {
+          setPassword('123456'); 
+      }
+      
+      setError('');
+  };
 
   return (
     <div className="min-h-screen flex bg-white relative">
@@ -144,80 +195,102 @@ const Login: React.FC = () => {
                 <p className="mt-2 text-slate-500">{t('login.enterCredentials')}</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-                
-                {/* Input Email */}
-                <div className="space-y-1">
-                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 ml-1">{t('login.emailLabel')}</label>
-                    <div 
-                        className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
-                        ${focusedInput === 'email' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
-                    >
-                        <div className="pl-4 text-slate-400">
-                            <Mail size={20} />
-                        </div>
-                        <input 
-                            id="email"
-                            type="email" 
-                            required
-                            className="w-full px-4 py-3.5 bg-transparent outline-none text-slate-900 placeholder-slate-400"
-                            placeholder="seu.nome@empresa.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            onFocus={() => setFocusedInput('email')}
-                            onBlur={() => setFocusedInput(null)}
-                        />
+            {isLocked ? (
+                <div className="p-6 bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                        <AlertOctagon className="text-red-600" size={24} />
                     </div>
+                    <h3 className="text-lg font-bold text-red-700 mb-1">Acesso Temporariamente Bloqueado</h3>
+                    <p className="text-sm text-red-600 mb-4">Muitas tentativas incorretas. Por segurança, aguarde.</p>
+                    <div className="text-3xl font-mono font-bold text-red-800">{lockTimer}s</div>
                 </div>
-
-                {/* Input Password (Visual) */}
-                <div className="space-y-1">
-                    <div className="flex justify-between ml-1">
-                         <label htmlFor="password" className="block text-sm font-medium text-slate-700">{t('login.passwordLabel')}</label>
-                         <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">{t('login.forgotPassword')}</a>
-                    </div>
-                    <div 
-                        className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
-                        ${focusedInput === 'password' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
-                    >
-                        <div className="pl-4 text-slate-400">
-                            <Lock size={20} />
+            ) : (
+                <form onSubmit={handleSubmit} className="space-y-6 mt-8">
+                    
+                    {/* Input Email */}
+                    <div className="space-y-1">
+                        <label htmlFor="email" className="block text-sm font-medium text-slate-700 ml-1">{t('login.emailLabel')}</label>
+                        <div 
+                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
+                            ${focusedInput === 'email' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <div className="pl-4 text-slate-400">
+                                <Mail size={20} />
+                            </div>
+                            <input 
+                                id="email"
+                                type="email" 
+                                required
+                                disabled={isLoading}
+                                className="w-full px-4 py-3.5 bg-transparent outline-none text-slate-900 placeholder-slate-400 disabled:opacity-50"
+                                placeholder="seu.nome@empresa.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                onFocus={() => setFocusedInput('email')}
+                                onBlur={() => setFocusedInput(null)}
+                            />
                         </div>
-                        <input 
-                            id="password"
-                            type="password" 
-                            className="w-full px-4 py-3.5 bg-transparent outline-none text-slate-900 placeholder-slate-400"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onFocus={() => setFocusedInput('password')}
-                            onBlur={() => setFocusedInput(null)}
-                        />
                     </div>
-                </div>
 
-                {error && (
-                    <div className="p-4 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                        {error}
+                    {/* Input Password */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between ml-1">
+                            <label htmlFor="password" className="block text-sm font-medium text-slate-700">{t('login.passwordLabel')}</label>
+                            <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">{t('login.forgotPassword')}</a>
+                        </div>
+                        <div 
+                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
+                            ${focusedInput === 'password' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <div className="pl-4 text-slate-400">
+                                <Lock size={20} />
+                            </div>
+                            <input 
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                required
+                                disabled={isLoading}
+                                className="w-full pl-4 pr-12 py-3.5 bg-transparent outline-none text-slate-900 placeholder-slate-400 disabled:opacity-50"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onFocus={() => setFocusedInput('password')}
+                                onBlur={() => setFocusedInput(null)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                tabIndex={-1}
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
                     </div>
-                )}
-                
-                <button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="group relative w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-slate-900/20 active:scale-[0.98]"
-                >
-                    {isLoading ? (
-                        <Loader2 className="animate-spin text-slate-400" />
-                    ) : (
-                        <>
-                            <span>{t('login.accessPortal')}</span>
-                            <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                        </>
+
+                    {error && (
+                        <div className="p-4 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                            <AlertOctagon size={16} className="shrink-0" />
+                            {error}
+                        </div>
                     )}
-                </button>
-            </form>
+                    
+                    <button 
+                        type="submit" 
+                        disabled={isLoading}
+                        className="group relative w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        {isLoading ? (
+                            <Loader2 className="animate-spin text-slate-400" />
+                        ) : (
+                            <>
+                                <span>{t('login.accessPortal')}</span>
+                                <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                            </>
+                        )}
+                    </button>
+                </form>
+            )}
 
             {/* Demo Credentials Footer */}
             <div className="pt-8 border-t border-slate-200">
@@ -226,8 +299,9 @@ const Login: React.FC = () => {
                     {demoAccounts.map((acc) => (
                         <button
                             key={acc.email}
-                            onClick={() => { setEmail(acc.email); setPassword('123456'); }}
-                            className="flex flex-col items-center p-3 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition-all text-center group"
+                            onClick={() => handleDemoFill(acc.email)}
+                            disabled={isLocked || isLoading}
+                            className="flex flex-col items-center p-3 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition-all text-center group disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <span className="text-xs font-bold text-slate-700 group-hover:text-blue-700">{acc.label}</span>
                             <span className="text-[10px] text-slate-500 mt-1">{acc.role}</span>

@@ -5,7 +5,7 @@ import * as userService from './userService.ts';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -42,23 +42,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initSession();
   }, []);
 
-  const login = async (email: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-        const foundUser = await userService.authenticate(email);
+        const foundUser = await userService.authenticate(email, password);
         
         if (foundUser) {
           setUser(foundUser);
           localStorage.setItem('acos_vital_user', JSON.stringify(foundUser));
           setIsLoading(false);
-          return true;
+          return { success: true };
+        } else {
+          setIsLoading(false);
+          return { success: false, error: 'Credenciais inválidas.' };
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Login error", error);
+        setIsLoading(false);
+        return { success: false, error: error.message || 'Erro ao autenticar.' };
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {

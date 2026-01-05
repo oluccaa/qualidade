@@ -282,14 +282,24 @@ export const getBreadcrumbs = (folderId: string | null): { id: string, name: str
 
 // --- Security & Audit Logs ---
 
-export const logAction = async (user: User, action: AuditLog['action'], target: string) => {
+export const logAction = async (user: User, action: string, target: string, severity: 'INFO'|'WARNING'|'ERROR'|'CRITICAL' = 'INFO') => {
     const newLog: AuditLog = {
         id: `log-${Date.now()}`,
         userId: user.id,
         userName: user.name,
+        userRole: user.role,
         action,
+        category: 'SYSTEM',
         target,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+        severity,
+        status: 'SUCCESS',
+        ip: '10.0.0.1', // Mock internal IP
+        location: 'São Paulo, BR',
+        userAgent: navigator.userAgent,
+        device: 'Desktop',
+        requestId: `req-${Math.random().toString(36).substr(2, 6)}`,
+        metadata: { timestamp: Date.now() },
+        timestamp: new Date().toISOString()
     };
     currentLogs.unshift(newLog);
 };

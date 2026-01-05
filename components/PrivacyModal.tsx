@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { X, Shield, Lock, FileText, Eye } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PrivacyModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface PrivacyModalProps {
 }
 
 export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -21,8 +23,8 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
                 <Shield className="text-blue-600" size={24} />
             </div>
             <div>
-                <h2 className="text-xl font-bold text-slate-800">Privacidade e Termos de Uso</h2>
-                <p className="text-xs text-slate-500">Em conformidade com a LGPD (Lei Nº 13.709/2018)</p>
+                <h2 className="text-xl font-bold text-slate-800">{t('privacy.title')}</h2>
+                <p className="text-xs text-slate-500">{t('privacy.subtitle')}</p>
             </div>
           </div>
           <button 
@@ -38,16 +40,16 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
             
             <section>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-3">
-                    <FileText size={20} className="text-blue-500" /> 1. Objetivo e Escopo
+                    <FileText size={20} className="text-blue-500" /> {t('privacy.section1')}
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed text-justify">
-                    O <strong>Portal da Qualidade Aços Vital</strong> é uma plataforma B2B destinada ao gerenciamento de documentos técnicos, certificados de qualidade e rastreabilidade de materiais. Esta política visa esclarecer como coletamos, armazenamos e protegemos os dados de nossos clientes corporativos e seus representantes, garantindo transparência e conformidade com as normas industriais (ISO 9001) e a legislação vigente.
+                    O <strong>{t('menu.portalName')} {t('menu.brand')}</strong> é uma plataforma B2B destinada ao gerenciamento de documentos técnicos, certificados de qualidade e rastreabilidade de materiais. Esta política visa esclarecer como coletamos, armazenamos e protegemos os dados de nossos clientes corporativos e seus representantes, garantindo transparência e conformidade com as normas industriais (ISO 9001) e a legislação vigente.
                 </p>
             </section>
 
             <section>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-3">
-                    <Eye size={20} className="text-blue-500" /> 2. Coleta de Dados
+                    <Eye size={20} className="text-blue-500" /> {t('privacy.section2')}
                 </h3>
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <p className="text-sm text-slate-600 mb-2">Para garantir a segurança e a auditabilidade do sistema, coletamos as seguintes informações:</p>
@@ -61,7 +63,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
 
             <section>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-3">
-                    <Lock size={20} className="text-blue-500" /> 3. Segurança e Armazenamento
+                    <Lock size={20} className="text-blue-500" /> {t('privacy.section3')}
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed text-justify">
                     Adotamos medidas técnicas rigorosas para proteger seus dados, incluindo criptografia em trânsito (TLS 1.2+) e em repouso. O acesso aos documentos é estritamente segregado: usuários de uma organização (CNPJ) não possuem acesso a documentos de outras organizações, garantindo o sigilo industrial.
@@ -70,7 +72,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
 
             <section>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-3">
-                    <FileText size={20} className="text-blue-500" /> 4. Uso de Cookies
+                    <FileText size={20} className="text-blue-500" /> {t('privacy.section4')}
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed text-justify mb-2">
                     Utilizamos cookies essenciais para o funcionamento do portal:
@@ -89,7 +91,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
 
             <section>
                 <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-3">
-                    <Shield size={20} className="text-blue-500" /> 5. Seus Direitos (LGPD)
+                    <Shield size={20} className="text-blue-500" /> {t('privacy.section5')}
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed text-justify">
                     Conforme a LGPD, você tem direito a solicitar a confirmação da existência de tratamento, acesso aos dados, correção de dados incompletos ou desatualizados e a anonimização ou bloqueio. Para exercer esses direitos, entre em contato com nosso Encarregado de Dados (DPO) através do canal oficial: <strong>dpo@acosvital.com.br</strong>.
@@ -104,7 +106,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
                 onClick={onClose}
                 className="px-6 py-2.5 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
             >
-                Entendido e Fechar
+                {t('privacy.close')}
             </button>
         </div>
       </div>

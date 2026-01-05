@@ -36,7 +36,8 @@ import {
     FolderPlus,
     Database,
     Copy,
-    ArrowRight
+    ArrowRight,
+    Check
 } from 'lucide-react';
 import * as fileService from '../services/fileService.ts';
 
@@ -309,6 +310,22 @@ const Quality: React.FC = () => {
      return MOCK_FILES.filter(f => f.ownerId === clientId && f.metadata?.status === 'PENDING').length;
   };
 
+  // Custom Checkbox for Modals (Light background with contrast)
+  const renderCheckbox = (checked: boolean, onChange: () => void) => (
+      <div 
+          onClick={(e) => { e.stopPropagation(); onChange(); }}
+          className={`
+              w-5 h-5 rounded border flex items-center justify-center transition-all cursor-pointer shrink-0
+              ${checked 
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                  : 'bg-slate-200 border-slate-300 hover:bg-slate-300' 
+              }
+          `}
+      >
+          {checked && <Check size={12} strokeWidth={4} />}
+      </div>
+  );
+
   return (
     <Layout title={t('menu.documents')}>
         
@@ -359,7 +376,7 @@ const Quality: React.FC = () => {
                          </div>
                     </div>
 
-                    <div className="px-4 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clientes</div>
+                    <div className="px-4 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('quality.partners')}</div>
 
                     {filteredClients.map(client => {
                         const pending = getPendingCount(client.id);
@@ -448,7 +465,7 @@ const Quality: React.FC = () => {
                                         `}
                                     >
                                         <ListFilter size={14} /> 
-                                        All
+                                        {t('common.all')}
                                     </button>
                                     <button 
                                         onClick={() => setActiveTab('PENDING')}
@@ -663,18 +680,16 @@ const Quality: React.FC = () => {
                                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-4 py-3 w-10 text-center">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={selectedMasterFiles.size === masterFiles.length && masterFiles.length > 0}
-                                                onChange={() => {
+                                            {renderCheckbox(
+                                                selectedMasterFiles.size === masterFiles.length && masterFiles.length > 0,
+                                                () => {
                                                     if (selectedMasterFiles.size === masterFiles.length) {
                                                         setSelectedMasterFiles(new Set());
                                                     } else {
                                                         setSelectedMasterFiles(new Set(masterFiles.map(f => f.id)));
                                                     }
-                                                }}
-                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                            />
+                                                }
+                                            )}
                                         </th>
                                         <th className="px-4 py-3 font-medium">{t('quality.importModal.filename')}</th>
                                         <th className="px-4 py-3 font-medium">{t('quality.importModal.ref')}</th>
@@ -696,17 +711,15 @@ const Quality: React.FC = () => {
                                                 className={`cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 hover:bg-indigo-100' : 'hover:bg-slate-50'}`}
                                             >
                                                 <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={isSelected}
-                                                        onChange={() => {
+                                                    {renderCheckbox(
+                                                        isSelected,
+                                                        () => {
                                                             const newSet = new Set(selectedMasterFiles);
                                                             if(newSet.has(file.id)) newSet.delete(file.id);
                                                             else newSet.add(file.id);
                                                             setSelectedMasterFiles(newSet);
-                                                        }}
-                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                    />
+                                                        }
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 flex items-center gap-2">
                                                     <FileText size={16} className="text-slate-400" />
@@ -764,10 +777,10 @@ const Quality: React.FC = () => {
                     </div>
                     <form onSubmit={handleCreateFolder} className="p-6">
                         <div className="space-y-1 mb-4">
-                            <label className="text-sm font-semibold text-slate-700">Folder Name</label>
+                            <label className="text-sm font-semibold text-slate-700">{t('quality.folderName')}</label>
                             <input 
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                placeholder="Ex: Certificados 2024"
+                                placeholder={t('quality.folderPlaceholder')}
                                 required
                                 value={newFolderName}
                                 onChange={e => setNewFolderName(e.target.value)}
@@ -841,7 +854,7 @@ const Quality: React.FC = () => {
                                         <p className="text-sm font-medium text-slate-600 group-hover:text-blue-600">
                                             {uploadFormData.file ? uploadFormData.file.name : t('quality.uploadModal.dragDrop')}
                                         </p>
-                                        <p className="text-xs text-slate-400 mt-1">PDF max 10MB</p>
+                                        <p className="text-xs text-slate-400 mt-1">{t('quality.uploadModal.pdfMax')}</p>
                                     </div>
                                 </div>
                             )}
@@ -866,7 +879,7 @@ const Quality: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">{t('quality.invoice')} (Optional)</label>
+                                <label className="text-sm font-semibold text-slate-700">{t('quality.invoice')}</label>
                                 <input 
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono"
                                     placeholder="Ex: NF-102030"

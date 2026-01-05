@@ -5,6 +5,9 @@ import * as notificationService from '../services/notificationService.ts';
 import { AppNotification, UserRole } from '../types.ts';
 import { CookieBanner } from './CookieBanner.tsx';
 import { PrivacyModal } from './PrivacyModal.tsx';
+import { SupportModal } from './SupportModal.tsx';
+import { N3SupportModal } from './N3SupportModal.tsx';
+import { ChangePasswordModal } from './ChangePasswordModal.tsx';
 import { useTranslation } from 'react-i18next';
 import { 
   LogOut, 
@@ -16,12 +19,10 @@ import {
   X,
   Bell,
   Search,
-  HelpCircle,
   Phone,
   FileBadge,
   ChevronLeft,
   ChevronRight,
-  Info,
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
@@ -31,7 +32,20 @@ import {
   Home,
   Library,
   Shield,
-  Globe
+  User as UserIcon,
+  MoreHorizontal,
+  FileSearch,
+  Info,
+  ArrowLeft,
+  Command,
+  BarChart3,
+  Users,
+  Building2,
+  LifeBuoy,
+  ShieldAlert,
+  Server,
+  Network,
+  Lock
 } from 'lucide-react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 
@@ -60,6 +74,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   // State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isN3SupportOpen, setIsN3SupportOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Persist collapsed state
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -84,7 +101,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   // Click Outside to close notifications & user menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-        if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        const isMobileView = window.innerWidth < 768;
+        if (!isMobileView && notifRef.current && !notifRef.current.contains(event.target as Node)) {
             setIsNotifOpen(false);
         }
         if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -132,7 +150,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const roleLabel = user ? t(`roles.${user.role}`) : '';
 
-  // Configuração de Menus
+  // Configuração de Menus (Desktop)
   const getMenuConfig = (): MenuSection[] => {
     const role = user?.role;
 
@@ -167,58 +185,216 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       ];
     }
 
-    // ADMIN
+    // ADMIN - Expanded Menu Merged directly here
     return [
       {
         title: t('menu.management'),
         items: [
-          { label: t('menu.generalPanel'), icon: LayoutDashboard, path: '/admin' },
-          { label: t('menu.files'), icon: FolderOpen, path: '/quality' },
+          { label: t('admin.tabs.overview'), icon: BarChart3, path: '/admin?tab=overview' },
+          { label: t('admin.tabs.users'), icon: Users, path: '/admin?tab=users' },
+          { label: t('admin.tabs.clients'), icon: Building2, path: '/admin?tab=clients' },
+          { label: t('admin.tabs.tickets'), icon: LifeBuoy, path: '/admin?tab=tickets' },
         ]
       },
       {
         title: t('menu.system'),
         items: [
-          { label: t('menu.settings'), icon: Settings, path: '/settings' }
+          { label: t('admin.tabs.logs'), icon: ShieldAlert, path: '/admin?tab=logs' },
+          { label: t('admin.tabs.settings'), icon: Settings, path: '/admin?tab=settings' }
         ]
       }
     ];
   };
 
-  const menuSections = getMenuConfig();
+  const getBottomNavItems = () => {
+      const role = user?.role;
+      const items = [
+          { label: t('menu.home'), icon: Home, path: '/dashboard', exact: true },
+      ];
 
-  const isActive = (path: string) => {
-      if (path.includes('?')) return location.search.includes(path.split('?')[1]);
-      return location.pathname === path && location.search === '';
+      if (role === UserRole.CLIENT) {
+          items.push({ label: t('menu.library'), icon: Library, path: '/dashboard?view=files', exact: false });
+      } else if (role === UserRole.ADMIN) {
+          items.push({ label: 'Admin', icon: BarChart3, path: '/admin', exact: false });
+      } else {
+          items.push({ label: t('menu.documents'), icon: FolderOpen, path: '/quality', exact: false });
+      }
+
+      return items;
   };
 
-  // Helper for notification icons
-  const getNotifIcon = (type: AppNotification['type']) => {
+  const menuSections = getMenuConfig();
+  const bottomNavItems = getBottomNavItems();
+
+  const isActive = (path: string, exact = false) => {
+      if (exact) return location.pathname === path && location.search === '';
+      if (path.includes('?')) return (location.pathname + location.search) === path;
+      return location.pathname.startsWith(path);
+  };
+
+  const getNotifStyle = (type: AppNotification['type']) => {
       switch (type) {
-          case 'SUCCESS': return <CheckCircle2 size={16} className="text-emerald-500" />;
-          case 'WARNING': return <AlertTriangle size={16} className="text-orange-500" />;
-          case 'ALERT': return <AlertCircle size={16} className="text-red-500" />;
-          default: return <Info size={16} className="text-blue-500" />;
+          case 'SUCCESS': return { icon: CheckCircle2, bg: 'bg-emerald-100', text: 'text-emerald-600', border: 'border-emerald-200' };
+          case 'WARNING': return { icon: AlertTriangle, bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' };
+          case 'ALERT': return { icon: AlertCircle, bg: 'bg-red-100', text: 'text-red-600', border: 'border-red-200' };
+          default: return { icon: Info, bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' };
       }
   };
 
-  // Widget de Suporte (Renderizado condicionalmente baseado no colapso)
   const renderClientSupportWidget = () => {
-    if (isCollapsed) return null; // Hide completely when collapsed
+    if (isCollapsed) return null; 
     
     return (
-      <div className="mx-4 mt-6 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 relative overflow-hidden group animate-in fade-in duration-300">
+      <div className="mx-4 mt-6 p-4 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 relative overflow-hidden group animate-in fade-in duration-300">
           <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
               <ShieldCheck size={48} className="text-blue-400" />
           </div>
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('menu.help')}?</h4>
           <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-              Dúvidas sobre um certificado ou lote específico?
+              {t('layout.supportQuestion')}
           </p>
-          <button className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+          <button 
+            onClick={() => setIsSupportOpen(true)}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
+          >
               <Phone size={14} /> {t('menu.support')}
           </button>
       </div>
+    );
+  };
+
+  // NEW: Render Admin N3 Support Button
+  const renderAdminSupportWidget = () => {
+      if (isCollapsed) return null;
+      return (
+          <div className="mx-4 mt-6 pt-4 border-t border-slate-800/50 relative z-10">
+              <button 
+                onClick={() => setIsN3SupportOpen(true)} 
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 p-0.5 rounded-xl group relative overflow-hidden shadow-lg hover:shadow-orange-900/40 transition-all"
+              >
+                  <div className="bg-slate-950 rounded-[10px] p-3 flex items-center gap-3 relative z-10 group-hover:bg-opacity-90 transition-all">
+                      <div className="p-2 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg text-white shadow-inner">
+                          <Server size={18} />
+                      </div>
+                      <div className="text-left">
+                          <span className="font-bold text-white text-sm block">{t('admin.settings.techSupport')}</span>
+                          <span className="text-[10px] text-slate-400">Equipe Externa</span>
+                      </div>
+                  </div>
+              </button>
+          </div>
+      );
+  };
+
+  const NotificationButton = ({ mobile = false }) => {
+    const renderNotificationList = () => (
+        <div className="flex flex-col h-full bg-white md:bg-transparent">
+             <div className={`${mobile ? 'p-4 mt-safe-top shadow-sm' : 'p-4'} border-b border-slate-100 flex justify-between items-center bg-white/95 backdrop-blur shrink-0 z-10`}>
+                <div className="flex items-center gap-3">
+                    {mobile && (
+                        <button onClick={() => setIsNotifOpen(false)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full active:scale-95 transition-transform">
+                            <ArrowLeft size={20} />
+                        </button>
+                    )}
+                    <h3 className="font-bold text-slate-800 text-lg">{t('notifications.title')}</h3>
+                </div>
+                {unreadCount > 0 && (
+                    <button 
+                        onClick={handleMarkAllRead}
+                        className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors active:scale-95"
+                    >
+                        <Check size={14} /> <span className="hidden sm:inline">{t('notifications.markAll')}</span>
+                    </button>
+                )}
+            </div>
+            
+            <div className={`overflow-y-auto custom-scrollbar ${mobile ? 'flex-1 bg-slate-50 p-3' : 'max-h-[400px]'}`}>
+                {notifications.length === 0 ? (
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                            <Bell size={24} className="opacity-20" />
+                        </div>
+                        <p className="text-sm font-medium">{t('notifications.empty')}</p>
+                    </div>
+                ) : (
+                    <div className={`${mobile ? 'space-y-3' : 'divide-y divide-slate-100'}`}>
+                        {notifications.map(notif => {
+                            const style = getNotifStyle(notif.type);
+                            const Icon = style.icon;
+
+                            return (
+                                <div 
+                                    key={notif.id}
+                                    onClick={() => handleMarkAsRead(notif.id, notif.link)}
+                                    className={`
+                                        group cursor-pointer transition-all
+                                        ${mobile 
+                                            ? `p-4 rounded-2xl border shadow-sm active:scale-[0.99] ${!notif.isRead ? 'bg-white border-blue-200 shadow-blue-500/5 ring-1 ring-blue-50' : 'bg-white border-slate-200'}`
+                                            : `p-4 hover:bg-slate-50 ${!notif.isRead ? 'bg-blue-50/20' : ''}`
+                                        }
+                                    `}
+                                >
+                                    <div className="flex gap-4">
+                                        <div className={`shrink-0 mt-0.5 w-10 h-10 rounded-full flex items-center justify-center ${style.bg} ${style.text}`}>
+                                            <Icon size={20} />
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h4 className={`text-sm leading-snug ${!notif.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                                    {notif.title}
+                                                </h4>
+                                                <div className="flex flex-col items-end shrink-0 gap-1.5 pt-0.5">
+                                                    <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                                                        {notif.timestamp}
+                                                    </span>
+                                                    {!notif.isRead && (
+                                                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-sm ring-2 ring-white" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <p className={`text-xs leading-relaxed line-clamp-2 ${!notif.isRead ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>
+                                                {notif.message}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="relative" ref={notifRef}>
+            <button 
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className={`relative p-2 rounded-lg transition-colors ${
+                    mobile 
+                    ? 'text-white hover:bg-slate-800 active:bg-slate-700' 
+                    : isNotifOpen ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50 hover:text-blue-600'
+                }`}
+            >
+                <Bell size={mobile ? 24 : 20} />
+                {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse shadow-sm"></span>
+                )}
+            </button>
+            {isNotifOpen && (
+                <>
+                    {mobile ? (
+                        <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col animate-in slide-in-from-right duration-300">
+                             {renderNotificationList()}
+                        </div>
+                    ) : (
+                        <div className="absolute right-0 mt-3 w-96 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 z-[100] origin-top-right">
+                            {renderNotificationList()}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
     );
   };
 
@@ -228,58 +404,60 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       {/* Global Components */}
       <CookieBanner />
       <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+      <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
+      <N3SupportModal isOpen={isN3SupportOpen} onClose={() => setIsN3SupportOpen(false)} user={user} />
+      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
 
-      {/* Sidebar - Desktop */}
+      {/* --- SIDEBAR (DESKTOP ONLY) - NEXT LEVEL UPGRADE --- */}
       <aside 
         className={`
           hidden md:flex flex-col 
-          bg-slate-900 text-slate-300 
-          shadow-2xl z-[60] relative transition-all duration-300 ease-in-out
-          ${isCollapsed ? 'w-20' : 'w-72'}
+          bg-[#0f172a] text-slate-300 
+          shadow-2xl z-[60] relative transition-all duration-500 ease-in-out
+          ${isCollapsed ? 'w-24' : 'w-80'}
           overflow-visible
         `}
       >
-        {/* Toggle Button (Floating) */}
+        {/* Background Gradient for Depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0f172a] to-[#0f172a] pointer-events-none"></div>
+
         <button 
             onClick={toggleSidebar}
-            className="absolute -right-4 top-9 z-[70] bg-white text-slate-600 border border-slate-200 rounded-full h-8 w-8 flex items-center justify-center shadow-lg hover:text-blue-600 hover:border-blue-400 hover:scale-110 transition-all cursor-pointer ring-4 ring-slate-50/50"
-            title={isCollapsed ? "Expandir" : "Recolher"}
+            className="absolute -right-4 top-10 z-[70] bg-white text-slate-600 border border-slate-200 rounded-full h-8 w-8 flex items-center justify-center shadow-lg hover:text-blue-600 hover:border-blue-400 hover:scale-110 transition-all cursor-pointer ring-4 ring-slate-50/50"
+            title={isCollapsed ? t('common.expand') : t('common.collapse')}
         >
             {isCollapsed ? <ChevronRight size={16} strokeWidth={3} /> : <ChevronLeft size={16} strokeWidth={3} />}
         </button>
 
-        {/* Brand Area */}
-        <div className={`h-20 flex items-center border-b border-slate-800/60 bg-slate-900/50 backdrop-blur-sm shrink-0 transition-all duration-300 ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-blue-900/20 shrink-0">
-              <ShieldCheck size={24} className="text-white" />
+        {/* LOGO AREA */}
+        <div className={`h-24 flex items-center border-b border-slate-800/60 bg-[#0f172a]/50 backdrop-blur-sm shrink-0 transition-all duration-500 relative z-10 ${isCollapsed ? 'justify-center px-0' : 'px-8'}`}>
+          <div className="flex items-center gap-4">
+            <div className={`bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-blue-900/30 shrink-0 transition-transform duration-500 ${isCollapsed ? 'scale-110' : 'scale-100'}`}>
+              <ShieldCheck size={28} className="text-white" strokeWidth={2.5} />
             </div>
             
-            <div className={`flex flex-col overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-              <span className="font-bold text-lg text-white tracking-tight leading-none whitespace-nowrap">Aços Vital</span>
-              <span className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold mt-1 whitespace-nowrap">Portal da Qualidade</span>
+            <div className={`flex flex-col overflow-hidden transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 absolute' : 'w-auto opacity-100'}`}>
+              <span className="font-bold text-xl text-white tracking-tight leading-none whitespace-nowrap">{t('menu.brand')}</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-bold mt-1.5 whitespace-nowrap">{t('menu.portalName')}</span>
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-6 space-y-2 overflow-y-auto custom-scrollbar overflow-x-hidden">
-          
+        {/* MENU ITEMS */}
+        <nav className="flex-1 py-4 space-y-2 relative z-10">
           {menuSections.map((section, idx) => (
-            <div key={idx} className="px-3">
-               {/* Section Title - Hide if collapsed */}
+            <div key={idx} className="px-4">
                {!isCollapsed && section.title && (
-                 <div className="mb-2 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 animate-in fade-in duration-300">
+                 <div className="mb-3 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 animate-in fade-in duration-500">
                     {section.title}
                  </div>
                )}
                
-               {/* Separator for collapsed mode if needed */}
                {isCollapsed && section.title && idx > 0 && (
-                   <div className="my-2 border-t border-slate-800 mx-2" />
+                   <div className="my-4 border-t border-slate-800/50 mx-4" />
                )}
 
-               <div className="space-y-1">
+               <div className="space-y-1.5">
                  {section.items.map((item) => {
                     const active = isActive(item.path);
                     return (
@@ -288,26 +466,33 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                         to={item.path}
                         className={`
                           group flex items-center relative
-                          py-3 text-sm font-medium rounded-xl transition-all duration-200
-                          ${isCollapsed ? 'justify-center px-0' : 'px-4 gap-3'}
+                          py-3.5 rounded-2xl transition-all duration-300 ease-out
+                          ${isCollapsed ? 'justify-center px-0 mx-2' : 'px-5 gap-4'}
                           ${active 
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                            : 'hover:bg-slate-800 hover:text-white'}
+                            ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/10 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-white/5 backdrop-blur-md' 
+                            : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'}
                         `}
                       >
-                        <item.icon size={20} className={`shrink-0 transition-colors ${active ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                        {/* Active Indicator Line (Left) */}
+                        {active && !isCollapsed && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.6)]"></div>
+                        )}
+
+                        <item.icon 
+                            size={isCollapsed ? 24 : 20} 
+                            className={`shrink-0 transition-all duration-300 ${active ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'group-hover:text-white group-hover:scale-110'}`} 
+                            strokeWidth={active ? 2.5 : 2}
+                        />
                         
-                        {/* Label - Hide if collapsed */}
-                        <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
+                        <span className={`whitespace-nowrap font-medium transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
                             {item.label}
                         </span>
 
-                        {/* Tooltip for Collapsed State */}
+                        {/* Collapsed Tooltip */}
                         {isCollapsed && (
-                            <div className="absolute left-full ml-4 px-2 py-1 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-slate-700">
+                            <div className="absolute left-full ml-5 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 border border-slate-700 translate-x-2 group-hover:translate-x-0">
                                 {item.label}
-                                {/* Arrow */}
-                                <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
+                                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
                             </div>
                         )}
                       </Link>
@@ -316,145 +501,203 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                </div>
             </div>
           ))}
-
-          {/* Área Específica para Clientes: Widget de Suporte */}
-          {user?.role === UserRole.CLIENT && renderClientSupportWidget()}
           
+          {(user?.role === UserRole.CLIENT || user?.role === UserRole.QUALITY) && renderClientSupportWidget()}
+          {user?.role === UserRole.ADMIN && renderAdminSupportWidget()}
         </nav>
 
-        {/* User Profile Footer */}
-        <div className="p-4 border-t border-slate-800/60 bg-slate-900/30 shrink-0" ref={userMenuRef}>
+        {/* USER PROFILE FOOTER */}
+        <div className="p-6 border-t border-slate-800/60 bg-[#0f172a]/30 shrink-0 relative z-10" ref={userMenuRef}>
           <div 
              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
              className={`
-                flex items-center rounded-xl transition-colors relative
-                ${isCollapsed ? 'justify-center p-0' : 'p-3 bg-slate-800/50 border border-slate-700/50 gap-3 cursor-pointer hover:border-slate-600 group'}
+                flex items-center rounded-2xl transition-all duration-300 relative
+                ${isCollapsed ? 'justify-center p-0' : 'p-3 bg-slate-800/40 border border-slate-700/50 gap-3 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 group'}
           `}>
-            {/* Avatar */}
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-white font-bold shadow-inner border border-slate-600 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-white font-bold shadow-inner border border-slate-500/30 shrink-0">
               {user?.name.charAt(0)}
             </div>
-
-            {/* User Info - Hidden if collapsed */}
-            <div className={`flex-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
+            <div className={`flex-1 overflow-hidden transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
               <p className="text-sm font-semibold text-white truncate group-hover:text-blue-200 transition-colors">{user?.name}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <p className="text-[10px] text-slate-400 truncate uppercase tracking-wide">{roleLabel}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                  <p className="text-[10px] text-slate-400 truncate uppercase tracking-wider font-bold">{roleLabel}</p>
               </div>
             </div>
-
-            {/* User Dropdown Menu */}
+            
             {!isCollapsed && isUserMenuOpen && (
-                <div className="absolute bottom-full left-0 mb-3 w-full bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
-                    <button onClick={() => setIsPrivacyOpen(true)} className="w-full text-left px-4 py-3 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2">
-                        <Shield size={14} /> {t('common.privacy')}
+                <div className="absolute bottom-full left-0 mb-4 w-full bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 z-50">
+                    <button onClick={() => setIsChangePasswordOpen(true)} className="w-full text-left px-5 py-3.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-3 transition-colors">
+                        <Lock size={16} className="text-blue-500" /> {t('common.changePassword')}
                     </button>
-                    <div className="h-px bg-slate-700" />
-                    <button onClick={logout} className="w-full text-left px-4 py-3 text-xs font-medium text-red-400 hover:bg-red-900/20 flex items-center gap-2">
-                        <LogOut size={14} /> {t('common.logout')}
+                    <div className="h-px bg-slate-700/50" />
+                    <button onClick={() => setIsPrivacyOpen(true)} className="w-full text-left px-5 py-3.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-3 transition-colors">
+                        <Shield size={16} className="text-blue-500" /> {t('common.privacy')}
+                    </button>
+                    <div className="h-px bg-slate-700/50" />
+                    <button onClick={logout} className="w-full text-left px-5 py-3.5 text-xs font-bold text-red-400 hover:bg-red-900/20 flex items-center gap-3 transition-colors">
+                        <LogOut size={16} /> {t('common.logout')}
                     </button>
                 </div>
             )}
             
-            {/* Settings Icon (Visible if collapsed) */}
             {isCollapsed && (
-                <div className="p-2 text-slate-400 hover:text-white transition-colors absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100">
-                    <Settings size={16} />
-                </div>
+                <div className="absolute right-0 top-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0f172a] opacity-0 group-hover:opacity-100 transition-opacity"></div>
             )}
           </div>
-
-           {/* Explicit Logout for Collapsed State */}
            {isCollapsed && (
-             <button 
-                onClick={logout}
-                className="mt-3 w-full flex justify-center items-center py-2 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-lg transition-colors group relative"
-            >
-                <LogOut size={18} />
+             <button onClick={logout} className="mt-4 w-full flex justify-center items-center py-3 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-xl transition-all group relative">
+                <LogOut size={20} />
             </button>
           )}
         </div>
       </aside>
 
-      {/* Main Content Wrapper */}
+      {/* --- MAIN CONTENT WRAPPER --- */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 w-full min-w-0">
         
-        {/* Mobile Header */}
+        {/* MOBILE HEADER (Minimalist) */}
         <header className="md:hidden h-16 bg-slate-900 text-white flex items-center justify-between px-4 shadow-md z-20 shrink-0">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={20} className="text-blue-400" />
-            <span className="font-bold">Aços Vital</span>
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-500 p-1.5 rounded-lg shadow-sm">
+                <ShieldCheck size={20} className="text-white" />
+            </div>
+            <div className="flex flex-col">
+                 <span className="font-bold text-sm leading-tight">{t('menu.brand')}</span>
+                 <span className="text-[10px] text-slate-400 uppercase tracking-widest">{t('dashboard.regular')}</span>
+            </div>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 active:scale-95 transition-transform">
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <NotificationButton mobile={true} />
         </header>
 
-        {/* Mobile Menu Overlay */}
+        {/* MOBILE BOTTOM NAVIGATION BAR */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur-xl border-t border-slate-200 z-40 flex items-center justify-around pb-2 px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            {bottomNavItems.map((item, idx) => {
+                const active = isActive(item.path, item.exact);
+                return (
+                    <Link
+                        key={idx}
+                        to={item.path}
+                        className={`
+                            flex flex-col items-center justify-center w-16 h-full space-y-1 transition-all
+                            ${active ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}
+                        `}
+                    >
+                        <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-blue-50 scale-110' : ''}`}>
+                            <item.icon size={24} strokeWidth={active ? 2.5 : 2} />
+                        </div>
+                        <span className="text-[10px] font-medium">{item.label}</span>
+                    </Link>
+                )
+            })}
+            
+            <button 
+                onClick={() => {
+                   navigate(user?.role === UserRole.CLIENT ? '/dashboard?view=files' : '/quality'); 
+                }}
+                className={`flex flex-col items-center justify-center w-16 h-full space-y-1 text-slate-400 hover:text-slate-600`}
+            >
+                <div className="p-1.5 rounded-xl"><Search size={24} /></div>
+                <span className="text-[10px] font-medium">{t('common.search')}</span>
+            </button>
+
+            <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className={`flex flex-col items-center justify-center w-16 h-full space-y-1 ${isMobileMenuOpen ? 'text-blue-600' : 'text-slate-400'}`}
+            >
+                 <div className="p-1.5 rounded-xl">
+                    <UserIcon size={24} />
+                 </div>
+                 <span className="text-[10px] font-medium">{t('common.menu')}</span>
+            </button>
+        </nav>
+
+        {/* MOBILE BOTTOM SHEET */}
         {isMobileMenuOpen && (
-           <div className="md:hidden absolute inset-0 bg-slate-900/95 z-50 p-6 flex flex-col animate-in fade-in slide-in-from-top-5 duration-200">
-              <div className="flex justify-between items-center mb-8">
-                 <span className="text-xl font-bold text-white">{t('menu.main')}</span>
-                 <button onClick={() => setIsMobileMenuOpen(false)}><X size={24} className="text-white"/></button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto space-y-8">
-                {menuSections.map((section, idx) => (
-                    <div key={idx} className="space-y-2">
-                        {section.title && <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">{section.title}</div>}
-                        {section.items.map((item) => (
-                          <Link
-                            key={item.label}
-                            to={item.path}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="flex items-center gap-4 px-4 py-4 text-lg font-medium rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white border border-transparent hover:border-slate-700"
-                          >
-                            <item.icon size={24} />
-                            {item.label}
-                          </Link>
-                        ))}
+           <>
+               <div className="md:hidden fixed inset-0 bg-slate-900/50 z-50 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsMobileMenuOpen(false)} />
+               
+               <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-[60] p-6 pb-24 shadow-2xl animate-in slide-in-from-bottom-full duration-300 border-t border-slate-100">
+                    <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+                    
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 border border-slate-200">
+                            {user?.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800">{user?.name}</h3>
+                            <p className="text-sm text-slate-500">{user?.email}</p>
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase rounded-md border border-blue-100">
+                                {roleLabel}
+                            </span>
+                        </div>
                     </div>
-                ))}
-              </div>
 
-               {/* Mobile Language Switcher */}
-               <div className="flex bg-slate-800 rounded-lg p-2 mb-4">
-                     {['pt', 'en', 'es'].map(lang => (
-                         <button 
-                            key={lang}
-                            onClick={() => changeLanguage(lang)}
-                            className={`flex-1 text-sm font-bold uppercase py-2 rounded transition-colors ${i18n.language === lang ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-white'}`}
-                         >
-                             {lang}
-                         </button>
-                     ))}
+                    <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            {['pt', 'en', 'es'].map(lang => (
+                                <button 
+                                    key={lang}
+                                    onClick={() => changeLanguage(lang)}
+                                    className={`py-2 text-sm font-bold uppercase rounded-xl border transition-all ${i18n.language === lang ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                                >
+                                    {lang}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Admin N3 Support Mobile */}
+                        {user?.role === UserRole.ADMIN && (
+                            <button
+                                onClick={() => { setIsN3SupportOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex items-center gap-4 px-4 py-4 w-full text-slate-600 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all font-medium"
+                            >
+                                <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><Server size={20} /></div>
+                                {t('admin.settings.techSupport')}
+                            </button>
+                        )}
+
+                        <button
+                            onClick={() => { setIsSupportOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex items-center gap-4 px-4 py-4 w-full text-slate-600 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all font-medium"
+                        >
+                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Phone size={20} /></div>
+                            {t('menu.support')}
+                        </button>
+
+                        <button
+                            onClick={() => { setIsChangePasswordOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex items-center gap-4 px-4 py-4 w-full text-slate-600 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all font-medium"
+                        >
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Lock size={20} /></div>
+                            {t('common.changePassword')}
+                        </button>
+
+                        <button
+                            onClick={() => { setIsPrivacyOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex items-center gap-4 px-4 py-4 w-full text-slate-600 hover:bg-slate-50 rounded-2xl border border-transparent hover:border-slate-100 transition-all font-medium"
+                        >
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Shield size={20} /></div>
+                            {t('common.privacy')}
+                        </button>
+                        
+                        <button
+                            onClick={logout}
+                            className="flex items-center gap-4 px-4 py-4 w-full text-red-600 hover:bg-red-50 rounded-2xl border border-transparent hover:border-red-100 transition-all font-medium"
+                        >
+                            <div className="p-2 bg-red-50 text-red-600 rounded-lg"><LogOut size={20} /></div>
+                            {t('common.logout')}
+                        </button>
+                    </div>
                </div>
-
-              <div className="mt-auto pt-6 border-t border-slate-800 space-y-3">
-                 <button
-                    onClick={() => { setIsPrivacyOpen(true); setIsMobileMenuOpen(false); }}
-                    className="flex items-center gap-3 px-4 py-3 text-base font-medium w-full text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl"
-                 >
-                    <Shield size={20} /> {t('common.privacy')}
-                 </button>
-                 <button
-                  onClick={logout}
-                  className="flex items-center gap-3 px-4 py-3 text-base font-medium w-full text-red-400 hover:bg-red-900/20 rounded-xl"
-                >
-                  <LogOut size={20} /> {t('common.logout')}
-                </button>
-              </div>
-           </div>
+           </>
         )}
 
-        {/* Desktop Topbar */}
         <header className="hidden md:flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 items-center justify-between px-8 sticky top-0 z-40 shrink-0 transition-all">
-            {/* Context/Breadcrumb Area */}
             <div className="flex flex-col justify-center animate-in fade-in slide-in-from-left-2 duration-300">
                 <h2 className="text-2xl font-bold text-slate-800 tracking-tight">{title}</h2>
                 <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Portal Aços Vital</span>
+                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{t('menu.portalName')}</span>
                     <span className="text-slate-300">/</span>
                     <span className="font-medium text-blue-600 flex items-center gap-1">
                         {user?.role === UserRole.CLIENT && <FileBadge size={12}/>}
@@ -462,10 +705,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                     </span>
                 </div>
             </div>
-
-            {/* Right Actions */}
             <div className="flex items-center gap-6">
-                {/* Global Search */}
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
                     <input 
@@ -474,10 +714,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                         className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 group-focus-within:w-80"
                     />
                 </div>
-
                 <div className="h-8 w-px bg-slate-200" />
-                
-                {/* Language Switcher (Top Header) */}
                 <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
                     {['pt', 'en', 'es'].map(lang => (
                         <button 
@@ -489,84 +726,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                         </button>
                     ))}
                 </div>
-
                 <div className="h-8 w-px bg-slate-200" />
-
-                {/* NOTIFICATION CENTER */}
-                <div className="relative" ref={notifRef}>
-                    <button 
-                        onClick={() => setIsNotifOpen(!isNotifOpen)}
-                        className={`relative p-2 rounded-lg transition-colors ${isNotifOpen ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50 hover:text-blue-600'}`}
-                    >
-                        <Bell size={20} />
-                        {unreadCount > 0 && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-                        )}
-                    </button>
-
-                    {/* Dropdown Panel */}
-                    {isNotifOpen && (
-                        <div className="absolute right-0 top-full mt-3 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
-                            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                <h3 className="font-bold text-slate-800">Notificações</h3>
-                                {unreadCount > 0 && (
-                                    <button 
-                                        onClick={handleMarkAllRead}
-                                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                    >
-                                        <Check size={14} /> Marcar todas como lidas
-                                    </button>
-                                )}
-                            </div>
-                            
-                            <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                                {notifications.length === 0 ? (
-                                    <div className="p-8 text-center text-slate-400 flex flex-col items-center">
-                                        <Bell size={32} className="mb-2 opacity-20" />
-                                        <p className="text-sm">Nenhuma notificação nova.</p>
-                                    </div>
-                                ) : (
-                                    <div className="divide-y divide-slate-100">
-                                        {notifications.map(notif => (
-                                            <div 
-                                                key={notif.id}
-                                                onClick={() => handleMarkAsRead(notif.id, notif.link)}
-                                                className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
-                                            >
-                                                {!notif.isRead && (
-                                                    <div className="absolute left-2 top-6 w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                                )}
-                                                <div className="flex gap-3 pl-2">
-                                                    <div className="mt-1 flex-shrink-0">
-                                                        {getNotifIcon(notif.type)}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h4 className={`text-sm ${!notif.isRead ? 'font-bold text-slate-800' : 'font-medium text-slate-600'}`}>
-                                                            {notif.title}
-                                                        </h4>
-                                                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                                            {notif.message}
-                                                        </p>
-                                                        <span className="text-[10px] text-slate-400 mt-2 block font-medium">
-                                                            {notif.timestamp}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <NotificationButton mobile={false} />
             </div>
         </header>
 
-        {/* Content Scroll Area */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 custom-scrollbar">
-            {/* Added animation wrapper for content changes */}
-            <div className="max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10 min-h-full">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 custom-scrollbar pb-24 md:pb-10">
+            <div className="max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-full">
                 {children}
             </div>
         </main>
