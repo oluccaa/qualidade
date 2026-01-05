@@ -9,6 +9,89 @@ let currentLogs = [...MOCK_LOGS];
 // In-memory store for favorites (User ID -> Set of File IDs)
 const favoritesStore: Record<string, Set<string>> = {};
 
+// Cache variable
+let cachedNetworkInfo: { ip: string, location: string } | null = null;
+
+/**
+ * ROBUST NETWORK INFO FETCHER
+ * Strategies:
+ * 1. Check Memory Cache
+ * 2. Check Session Storage (Persists on page reload)
+ * 3. Primary API (ipapi.co - Rich Data)
+ * 4. Fallback API (ipify.org - IP Only, very high limits)
+ * 5. Last Resort (Cloudflare Trace)
+ */
+const getClientNetworkInfo = async () => {
+    // 1. Memory Check
+    if (cachedNetworkInfo) return cachedNetworkInfo;
+
+    // 2. Session Storage Check (Prevents API spam on dev refresh)
+    const stored = sessionStorage.getItem('av_client_net_info');
+    if (stored) {
+        try {
+            cachedNetworkInfo = JSON.parse(stored);
+            return cachedNetworkInfo;
+        } catch (e) {
+            sessionStorage.removeItem('av_client_net_info');
+        }
+    }
+
+    try {
+        // 3. Primary Attempt: IPAPI.co (Rich Data: City/Country)
+        // Note: Has strict rate limits on free tier.
+        const response = await fetch('https://ipapi.co/json/');
+        if (response.ok) {
+            const data = await response.json();
+            cachedNetworkInfo = {
+                ip: data.ip,
+                location: data.city && data.country_code ? `${data.city}, ${data.country_code}` : 'Unknown Location'
+            };
+        } else {
+            throw new Error("Primary API limit reached");
+        }
+    } catch (errPrimary) {
+        // 4. Fallback Attempt: Ipify (IP Only, very reliable)
+        try {
+            const res2 = await fetch('https://api.ipify.org?format=json');
+            if (res2.ok) {
+                const data2 = await res2.json();
+                cachedNetworkInfo = {
+                    ip: data2.ip,
+                    location: 'Unknown (Rate Limit)' // We lost location capability but kept IP
+                };
+            } else {
+                throw new Error("Secondary API failed");
+            }
+        } catch (errSecondary) {
+            // 5. Last Resort: Cloudflare Trace (Text format)
+            try {
+                const res3 = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
+                const text = await res3.text();
+                const ipLine = text.split('\n').find(l => l.startsWith('ip='));
+                const ip = ipLine ? ipLine.split('=')[1] : 'Unknown';
+                
+                cachedNetworkInfo = {
+                    ip: ip,
+                    location: 'Unknown'
+                };
+            } catch (errFinal) {
+                console.warn('All IP services failed (AdBlock or Offline).');
+                cachedNetworkInfo = {
+                    ip: '127.0.0.1 (Local)',
+                    location: 'Localhost'
+                };
+            }
+        }
+    }
+
+    // Save to session to avoid re-fetching for this browser session
+    if (cachedNetworkInfo) {
+        sessionStorage.setItem('av_client_net_info', JSON.stringify(cachedNetworkInfo));
+    }
+
+    return cachedNetworkInfo;
+};
+
 // Helper to check if file is favorite
 const isFileFavorite = (userId: string, fileId: string): boolean => {
     return favoritesStore[userId]?.has(fileId) || false;
@@ -145,11 +228,12 @@ export const getLibraryFiles = async (user: User, filters: LibraryFilters): Prom
         if (filters.search) {
             const term = filters.search.toLowerCase();
             const matchesName = file.name.toLowerCase().includes(term);
+            const matchesTag = file.tags?.some(tag => tag.toLowerCase().includes(term));
             const matchesBatch = file.metadata?.batchNumber?.toLowerCase().includes(term);
             const matchesProduct = file.metadata?.productName?.toLowerCase().includes(term);
             const matchesInvoice = file.metadata?.invoiceNumber?.toLowerCase().includes(term);
 
-            if (!matchesName && !matchesBatch && !matchesProduct && !matchesInvoice) return false;
+            if (!matchesName && !matchesTag && !matchesBatch && !matchesInvoice) return false;
         }
 
         return true;
@@ -328,6 +412,9 @@ export const getBreadcrumbs = (folderId: string | null): { id: string, name: str
 // --- Security & Audit Logs ---
 
 export const logAction = async (user: User, action: string, target: string, severity: 'INFO'|'WARNING'|'ERROR'|'CRITICAL' = 'INFO') => {
+    // FETCH REAL DATA WITH CACHING AND FALLBACKS
+    const networkInfo = await getClientNetworkInfo();
+
     const newLog: AuditLog = {
         id: `log-${Date.now()}`,
         userId: user.id,
@@ -338,10 +425,10 @@ export const logAction = async (user: User, action: string, target: string, seve
         target,
         severity,
         status: 'SUCCESS',
-        ip: '10.0.0.1', // Mock internal IP
-        location: 'São Paulo, BR',
+        ip: networkInfo?.ip || 'Unknown', 
+        location: networkInfo?.location || 'Unknown', 
         userAgent: navigator.userAgent,
-        device: 'Desktop',
+        device: /Mobile|Android|iP(ad|hone)/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
         requestId: `req-${Math.random().toString(36).substr(2, 6)}`,
         metadata: { timestamp: Date.now() },
         timestamp: new Date().toISOString()

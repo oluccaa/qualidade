@@ -58,7 +58,8 @@ import {
   LayoutGrid,
   List,
   Calendar,
-  MoreHorizontal
+  MoreHorizontal,
+  Timer
 } from 'lucide-react';
 
 // --- Components ---
@@ -127,7 +128,7 @@ const Admin: React.FC = () => {
 
   // Firewall & Network State
   const [ports, setPorts] = useState<NetworkPort[]>(MOCK_PORTS);
-  const [firewallRules, setFirewallRules] = useState<FirewallRule[]>(MOCK_FIREWALL_RULES);
+  const [firewallRules, setFirewallRules] = useState<FirewallRule[]>([]); // Initialized empty, loaded from service
   const [isScanning, setIsScanning] = useState(false);
   const [isHardening, setIsHardening] = useState(false);
 
@@ -184,16 +185,18 @@ const Admin: React.FC = () => {
   const loadData = async () => {
       setIsLoading(true);
       try {
-          const [users, ticketData, maintenanceData, clients] = await Promise.all([
+          const [users, ticketData, maintenanceData, clients, fwRules] = await Promise.all([
               userService.getUsers(),
               adminService.getTickets(),
               adminService.getMaintenanceEvents(),
-              adminService.getClients()
+              adminService.getClients(),
+              adminService.getFirewallRules()
           ]);
           setUsersList(users);
           setTicketsList(ticketData);
           setMaintenanceList(maintenanceData);
           setClientsList(clients);
+          setFirewallRules(fwRules);
           if (user) getAuditLogs(user).then(setLogs);
       } finally {
           setIsLoading(false);
@@ -302,6 +305,38 @@ const Admin: React.FC = () => {
       setIsInvestigationModalOpen(true);
   };
 
+  const handleBlockUserFromInvestigation = async () => {
+      if (!user || !investigationData.targetLog?.userId) return;
+      
+      const confirmMsg = `Confirmar bloqueio do usuário ${investigationData.targetLog.userName}?`;
+      if (window.confirm(confirmMsg)) {
+          try {
+              await userService.blockUserById(user, investigationData.targetLog.userId, `Investigação Log ID: ${investigationData.targetLog.id}`);
+              alert("Usuário bloqueado com sucesso. Status alterado para BLOCKED.");
+              setIsInvestigationModalOpen(false);
+              loadData(); // Refresh logs and users
+          } catch (err: any) {
+              alert(`Erro ao bloquear: ${err.message}`);
+          }
+      }
+  };
+
+  const handleBlockIpFromInvestigation = async () => {
+      if (!user || !investigationData.targetLog?.ip) return;
+
+      const confirmMsg = `Adicionar IP ${investigationData.targetLog.ip} à Blacklist do Firewall?`;
+      if (window.confirm(confirmMsg)) {
+          try {
+              await adminService.blockIpAddress(user, investigationData.targetLog.ip, `Atividade suspeita Log ID: ${investigationData.targetLog.id}`);
+              alert("IP bloqueado com sucesso. Regra de Firewall criada.");
+              setIsInvestigationModalOpen(false);
+              loadData(); // Refresh firewall rules
+          } catch (err: any) {
+              alert(`Erro ao bloquear IP: ${err.message}`);
+          }
+      }
+  };
+
   const handleExportLogs = () => {
       const csvContent = "data:text/csv;charset=utf-8," 
           + "Timestamp,User,Role,Action,Target,IP,Severity\n"
@@ -395,7 +430,7 @@ const Admin: React.FC = () => {
 
   const handleCancelMaintenance = async (eventId: string) => {
       if (!user) return;
-      if (window.confirm("Confirmar cancelamento da manutenção?")) {
+      if (window.confirm("Confirmar cancelamento da manutenção? Os usuários serão notificados.")) {
           await adminService.cancelMaintenance(user, eventId);
           loadData();
       }
@@ -768,7 +803,7 @@ const Admin: React.FC = () => {
                   </div>
               )}
 
-              {/* --- SETTINGS TAB --- */}
+              {/* --- SETTINGS TAB (REDESIGNED) --- */}
               {activeTab === 'settings' && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
                       
@@ -818,27 +853,78 @@ const Admin: React.FC = () => {
                           </div>
                       </div>
 
-                      {/* System Settings */}
-                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                      {/* System Maintenance (ROBUST) */}
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                           <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                               <div className="bg-orange-50 p-2 rounded-lg text-orange-600"><Server size={20} /></div>
                               <h3 className="font-bold text-lg text-slate-800">{t('admin.settings.systemTitle')}</h3>
                           </div>
-                          <div className="p-6 space-y-6">
-                              <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
-                                  <div>
-                                      <h4 className="font-bold text-red-800 text-sm flex items-center gap-2"><AlertOctagon size={16}/> {t('admin.settings.maintenance')}</h4>
-                                      <p className="text-xs text-red-600/80 mt-1">{t('admin.settings.maintenanceDesc')}</p>
+                          
+                          <div className="p-6 space-y-6 flex-1">
+                              {/* Global Status Banner */}
+                              <div className={`p-4 rounded-xl border flex items-center justify-between ${systemSettings.maintenanceMode ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                                  <div className="flex items-center gap-3">
+                                      <div className={`p-2 rounded-full ${systemSettings.maintenanceMode ? 'bg-red-200 text-red-700' : 'bg-emerald-200 text-emerald-700'}`}>
+                                          <Power size={20} />
+                                      </div>
+                                      <div>
+                                          <h4 className={`font-bold text-sm ${systemSettings.maintenanceMode ? 'text-red-800' : 'text-emerald-800'}`}>
+                                              {systemSettings.maintenanceMode ? 'MODO DE MANUTENÇÃO ATIVO' : 'SISTEMA ONLINE'}
+                                          </h4>
+                                          <p className="text-xs opacity-80 mt-0.5">
+                                              {systemSettings.maintenanceMode ? 'Acesso suspenso para usuários externos.' : 'Operação normal.'}
+                                          </p>
+                                      </div>
                                   </div>
                                   <button 
                                       onClick={() => handleToggleSetting('maintenanceMode')}
-                                      className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${systemSettings.maintenanceMode ? 'bg-red-600' : 'bg-slate-300'}`}
+                                      className={`px-4 py-2 rounded-lg text-xs font-bold border shadow-sm transition-all ${systemSettings.maintenanceMode ? 'bg-white text-red-600 border-red-200 hover:bg-red-50' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
                                   >
-                                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${systemSettings.maintenanceMode ? 'translate-x-6' : ''}`} />
+                                      {systemSettings.maintenanceMode ? 'Desativar Agora' : 'Ativar Manualmente'}
                                   </button>
                               </div>
 
-                              <div className="flex items-center justify-between">
+                              {/* Scheduled Maintenance List */}
+                              <div>
+                                  <div className="flex justify-between items-center mb-3">
+                                      <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2"><CalendarClock size={16}/> Agendamentos</h4>
+                                      <button onClick={() => setIsMaintenanceModalOpen(true)} className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors flex items-center gap-1">
+                                          <Plus size={14}/> Novo Agendamento
+                                      </button>
+                                  </div>
+                                  
+                                  <div className="space-y-3">
+                                      {maintenanceList.filter(m => m.status === 'SCHEDULED').length === 0 ? (
+                                          <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                                              <CalendarClock size={24} className="mx-auto text-slate-300 mb-2" />
+                                              <p className="text-xs text-slate-400 font-medium">Nenhuma manutenção agendada.</p>
+                                          </div>
+                                      ) : (
+                                          maintenanceList.filter(m => m.status === 'SCHEDULED').map(evt => (
+                                              <div key={evt.id} className="p-3 border border-orange-100 bg-orange-50/30 rounded-xl flex justify-between items-center group">
+                                                  <div className="flex items-center gap-3">
+                                                      <div className="bg-white p-2 rounded-lg border border-orange-100 shadow-sm text-orange-600 font-bold text-center min-w-[50px]">
+                                                          <div className="text-[10px] uppercase text-orange-400">{new Date(evt.scheduledDate).toLocaleDateString(undefined, {month:'short'})}</div>
+                                                          <div className="text-lg leading-none">{new Date(evt.scheduledDate).getDate()}</div>
+                                                      </div>
+                                                      <div>
+                                                          <h5 className="font-bold text-slate-800 text-sm">{evt.title}</h5>
+                                                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+                                                              <span className="flex items-center gap-1"><Clock size={12}/> {new Date(evt.scheduledDate).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                                              <span className="flex items-center gap-1"><Timer size={12}/> {evt.durationMinutes} min</span>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                                  <button onClick={() => handleCancelMaintenance(evt.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Cancelar Agendamento">
+                                                      <X size={16} />
+                                                  </button>
+                                              </div>
+                                          ))
+                                      )}
+                                  </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                                   <div>
                                       <h4 className="font-bold text-slate-700 text-sm">{t('admin.settings.retention')}</h4>
                                       <p className="text-xs text-slate-500 mt-1">{t('admin.settings.retentionDesc')}</p>
@@ -850,14 +936,10 @@ const Admin: React.FC = () => {
                                       className="w-20 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm text-center font-bold outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
                                   />
                               </div>
-
-                              <div className="pt-4 border-t border-slate-100">
-                                  <p className="text-xs font-bold text-slate-400 uppercase mb-2">Versão do Sistema</p>
-                                  <div className="flex justify-between items-center text-sm font-mono bg-slate-50 p-2 rounded-lg text-slate-600">
-                                      <span>v2.4.0-stable</span>
-                                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">Atualizado</span>
-                                  </div>
-                              </div>
+                          </div>
+                          
+                          <div className="bg-slate-50 p-3 text-center border-t border-slate-100">
+                              <span className="text-xs text-slate-400 font-mono">System v2.4.0-stable • Build 20231027</span>
                           </div>
                       </div>
                   </div>
@@ -866,7 +948,7 @@ const Admin: React.FC = () => {
               {/* --- CLIENTS TAB (IMPROVED DESIGN) --- */}
               {activeTab === 'clients' && (
                   <div className="flex flex-col gap-6">
-                      
+                      {/* ... (Previous Clients code preserved) ... */}
                       {/* Summary Stats */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2">
                           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -1163,8 +1245,8 @@ const Admin: React.FC = () => {
           </div>
       </div>
 
-      {/* ... (Modals preserved - User, Client, Ticket, Maintenance, Investigation) ... */}
-      {/* (All modal code logic is identical to original, just ensuring imports and state management are correct) */}
+      {/* ... (Modals preserved - User, Client, Ticket, Investigation) ... */}
+      {/* (Previous Modals Code hidden for brevity, but Maintenance Modal is updated below) */}
       
       {/* MODAL: Investigation */}
       {isInvestigationModalOpen && investigationData.targetLog && (
@@ -1241,8 +1323,8 @@ const Admin: React.FC = () => {
                   </div>
                   
                   <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
-                      <button onClick={() => alert("Usuário bloqueado preventivamente.")} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 text-sm">Bloquear Usuário</button>
-                      <button onClick={() => alert("IP adicionado à blacklist do Firewall.")} className="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 text-sm">Bloquear IP</button>
+                      <button onClick={handleBlockUserFromInvestigation} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 text-sm">Bloquear Usuário</button>
+                      <button onClick={handleBlockIpFromInvestigation} className="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 text-sm">Bloquear IP</button>
                   </div>
               </div>
           </div>
@@ -1351,7 +1433,6 @@ const Admin: React.FC = () => {
           </div>
       )}
 
-      {/* ... (Other Modals: Client, Ticket, Maintenance) ... */}
       {/* MODAL: Client */}
       {isClientModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -1424,36 +1505,47 @@ const Admin: React.FC = () => {
           </div>
       )}
 
-      {/* MODAL: Maintenance */}
+      {/* MODAL: Maintenance (Enhanced) */}
       {isMaintenanceModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
                   <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                      <h3 className="text-lg font-bold text-slate-800">{t('admin.settings.scheduleMaintenance')}</h3>
+                      <div className="flex items-center gap-2">
+                          <div className="bg-orange-50 p-2 rounded-lg text-orange-600"><CalendarClock size={20}/></div>
+                          <div>
+                              <h3 className="text-lg font-bold text-slate-800">{t('admin.settings.scheduleMaintenance')}</h3>
+                              <p className="text-xs text-slate-500">Planejamento de indisponibilidade</p>
+                          </div>
+                      </div>
                       <button onClick={() => setIsMaintenanceModalOpen(false)} className="text-slate-400 hover:text-red-500"><X size={20} /></button>
                   </div>
-                  <form onSubmit={handleScheduleMaintenance} className="p-6 space-y-4">
+                  
+                  <form onSubmit={handleScheduleMaintenance} className="p-6 space-y-5">
                       <div className="space-y-1">
-                          <label className="text-sm font-bold text-slate-700">Título</label>
-                          <input required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" value={maintenanceData.title} onChange={e => setMaintenanceData({...maintenanceData, title: e.target.value})} />
+                          <label className="text-sm font-bold text-slate-700">Título do Evento</label>
+                          <input required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium" placeholder="Ex: Atualização de Segurança" value={maintenanceData.title} onChange={e => setMaintenanceData({...maintenanceData, title: e.target.value})} />
                       </div>
+                      
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
-                              <label className="text-sm font-bold text-slate-700">Data/Hora</label>
-                              <input type="datetime-local" required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" value={maintenanceData.scheduledDate} onChange={e => setMaintenanceData({...maintenanceData, scheduledDate: e.target.value})} />
+                              <label className="text-sm font-bold text-slate-700">Data e Hora de Início</label>
+                              <input type="datetime-local" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium" value={maintenanceData.scheduledDate} onChange={e => setMaintenanceData({...maintenanceData, scheduledDate: e.target.value})} />
                           </div>
                           <div className="space-y-1">
-                              <label className="text-sm font-bold text-slate-700">Duração (min)</label>
-                              <input type="number" required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" value={maintenanceData.durationMinutes} onChange={e => setMaintenanceData({...maintenanceData, durationMinutes: parseInt(e.target.value)})} />
+                              <label className="text-sm font-bold text-slate-700">Duração Estimada (min)</label>
+                              <input type="number" min="15" step="15" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium" value={maintenanceData.durationMinutes} onChange={e => setMaintenanceData({...maintenanceData, durationMinutes: parseInt(e.target.value)})} />
                           </div>
                       </div>
+
                       <div className="space-y-1">
-                          <label className="text-sm font-bold text-slate-700">Descrição</label>
-                          <textarea className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none h-24" value={maintenanceData.description} onChange={e => setMaintenanceData({...maintenanceData, description: e.target.value})} />
+                          <label className="text-sm font-bold text-slate-700">Descrição Pública</label>
+                          <textarea className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none h-24 resize-none text-sm font-medium" placeholder="Explique o motivo para os usuários..." value={maintenanceData.description} onChange={e => setMaintenanceData({...maintenanceData, description: e.target.value})} />
+                          <p className="text-[10px] text-slate-400 text-right">Esta mensagem será exibida no banner de aviso.</p>
                       </div>
-                      <div className="pt-4 flex justify-end gap-3">
-                          <button type="button" onClick={() => setIsMaintenanceModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancelar</button>
-                          <button type="submit" className="px-6 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700">Agendar</button>
+
+                      <div className="pt-2 flex justify-end gap-3">
+                          <button type="button" onClick={() => setIsMaintenanceModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                          <button type="submit" className="px-6 py-2.5 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-all shadow-lg flex items-center gap-2"><CalendarClock size={18}/> Confirmar Agendamento</button>
                       </div>
                   </form>
               </div>

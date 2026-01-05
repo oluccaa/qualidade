@@ -45,13 +45,19 @@ import {
     LayoutDashboard,
     ArrowUpRight,
     MoreHorizontal,
-    Edit2
+    Edit2,
+    Folder,
+    ArrowDownAZ,
+    ArrowUpZA,
+    Layers,
+    Home
 } from 'lucide-react';
 import * as fileService from '../services/fileService.ts';
 import * as adminService from '../services/adminService.ts';
 
 // --- TYPES & HELPERS ---
 type QualityView = 'overview' | 'clients' | 'master' | 'tickets';
+type GroupingMode = 'ALPHA' | 'STATUS' | 'YEAR' | 'NONE';
 
 const Quality: React.FC = () => {
   const { user } = useAuth();
@@ -78,10 +84,11 @@ const Quality: React.FC = () => {
   const [outboxTickets, setOutboxTickets] = useState<SupportTicket[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // -- CLIENT HUB STATE --
+  // -- CLIENT HUB STATE (SCALABLE) --
   const [clientViewMode, setClientViewMode] = useState<'grid' | 'list'>('grid');
   const [clientSearch, setClientSearch] = useState('');
-  const [clientFilterStatus, setClientFilterStatus] = useState<'ALL' | 'PENDING' | 'OK'>('ALL');
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('ALPHA');
+  const [activeGroupFolder, setActiveGroupFolder] = useState<string | null>(null); // "A-E", "2023", "ACTIVE"
 
   // -- FILE EXPLORER STATE --
   const [rootFolderId, setRootFolderId] = useState<string | null>(null);
@@ -118,16 +125,55 @@ const Quality: React.FC = () => {
   const totalPendingDocs = MOCK_CLIENTS.reduce((acc, c) => acc + getPendingCount(c.id), 0);
   const totalOpenTickets = inboxTickets.filter(t => t.status !== 'RESOLVED').length;
 
-  const filteredClients = useMemo(() => {
-      return MOCK_CLIENTS.filter(c => {
-          const matchesSearch = c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.cnpj.includes(clientSearch);
-          const pending = getPendingCount(c.id);
-          let matchesStatus = true;
-          if (clientFilterStatus === 'PENDING') matchesStatus = pending > 0;
-          if (clientFilterStatus === 'OK') matchesStatus = pending === 0;
-          return matchesSearch && matchesStatus;
-      });
-  }, [clientSearch, clientFilterStatus]);
+  // --- CLIENT GROUPING LOGIC ---
+  const clientGroups = useMemo(() => {
+      // 1. First apply search filter (Search works globally across folders)
+      const filtered = MOCK_CLIENTS.filter(c => 
+          c.name.toLowerCase().includes(clientSearch.toLowerCase()) || 
+          c.cnpj.includes(clientSearch)
+      );
+
+      // If searching, we flatten the structure effectively
+      if (clientSearch) return { 'Resultados da Busca': filtered };
+
+      // 2. Grouping Logic
+      const groups: Record<string, ClientOrganization[]> = {};
+
+      if (groupingMode === 'ALPHA') {
+          // Group by First Letter (A-E, F-J, etc for scalability)
+          // Simplified: A, B, C...
+          filtered.forEach(c => {
+              const letter = c.name.charAt(0).toUpperCase();
+              if (!groups[letter]) groups[letter] = [];
+              groups[letter].push(c);
+          });
+      } else if (groupingMode === 'STATUS') {
+          filtered.forEach(c => {
+              const status = c.status === 'ACTIVE' ? 'Ativos' : 'Inativos/Bloqueados';
+              // Special Sub-group: Has Pendency
+              const hasPending = getPendingCount(c.id) > 0;
+              const key = hasPending ? '⚠ Com Pendências (Ação Necessária)' : status;
+              
+              if (!groups[key]) groups[key] = [];
+              groups[key].push(c);
+          });
+      } else if (groupingMode === 'YEAR') {
+          filtered.forEach(c => {
+              const year = new Date(c.contractDate).getFullYear().toString();
+              if (!groups[year]) groups[year] = [];
+              groups[year].push(c);
+          });
+      } else {
+          groups['Todos'] = filtered;
+      }
+
+      // Sort keys
+      return Object.keys(groups).sort().reduce((obj, key) => { 
+          obj[key] = groups[key]; 
+          return obj;
+      }, {} as Record<string, ClientOrganization[]>);
+
+  }, [clientSearch, groupingMode]);
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -199,9 +245,6 @@ const Quality: React.FC = () => {
   };
 
   // ... (Keep existing CRUD handlers: Upload, Folder, Import, Delete, Edit, Tickets)
-  // Reusing logic from previous implementation to save space, assuming functions like handleUploadSubmit, handleCreateFolder, etc. are standard.
-  // Implementing minimal wrappers for UI connection:
-
   const handleNavigate = (id: string | null) => {
       setCurrentFolderId(id || rootFolderId);
       setInspectorFile(null);
@@ -226,7 +269,6 @@ const Quality: React.FC = () => {
       e.preventDefault();
       const ownerId = activeView === 'master' ? MASTER_ORG_ID : selectedClient?.id;
       if (!user || !ownerId) return;
-      // ... (Rest of upload logic similar to previous)
       const newFile: Partial<FileNode> = {
           name: uploadFormData.name || uploadFormData.file?.name || 'Novo Arquivo',
           parentId: currentFolderId || rootFolderId,
@@ -239,7 +281,6 @@ const Quality: React.FC = () => {
   const handleEditSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user || !inspectorFile) return;
-
       const updates: Partial<FileNode> = {
           name: uploadFormData.name,
           metadata: {
@@ -247,7 +288,6 @@ const Quality: React.FC = () => {
               productName: uploadFormData.productName
           }
       };
-
       await fileService.updateFile(user, inspectorFile.id, updates);
       setIsEditModalOpen(false);
       setUploadFormData({ name: '', batchNumber: '', invoiceNumber: '', productName: '', status: 'APPROVED', file: null });
@@ -296,7 +336,7 @@ const Quality: React.FC = () => {
                   <p className="text-3xl font-bold text-slate-800 mt-1">{totalClients}</p>
               </div>
               
-              <div onClick={() => { setClientFilterStatus('PENDING'); changeView('clients'); }} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-orange-400">
+              <div onClick={() => { setGroupingMode('STATUS'); setActiveGroupFolder('⚠ Com Pendências (Ação Necessária)'); changeView('clients'); }} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group border-l-4 border-l-orange-400">
                   <div className="flex justify-between items-start mb-4">
                       <div className="p-3 bg-orange-50 text-orange-600 rounded-xl group-hover:scale-110 transition-transform"><Clock size={24}/></div>
                       <ArrowUpRight size={20} className="text-slate-300 group-hover:text-orange-500 transition-colors"/>
@@ -357,86 +397,219 @@ const Quality: React.FC = () => {
       </div>
   );
 
-  const ClientHubTab = () => (
+  const ClientHubTab = () => {
+      // Determine what to display: Groups (Folders) OR Clients (Inside Folder)
+      const isInsideFolder = !!activeGroupFolder || !!clientSearch;
+      const displayItems = activeGroupFolder ? clientGroups[activeGroupFolder] : null;
+
+      // Handle Back Navigation in Directory
+      const handleBack = () => {
+          if (activeGroupFolder) {
+              setActiveGroupFolder(null);
+              setClientSearch('');
+          }
+      };
+
+      return (
       <div className="flex flex-col h-full gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
-          {/* Toolbar */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="relative group w-full md:w-96">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-                  <input 
-                      type="text" 
-                      placeholder={t('quality.searchClient')} 
-                      className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      value={clientSearch}
-                      onChange={e => setClientSearch(e.target.value)}
-                  />
-              </div>
-              <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                  <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
-                      <button onClick={() => setClientFilterStatus('ALL')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${clientFilterStatus === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Todos</button>
-                      <button onClick={() => setClientFilterStatus('PENDING')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${clientFilterStatus === 'PENDING' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Clock size={12}/> Pendentes</button>
-                      <button onClick={() => setClientFilterStatus('OK')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${clientFilterStatus === 'OK' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><CheckCircle2 size={12}/> Em Dia</button>
+          {/* Enhanced Toolbar */}
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center gap-4 flex-1 w-full">
+                  {isInsideFolder && (
+                      <button onClick={handleBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+                          <ArrowLeft size={20} />
+                      </button>
+                  )}
+                  
+                  {/* Breadcrumbs for Client Directory */}
+                  <div className="flex items-center gap-2 text-sm text-slate-600 overflow-hidden">
+                      <div 
+                        className={`flex items-center gap-1 font-bold ${!activeGroupFolder ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600 cursor-pointer'}`}
+                        onClick={() => setActiveGroupFolder(null)}
+                      >
+                          <Home size={16} /> Diretório
+                      </div>
+                      {activeGroupFolder && (
+                          <>
+                            <ChevronRight size={14} className="text-slate-400" />
+                            <div className="font-bold text-blue-600 flex items-center gap-2 truncate">
+                                <FolderOpen size={16} /> {activeGroupFolder}
+                            </div>
+                          </>
+                      )}
+                      {clientSearch && !activeGroupFolder && (
+                          <>
+                            <ChevronRight size={14} className="text-slate-400" />
+                            <div className="font-bold text-blue-600 truncate">Busca: "{clientSearch}"</div>
+                          </>
+                      )}
                   </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                  {/* Search */}
+                  <div className="relative group w-full md:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
+                      <input 
+                          type="text" 
+                          placeholder="Buscar cliente..." 
+                          className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                          value={clientSearch}
+                          onChange={e => setClientSearch(e.target.value)}
+                      />
+                  </div>
+
+                  {/* Grouping Toggle - Only show at Root Level */}
+                  {!isInsideFolder && (
+                      <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
+                          <button onClick={() => setGroupingMode('ALPHA')} className={`p-1.5 rounded-md transition-all ${groupingMode === 'ALPHA' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="A-Z"><ArrowDownAZ size={18}/></button>
+                          <button onClick={() => setGroupingMode('STATUS')} className={`p-1.5 rounded-md transition-all ${groupingMode === 'STATUS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Por Status"><Layers size={18}/></button>
+                          <button onClick={() => setGroupingMode('YEAR')} className={`p-1.5 rounded-md transition-all ${groupingMode === 'YEAR' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`} title="Por Ano"><Calendar size={18}/></button>
+                      </div>
+                  )}
+
                   <div className="w-px h-6 bg-slate-200 hidden md:block"></div>
                   <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
-                      <button onClick={() => setClientViewMode('grid')} className={`p-1.5 rounded-md transition-all ${clientViewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid size={16}/></button>
-                      <button onClick={() => setClientViewMode('list')} className={`p-1.5 rounded-md transition-all ${clientViewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><List size={16}/></button>
+                      <button onClick={() => setClientViewMode('grid')} className={`p-1.5 rounded-md transition-all ${clientViewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid size={18}/></button>
+                      <button onClick={() => setClientViewMode('list')} className={`p-1.5 rounded-md transition-all ${clientViewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><List size={18}/></button>
                   </div>
               </div>
           </div>
 
-          {/* Grid/List */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {clientViewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
-                      {filteredClients.map(client => {
-                          const pending = getPendingCount(client.id);
+          {/* CONTENT AREA */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
+              
+              {/* LEVEL 0: GROUP FOLDERS (Root) */}
+              {!activeGroupFolder && !clientSearch && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {Object.keys(clientGroups).map(groupKey => {
+                          const count = clientGroups[groupKey].length;
+                          const isWarning = groupKey.includes('Pendências');
+                          
                           return (
-                              <div key={client.id} onClick={() => enterClientWorkspace(client)} className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg ${pending > 0 ? 'border-orange-200 hover:border-orange-400' : 'border-slate-200 hover:border-blue-400'}`}>
-                                  <div className="flex justify-between items-start mb-4">
-                                      <div className={`p-3 rounded-xl border ${pending > 0 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}><Building2 size={24} /></div>
-                                      {pending > 0 ? <span className="flex items-center gap-1.5 bg-orange-100 text-orange-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-orange-200 animate-pulse"><Clock size={12} /> {pending}</span> : <span className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200"><CheckCircle2 size={12} /> OK</span>}
+                              <div 
+                                  key={groupKey}
+                                  onClick={() => setActiveGroupFolder(groupKey)}
+                                  className={`
+                                      p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md flex flex-col items-center text-center gap-3 bg-white
+                                      ${isWarning ? 'border-orange-200 bg-orange-50/30 hover:border-orange-400' : 'border-slate-200 hover:border-blue-400'}
+                                  `}
+                              >
+                                  <div className={`p-3 rounded-full ${isWarning ? 'bg-orange-100 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+                                      {isWarning ? <AlertTriangle size={28} /> : <Folder size={28} fill="currentColor" className="opacity-20" />}
                                   </div>
-                                  <h3 className="font-bold text-slate-800 text-base leading-tight mb-1 truncate">{client.name}</h3>
-                                  <p className="text-xs text-slate-400 font-mono mb-4">{client.cnpj}</p>
-                                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                      <span className="text-[10px] text-slate-400 font-bold uppercase">Ver Arquivos</span>
-                                      <div className="bg-slate-50 p-2 rounded-full text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all"><ChevronRight size={16} /></div>
+                                  <div>
+                                      <h3 className={`font-bold text-sm ${isWarning ? 'text-orange-800' : 'text-slate-700'}`}>{groupKey}</h3>
+                                      <span className="text-xs text-slate-400 font-medium">{count} Empresas</span>
                                   </div>
                               </div>
-                          );
+                          )
                       })}
                   </div>
-              ) : (
-                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                      <table className="w-full text-left text-sm">
-                          <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                              <tr><th className="px-6 py-3 font-bold uppercase text-xs">Empresa</th><th className="px-6 py-3 font-bold uppercase text-xs">CNPJ</th><th className="px-6 py-3 font-bold uppercase text-xs">Status</th><th className="px-6 py-3 font-bold uppercase text-xs text-right">Ação</th></tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                              {filteredClients.map(client => {
-                                  const pending = getPendingCount(client.id);
-                                  return (
-                                      <tr key={client.id} className="hover:bg-slate-50 group cursor-pointer" onClick={() => enterClientWorkspace(client)}>
-                                          <td className="px-6 py-4 font-medium text-slate-800 flex items-center gap-3"><div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Building2 size={16}/></div>{client.name}</td>
-                                          <td className="px-6 py-4 text-slate-500 font-mono">{client.cnpj}</td>
-                                          <td className="px-6 py-4">{pending > 0 ? <span className="flex items-center gap-1.5 text-orange-600 font-bold text-xs"><Clock size={14}/> {pending} Pendentes</span> : <span className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs"><CheckCircle2 size={14}/> OK</span>}</td>
-                                          <td className="px-6 py-4 text-right"><button className="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Abrir <ChevronRight size={14}/></button></td>
-                                      </tr>
-                                  );
-                              })}
-                          </tbody>
-                      </table>
-                  </div>
+              )}
+
+              {/* LEVEL 1: CLIENTS LIST (Inside Group or Search) */}
+              {(activeGroupFolder || clientSearch) && displayItems && (
+                  <>
+                    {clientViewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {displayItems.length === 0 ? (
+                                <div className="col-span-full py-12 text-center text-slate-400">
+                                    <Building2 size={48} className="mx-auto mb-2 opacity-20" />
+                                    <p>Nenhum cliente encontrado nesta pasta.</p>
+                                </div>
+                            ) : (
+                                displayItems.map(client => {
+                                    const pending = getPendingCount(client.id);
+                                    return (
+                                        <div key={client.id} onClick={() => enterClientWorkspace(client)} className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer group hover:shadow-lg ${pending > 0 ? 'border-orange-200 hover:border-orange-400' : 'border-slate-200 hover:border-blue-400'}`}>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className={`p-3 rounded-xl border ${pending > 0 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}><Building2 size={24} /></div>
+                                                {pending > 0 ? <span className="flex items-center gap-1.5 bg-orange-100 text-orange-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-orange-200 animate-pulse"><Clock size={12} /> {pending}</span> : <span className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200"><CheckCircle2 size={12} /> OK</span>}
+                                            </div>
+                                            <h3 className="font-bold text-slate-800 text-base leading-tight mb-1 truncate">{client.name}</h3>
+                                            <p className="text-xs text-slate-400 font-mono mb-4">{client.cnpj}</p>
+                                            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase">Ver Arquivos</span>
+                                                <div className="bg-slate-50 p-2 rounded-full text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all"><ChevronRight size={16} /></div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    ) : (
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                            <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Empresa</th>
+                                        <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">CNPJ</th>
+                                        <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Data Contrato</th>
+                                        <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider">Status Documental</th>
+                                        <th className="px-6 py-4 font-bold uppercase text-xs tracking-wider text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {displayItems.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                                                <Building2 size={32} className="mx-auto mb-2 opacity-20" />
+                                                Nenhum cliente nesta lista.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        displayItems.map(client => {
+                                            const pending = getPendingCount(client.id);
+                                            return (
+                                                <tr key={client.id} className="hover:bg-blue-50/50 group cursor-pointer transition-colors" onClick={() => enterClientWorkspace(client)}>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`p-2 rounded-lg border ${pending > 0 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                                                <Building2 size={18}/>
+                                                            </div>
+                                                            <span className="font-bold text-slate-800 text-sm">{client.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">{client.cnpj}</td>
+                                                    <td className="px-6 py-4 text-slate-500 text-xs">
+                                                        {new Date(client.contractDate).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {pending > 0 ? (
+                                                            <span className="flex items-center gap-1.5 text-orange-700 bg-orange-50 px-2 py-1 rounded-full w-fit border border-orange-100 text-xs font-bold animate-pulse">
+                                                                <Clock size={12}/> {pending} Pendentes
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full w-fit border border-emerald-100 text-xs font-bold">
+                                                                <CheckCircle2 size={12}/> Em dia
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button className="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                                            Abrir Pasta <ChevronRight size={14}/>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                  </>
               )}
           </div>
       </div>
-  );
+      );
+  };
 
   const getPageTitle = () => {
       switch(activeView) {
           case 'overview': return 'Visão Geral da Qualidade';
-          case 'clients': return 'Carteira de Clientes';
+          case 'clients': return 'Diretório de Clientes';
           case 'master': return 'Repositório Mestre';
           case 'tickets': return 'Service Desk';
           default: return 'Portal da Qualidade';
@@ -627,7 +800,7 @@ const Quality: React.FC = () => {
             )}
         </div>
 
-        {/* ... (MODALS: Keep existing modals logic but ensure they use new state correctly) ... */}
+        {/* ... (MODALS: Keep existing modals logic) ... */}
         {/* Ticket Detail Modal */}
         {isTicketDetailOpen && selectedTicket && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -657,7 +830,6 @@ const Quality: React.FC = () => {
         )}
         
         {/* ... Include other modals (Internal Ticket, Upload, Import, Folder) similarly to previous version ... */}
-        {/* Simplified inclusion for brevity, ensuring functionality is preserved */}
         {isInternalTicketModalOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">

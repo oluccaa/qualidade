@@ -78,6 +78,28 @@ export const deleteUser = async (userId: string): Promise<void> => {
     delete userPasswords[userId]; // Clean up password store
 };
 
+// NEW: Block User explicitly (for Admin Investigations)
+export const blockUserById = async (adminUser: User, targetUserId: string, reason: string): Promise<void> => {
+    if (adminUser.role !== UserRole.ADMIN) throw new Error("Acesso negado");
+    
+    const targetIdx = currentUsers.findIndex(u => u.id === targetUserId);
+    if (targetIdx === -1) throw new Error("Usuário não encontrado.");
+
+    if (currentUsers[targetIdx].status === 'BLOCKED') throw new Error("Usuário já está bloqueado.");
+
+    currentUsers[targetIdx] = {
+        ...currentUsers[targetIdx],
+        status: 'BLOCKED'
+    };
+
+    await logAction(
+        adminUser, 
+        'SECURITY_BLOCK_USER', 
+        `Bloqueou usuário ${currentUsers[targetIdx].email}. Motivo: ${reason}`, 
+        'CRITICAL'
+    );
+};
+
 export const authenticate = async (email: string, password: string): Promise<User | null> => {
     const normalizedEmail = email.toLowerCase().trim();
     const now = Date.now();

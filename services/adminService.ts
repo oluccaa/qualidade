@@ -1,6 +1,6 @@
 
-import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, TicketFlow, SystemStatus } from '../types.ts';
-import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS } from './mockData.ts';
+import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, TicketFlow, SystemStatus, FirewallRule } from '../types.ts';
+import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS, MOCK_FIREWALL_RULES } from './mockData.ts';
 import * as fileService from './fileService.ts';
 import * as notificationService from './notificationService.ts';
 
@@ -8,6 +8,7 @@ import * as notificationService from './notificationService.ts';
 let tickets = [...MOCK_TICKETS];
 let maintenanceEvents = [...MOCK_MAINTENANCE];
 let clients = [...MOCK_CLIENTS]; 
+let firewallRules = [...MOCK_FIREWALL_RULES]; // Firewall State
 
 // Global System Status (Persisted in Memory for Mock)
 let currentSystemStatus: SystemStatus = {
@@ -225,6 +226,38 @@ export const updateTicketStatus = async (user: User, ticketId: string, status: S
     }
 };
 
+// --- FIREWALL & SECURITY ---
+
+export const getFirewallRules = async (): Promise<FirewallRule[]> => {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return [...firewallRules];
+};
+
+export const blockIpAddress = async (adminUser: User, targetIp: string, reason: string): Promise<void> => {
+    if (adminUser.role !== UserRole.ADMIN) throw new Error("Acesso negado");
+    
+    // Check if rule exists
+    const exists = firewallRules.find(r => r.source === targetIp || r.source === `${targetIp}/32`);
+    if (exists && exists.action === 'DENY' && exists.active) {
+        throw new Error("IP já está bloqueado.");
+    }
+
+    const newRule: FirewallRule = {
+        id: `fw-${Date.now()}`,
+        name: `AUTO-BLOCK: ${reason.substring(0, 15)}...`,
+        type: 'INBOUND',
+        protocol: 'ANY',
+        port: 'ANY',
+        source: targetIp,
+        action: 'DENY',
+        active: true,
+        priority: 999 // High Priority
+    };
+
+    firewallRules.unshift(newRule);
+    await fileService.logAction(adminUser, 'SECURITY_BLOCK_IP', `Bloqueou IP ${targetIp} via Auditoria`, 'CRITICAL');
+};
+
 // --- MAINTENANCE ---
 
 export const getMaintenanceEvents = async (): Promise<MaintenanceEvent[]> => {
@@ -261,10 +294,11 @@ export const scheduleMaintenance = async (user: User, event: Partial<Maintenance
     await fileService.logAction(user, 'MAINTENANCE_SCHEDULE', `Agendou manutenção: ${newEvent.title}`);
 
     // NOTIFICATION LOGIC: Broadcast to ALL users
+    const formattedDate = new Date(newEvent.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
     await notificationService.addNotification(
         'ALL',
         '⚠️ Manutenção Agendada',
-        `${newEvent.title} prevista para ${newEvent.scheduledDate}. Duração: ${newEvent.durationMinutes} min.`,
+        `${newEvent.title} em ${formattedDate}. Duração: ${newEvent.durationMinutes} min.`,
         'ALERT'
     );
 
