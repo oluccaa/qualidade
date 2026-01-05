@@ -4,31 +4,80 @@ import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS, MOCK_FIREWALL_RULES } fro
 import * as fileService from './fileService.ts';
 import * as notificationService from './notificationService.ts';
 
-// In-memory state
-let tickets = [...MOCK_TICKETS];
-let maintenanceEvents = [...MOCK_MAINTENANCE];
-let clients = [...MOCK_CLIENTS]; 
-let firewallRules = [...MOCK_FIREWALL_RULES]; // Firewall State
+// --- PERSISTENCE LAYER ---
+// Load state from LocalStorage to survive page reloads
+const loadState = <T>(key: string, fallback: T): T => {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+};
 
-// Global System Status (Persisted in Memory for Mock)
-let currentSystemStatus: SystemStatus = {
-    mode: 'SCHEDULED',
-    message: 'O sistema ficará indisponível.',
-    scheduledStart: '2026-12-12T17:00:00',
-    scheduledEnd: '2026-12-12T20:00:00'
+const saveState = (key: string, data: any) => {
+    localStorage.setItem(key, JSON.stringify(data));
+};
+
+// In-memory state (Initialized from Storage or Mock)
+let tickets = [...MOCK_TICKETS];
+let clients = [...MOCK_CLIENTS]; 
+let firewallRules = [...MOCK_FIREWALL_RULES]; 
+
+// Maintenance specific state
+let maintenanceEvents: MaintenanceEvent[] = loadState('maintenance_events', [...MOCK_MAINTENANCE]);
+let currentSystemStatus: SystemStatus = loadState('system_status', {
+    mode: 'ONLINE', 
+    message: '',
+    scheduledStart: '',
+    scheduledEnd: ''
+});
+
+// --- REAL-TIME SUBSCRIPTION (OBSERVER PATTERN) ---
+type StatusListener = (status: SystemStatus) => void;
+const statusListeners: StatusListener[] = [];
+
+export const subscribeToSystemStatus = (listener: StatusListener) => {
+    statusListeners.push(listener);
+    // Send current status immediately upon subscription
+    listener({ ...currentSystemStatus });
+    return () => {
+        const idx = statusListeners.indexOf(listener);
+        if (idx > -1) statusListeners.splice(idx, 1);
+    };
+};
+
+const notifyStatusListeners = () => {
+    statusListeners.forEach(l => l({ ...currentSystemStatus }));
 };
 
 // --- SYSTEM STATUS (MAINTENANCE MODE) ---
 
 export const getSystemStatus = async (): Promise<SystemStatus> => {
-    // Check if scheduled maintenance has started automatically
+    // Check auto-start/auto-end logic based on time
+    const now = new Date();
+    let changed = false;
+
+    // 1. Check if a scheduled event should trigger MAINTENANCE mode now
     if (currentSystemStatus.mode === 'SCHEDULED' && currentSystemStatus.scheduledStart) {
-        const now = new Date();
         const start = new Date(currentSystemStatus.scheduledStart);
         if (now >= start) {
             currentSystemStatus.mode = 'MAINTENANCE';
+            changed = true;
         }
     }
+    
+    // 2. Check if MAINTENANCE mode should end
+    if (currentSystemStatus.mode === 'MAINTENANCE' && currentSystemStatus.scheduledEnd) {
+        const end = new Date(currentSystemStatus.scheduledEnd);
+        if (now >= end) {
+            currentSystemStatus.mode = 'ONLINE';
+            currentSystemStatus.message = '';
+            changed = true;
+        }
+    }
+    
+    if (changed) {
+        saveState('system_status', currentSystemStatus);
+        notifyStatusListeners();
+    }
+    
     return { ...currentSystemStatus };
 };
 
@@ -40,6 +89,8 @@ export const updateSystemStatus = async (user: User, newStatus: Partial<SystemSt
         ...newStatus,
         updatedBy: user.name
     };
+    
+    saveState('system_status', currentSystemStatus);
 
     // LOGIC: Notify users when coming BACK online
     if (previousMode === 'MAINTENANCE' && newStatus.mode === 'ONLINE') {
@@ -57,6 +108,7 @@ export const updateSystemStatus = async (user: User, newStatus: Partial<SystemSt
         await fileService.logAction(user, 'MAINTENANCE_ON', 'Sistema colocado em modo de manutenção (Bloqueio Total).', 'WARNING');
     }
 
+    notifyStatusListeners();
     return currentSystemStatus;
 };
 
@@ -156,6 +208,12 @@ export const createTicket = async (user: User, ticket: Partial<SupportTicket>): 
     tickets.unshift(newTicket);
     await fileService.logAction(user, 'TICKET_UPDATE', `Abriu chamado (${flow}): ${newTicket.subject}`);
 
+    // NOTIFICATION LOGIC: Notify Quality or Admin depending on flow
+    if (flow === 'CLIENT_TO_QUALITY') {
+        // Find Quality users to notify (Mocking finding user 'u2' for simplicity)
+        await notificationService.addNotification('u2', 'Novo Chamado de Cliente', `Cliente ${user.name} abriu: ${newTicket.subject}`, 'INFO', '/quality?view=tickets');
+    }
+
     return newTicket;
 };
 
@@ -170,11 +228,10 @@ export const resolveTicket = async (user: User, ticketId: string, status: Suppor
         const isAuthorized = 
             (user.role === UserRole.QUALITY && ticket.flow === 'CLIENT_TO_QUALITY') ||
             (user.role === UserRole.ADMIN && ticket.flow === 'QUALITY_TO_ADMIN') ||
-            (user.role === UserRole.ADMIN && ticket.flow === 'ADMIN_TO_DEV'); // Admin resolves their own external tickets manually if needed
+            (user.role === UserRole.ADMIN && ticket.flow === 'ADMIN_TO_DEV'); 
 
-        if (!isAuthorized && user.role !== UserRole.ADMIN) { // Admin overrides all
+        if (!isAuthorized && user.role !== UserRole.ADMIN) { 
              console.warn("Unauthorized ticket update attempt");
-             // In a real app throw error, but for mock we allow Admin to do anything
         }
 
         tickets[idx] = { 
@@ -192,7 +249,8 @@ export const resolveTicket = async (user: User, ticketId: string, status: Suppor
                 ticket.userId,
                 'Status do Chamado Atualizado',
                 `Seu chamado "${ticket.subject}" agora está: ${status}.`,
-                status === 'RESOLVED' ? 'SUCCESS' : 'INFO'
+                status === 'RESOLVED' ? 'SUCCESS' : 'INFO',
+                '/dashboard?view=tickets'
             );
         }
     }
@@ -220,7 +278,8 @@ export const updateTicketStatus = async (user: User, ticketId: string, status: S
                 ticket.userId,
                 'Status do Chamado Atualizado',
                 `Seu chamado "${ticket.subject}" agora está: ${status}.`,
-                status === 'RESOLVED' ? 'SUCCESS' : 'INFO'
+                status === 'RESOLVED' ? 'SUCCESS' : 'INFO',
+                '/dashboard?view=tickets'
             );
         }
     }
@@ -243,18 +302,20 @@ export const getMaintenanceEvents = async (): Promise<MaintenanceEvent[]> => {
 export const scheduleMaintenance = async (user: User, event: Partial<MaintenanceEvent>): Promise<MaintenanceEvent> => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Also update global system status if it's a schedule
-    if (event.scheduledDate) {
-        const start = new Date(event.scheduledDate);
-        const end = new Date(start.getTime() + (event.durationMinutes || 60) * 60000);
-        
-        await updateSystemStatus(user, {
-            mode: 'SCHEDULED',
-            scheduledStart: start.toISOString(),
-            scheduledEnd: end.toISOString(),
-            message: event.description
-        });
-    }
+    const start = new Date(event.scheduledDate!);
+    const end = new Date(start.getTime() + (event.durationMinutes || 60) * 60000);
+    const now = new Date();
+
+    // Determine Mode immediately
+    const newMode = start <= now ? 'MAINTENANCE' : 'SCHEDULED';
+    
+    // Always update global system status if it's a valid schedule
+    await updateSystemStatus(user, {
+        mode: newMode,
+        scheduledStart: start.toISOString(),
+        scheduledEnd: end.toISOString(),
+        message: event.description || 'Manutenção programada'
+    });
 
     const newEvent: MaintenanceEvent = {
         id: `m-${Date.now()}`,
@@ -265,7 +326,10 @@ export const scheduleMaintenance = async (user: User, event: Partial<Maintenance
         status: 'SCHEDULED',
         createdBy: user.name
     };
+    
     maintenanceEvents.unshift(newEvent);
+    saveState('maintenance_events', maintenanceEvents);
+    
     await fileService.logAction(user, 'MAINTENANCE_SCHEDULE', `Agendou manutenção: ${newEvent.title}`);
 
     // NOTIFICATION LOGIC: Broadcast to ALL users
@@ -282,19 +346,29 @@ export const scheduleMaintenance = async (user: User, event: Partial<Maintenance
 
 export const cancelMaintenance = async (user: User, eventId: string): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 300));
+    
     const idx = maintenanceEvents.findIndex(m => m.id === eventId);
     
-    // Reset system status if canceling pending maintenance
-    if (currentSystemStatus.mode === 'SCHEDULED' || currentSystemStatus.mode === 'MAINTENANCE') {
-        await updateSystemStatus(user, { mode: 'ONLINE', message: '' });
-    }
-
     if (idx !== -1) {
         const event = maintenanceEvents[idx];
         maintenanceEvents[idx] = { ...event, status: 'CANCELLED' };
+        saveState('maintenance_events', maintenanceEvents);
+
+        // Check if this was the Active/Scheduled event driving the system status
+        // If the cancelled event's time matches current system status time, we assume it's the one to cancel
+        const isCurrentEvent = currentSystemStatus.scheduledStart === event.scheduledDate;
+        
+        if (isCurrentEvent || currentSystemStatus.mode !== 'ONLINE') {
+            await updateSystemStatus(user, { 
+                mode: 'ONLINE', 
+                message: '',
+                scheduledStart: '',
+                scheduledEnd: ''
+            });
+        }
+
         await fileService.logAction(user, 'MAINTENANCE_SCHEDULE', `Cancelou manutenção: ${event.title}`);
 
-        // Notify cancellation
         await notificationService.addNotification(
             'ALL',
             'Manutenção Cancelada',

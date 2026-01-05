@@ -1,6 +1,7 @@
 
 import { FileNode, User, UserRole, AuditLog, FileType, LibraryFilters, FileMetadata } from '../types.ts';
 import { MOCK_FILES, MOCK_LOGS, MASTER_ORG_ID, MOCK_CLIENTS } from './mockData.ts';
+import * as notificationService from './notificationService.ts';
 
 // Simulate a database state
 let currentFiles = [...MOCK_FILES];
@@ -111,6 +112,12 @@ export const importFilesFromMaster = async (user: User, fileIds: string[], targe
 
     currentFiles.push(...newFiles);
     await logAction(user, 'UPLOAD', `Importou ${newFiles.length} arquivos do Repositório Mestre`);
+    
+    // NOTIFICATION: Find users of this client Org and notify them
+    // In a real app we'd fetch users by OrgID. Here we cheat and use MOCK_USERS implicitly via notificationService filtering or logic
+    // For now, we will add a notification for the 'targetOwnerId' context if possible, but our NotifService uses UserId.
+    // We'll find users belonging to targetOwnerId.
+    // (Since we don't have access to MOCK_USERS array here easily without import cycle, we skip broad notification or implement later)
 };
 
 // Get recent files (flat list) for dashboard or history view
@@ -255,6 +262,19 @@ export const uploadFile = async (user: User, fileData: Partial<FileNode>, ownerI
 
     currentFiles.push(newFile);
     await logAction(user, 'UPLOAD', newFile.name);
+
+    // NOTIFICATION: If Quality uploaded for a specific client (and approved), notify that client's users
+    if (user.role === UserRole.QUALITY && ownerId !== MASTER_ORG_ID && newFile.metadata?.status === 'APPROVED') {
+        // Find users for this client (Mock logic: Assuming we know user IDs or notify all in that org)
+        // Hardcoded example: If uploading for Empresa X (c1), notify u3 and u6
+        if (ownerId === 'c1') {
+             await notificationService.addNotification('u3', 'Novo Documento Disponível', `Certificado ${newFile.name} foi adicionado.`, 'SUCCESS', '/dashboard?view=recent');
+             await notificationService.addNotification('u6', 'Novo Documento Disponível', `Certificado ${newFile.name} foi adicionado.`, 'SUCCESS', '/dashboard?view=recent');
+        } else if (ownerId === 'c2') {
+             await notificationService.addNotification('u4', 'Novo Documento Disponível', `Certificado ${newFile.name} foi adicionado.`, 'SUCCESS', '/dashboard?view=recent');
+        }
+    }
+
     return newFile;
 };
 

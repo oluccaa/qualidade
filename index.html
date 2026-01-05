@@ -47,19 +47,22 @@
           background-clip: content-box;
       }
 
-      /* Sidebar Specific Scrollbar (Dark Theme) */
+      /* Sidebar Specific Scrollbar (Dark Theme) - Stylized */
       .sidebar-scrollbar::-webkit-scrollbar {
-          width: 4px; /* Thin */
+          width: 5px; /* Slightly wider for usability */
       }
       .sidebar-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
+          background: rgba(15, 23, 42, 0.5); /* Slate-900 transparent */
+          margin-top: 10px;
+          margin-bottom: 10px;
       }
       .sidebar-scrollbar::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.1); /* Subtle white on dark */
-          border-radius: 4px;
+          background-color: rgba(255, 255, 255, 0.15); /* Glass effect */
+          border-radius: 10px;
+          transition: background-color 0.3s;
       }
       .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-          background-color: rgba(255, 255, 255, 0.2);
+          background-color: rgba(255, 255, 255, 0.3); /* Brighter on hover */
       }
     </style>
   <script type="importmap">

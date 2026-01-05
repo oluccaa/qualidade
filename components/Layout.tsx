@@ -14,11 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { 
   LogOut, 
   LayoutDashboard, 
-  FolderOpen, 
   Settings, 
   ShieldCheck,
-  Menu,
-  X,
   Bell,
   Search,
   Phone,
@@ -35,18 +32,14 @@ import {
   Library,
   Shield,
   User as UserIcon,
-  MoreHorizontal,
-  FileSearch,
   Info,
   ArrowLeft,
-  Command,
   BarChart3,
   Users,
   Building2,
   LifeBuoy,
   ShieldAlert,
   Server,
-  Network,
   Lock,
   Database,
   Inbox
@@ -103,10 +96,27 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       if (user) {
           fetchNotifications();
           checkSystemStatus();
+
+          // --- REAL-TIME CONNECTIONS ---
+          
+          // 1. Subscribe to System Status (Maintenance)
+          const unsubStatus = adminService.subscribeToSystemStatus((status) => {
+              setSystemStatus(status);
+          });
+
+          // 2. Subscribe to Notifications
+          const unsubNotifs = notificationService.subscribeToNotifications(() => {
+              fetchNotifications();
+          });
+
+          return () => {
+              unsubStatus();
+              unsubNotifs();
+          };
       }
   }, [user]);
 
-  // Poll for system status updates
+  // Keep polling as backup for time-based triggers (e.g. maintenance auto-start)
   useEffect(() => {
       const interval = setInterval(checkSystemStatus, 30000);
       return () => clearInterval(interval);
@@ -144,7 +154,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const handleMarkAsRead = async (id: string, link?: string) => {
       await notificationService.markAsRead(id);
-      fetchNotifications();
+      // fetchNotifications handled by subscription
       if (link) {
           setIsNotifOpen(false);
           navigate(link);
@@ -154,7 +164,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const handleMarkAllRead = async () => {
       if (!user) return;
       await notificationService.markAllAsRead(user);
-      fetchNotifications();
+      // fetchNotifications handled by subscription
   };
 
   const toggleSidebar = () => {
@@ -165,6 +175,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const changeLanguage = (lng: string) => {
       i18n.changeLanguage(lng);
+      localStorage.setItem('i18nextLng', lng);
   };
 
   const roleLabel = user ? t(`roles.${user.role}`) : '';
@@ -253,7 +264,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const isActive = (path: string, exact = false) => {
       if (exact) return location.pathname === path && location.search === '';
-      // Specific logic for Quality Views to highlight correctly
       if (path.includes('?view=')) {
           return location.pathname + location.search === path;
       }

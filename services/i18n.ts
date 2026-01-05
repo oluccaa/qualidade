@@ -2,6 +2,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
+// Detect saved language or default to browser/pt
+const savedLanguage = localStorage.getItem('i18nextLng') || 'pt';
+
 const resources = {
   pt: {
     translation: {
@@ -1170,7 +1173,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: "pt", 
+    lng: savedLanguage, // Use saved language
     fallbackLng: "pt",
     interpolation: {
       escapeValue: false
