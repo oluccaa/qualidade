@@ -166,6 +166,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         {
           title: t('menu.quickAccess'),
           items: [
+            { label: t('menu.tickets'), icon: LifeBuoy, path: '/dashboard?view=tickets' },
             { label: t('menu.recent'), icon: History, path: '/dashboard?view=recent' },
             { label: t('menu.favorites'), icon: Star, path: '/dashboard?view=favorites' },
           ]
@@ -214,6 +215,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
       if (role === UserRole.CLIENT) {
           items.push({ label: t('menu.library'), icon: Library, path: '/dashboard?view=files', exact: false });
+          items.push({ label: 'Chamados', icon: LifeBuoy, path: '/dashboard?view=tickets', exact: false });
       } else if (role === UserRole.ADMIN) {
           items.push({ label: 'Admin', icon: BarChart3, path: '/admin', exact: false });
       } else {
@@ -245,19 +247,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     if (isCollapsed) return null; 
     
     return (
-      <div className="mx-4 mt-6 p-4 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 relative overflow-hidden group animate-in fade-in duration-300">
-          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-              <ShieldCheck size={48} className="text-blue-400" />
+      <div className="mx-3 mt-4 p-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 relative overflow-hidden group animate-in fade-in duration-300">
+          <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
+              <ShieldCheck size={40} className="text-blue-400" />
           </div>
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{t('menu.help')}?</h4>
-          <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('menu.help')}?</h4>
+          <p className="text-[10px] text-slate-400 mb-2 leading-relaxed">
               {t('layout.supportQuestion')}
           </p>
           <button 
             onClick={() => setIsSupportOpen(true)}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-1.5 px-2 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
           >
-              <Phone size={14} /> {t('menu.support')}
+              <Phone size={12} /> {t('menu.support')}
           </button>
       </div>
     );
@@ -267,18 +269,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const renderAdminSupportWidget = () => {
       if (isCollapsed) return null;
       return (
-          <div className="mx-4 mt-6 pt-4 border-t border-slate-800/50 relative z-10">
+          <div className="mx-3 mt-4 pt-3 border-t border-slate-800/50 relative z-10">
               <button 
                 onClick={() => setIsN3SupportOpen(true)} 
                 className="w-full bg-gradient-to-r from-orange-600 to-red-600 p-0.5 rounded-xl group relative overflow-hidden shadow-lg hover:shadow-orange-900/40 transition-all"
               >
-                  <div className="bg-slate-950 rounded-[10px] p-3 flex items-center gap-3 relative z-10 group-hover:bg-opacity-90 transition-all">
-                      <div className="p-2 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg text-white shadow-inner">
-                          <Server size={18} />
+                  <div className="bg-slate-950 rounded-[10px] p-2.5 flex items-center gap-2 relative z-10 group-hover:bg-opacity-90 transition-all">
+                      <div className="p-1.5 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg text-white shadow-inner shrink-0">
+                          <Server size={14} />
                       </div>
-                      <div className="text-left">
-                          <span className="font-bold text-white text-sm block">{t('admin.settings.techSupport')}</span>
-                          <span className="text-[10px] text-slate-400">Equipe Externa</span>
+                      <div className="text-left min-w-0">
+                          <span className="font-bold text-white text-xs block truncate">{t('admin.settings.techSupport')}</span>
+                          <span className="text-[9px] text-slate-400 block">Equipe Externa</span>
                       </div>
                   </div>
               </button>
@@ -408,14 +410,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       <N3SupportModal isOpen={isN3SupportOpen} onClose={() => setIsN3SupportOpen(false)} user={user} />
       <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
 
-      {/* --- SIDEBAR (DESKTOP ONLY) - NEXT LEVEL UPGRADE --- */}
+      {/* --- SIDEBAR (DESKTOP ONLY) - COMPACT UPGRADE --- */}
       <aside 
         className={`
           hidden md:flex flex-col 
           bg-[#0f172a] text-slate-300 
           shadow-2xl z-[60] relative transition-all duration-500 ease-in-out
-          ${isCollapsed ? 'w-24' : 'w-80'}
-          overflow-visible
+          ${isCollapsed ? 'w-20' : 'w-72'} 
+          overflow-visible h-screen
         `}
       >
         {/* Background Gradient for Depth */}
@@ -423,41 +425,41 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
         <button 
             onClick={toggleSidebar}
-            className="absolute -right-4 top-10 z-[70] bg-white text-slate-600 border border-slate-200 rounded-full h-8 w-8 flex items-center justify-center shadow-lg hover:text-blue-600 hover:border-blue-400 hover:scale-110 transition-all cursor-pointer ring-4 ring-slate-50/50"
+            className="absolute -right-3 top-8 z-[70] bg-white text-slate-600 border border-slate-200 rounded-full h-6 w-6 flex items-center justify-center shadow-lg hover:text-blue-600 hover:border-blue-400 hover:scale-110 transition-all cursor-pointer ring-2 ring-slate-50/50"
             title={isCollapsed ? t('common.expand') : t('common.collapse')}
         >
-            {isCollapsed ? <ChevronRight size={16} strokeWidth={3} /> : <ChevronLeft size={16} strokeWidth={3} />}
+            {isCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
         </button>
 
-        {/* LOGO AREA */}
-        <div className={`h-24 flex items-center border-b border-slate-800/60 bg-[#0f172a]/50 backdrop-blur-sm shrink-0 transition-all duration-500 relative z-10 ${isCollapsed ? 'justify-center px-0' : 'px-8'}`}>
-          <div className="flex items-center gap-4">
-            <div className={`bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-blue-900/30 shrink-0 transition-transform duration-500 ${isCollapsed ? 'scale-110' : 'scale-100'}`}>
-              <ShieldCheck size={28} className="text-white" strokeWidth={2.5} />
+        {/* LOGO AREA - MORE COMPACT */}
+        <div className={`h-20 flex items-center border-b border-slate-800/60 bg-[#0f172a]/50 backdrop-blur-sm shrink-0 transition-all duration-500 relative z-10 ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg shadow-blue-900/30 shrink-0 transition-transform duration-500 ${isCollapsed ? 'scale-110' : 'scale-100'}`}>
+              <ShieldCheck size={24} className="text-white" strokeWidth={2.5} />
             </div>
             
             <div className={`flex flex-col overflow-hidden transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 absolute' : 'w-auto opacity-100'}`}>
-              <span className="font-bold text-xl text-white tracking-tight leading-none whitespace-nowrap">{t('menu.brand')}</span>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-blue-400 font-bold mt-1.5 whitespace-nowrap">{t('menu.portalName')}</span>
+              <span className="font-bold text-lg text-white tracking-tight leading-none whitespace-nowrap">{t('menu.brand')}</span>
+              <span className="text-[9px] uppercase tracking-[0.2em] text-blue-400 font-bold mt-1 whitespace-nowrap">{t('menu.portalName')}</span>
             </div>
           </div>
         </div>
 
-        {/* MENU ITEMS */}
-        <nav className="flex-1 py-4 space-y-2 relative z-10">
+        {/* MENU ITEMS - SCROLLABLE (But Compact) */}
+        <nav className="flex-1 py-3 space-y-1 relative z-10 overflow-y-auto custom-scrollbar overflow-x-hidden min-h-0">
           {menuSections.map((section, idx) => (
-            <div key={idx} className="px-4">
+            <div key={idx} className="px-3">
                {!isCollapsed && section.title && (
-                 <div className="mb-3 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 animate-in fade-in duration-500">
+                 <div className="mb-2 px-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 animate-in fade-in duration-500 mt-2">
                     {section.title}
                  </div>
                )}
                
                {isCollapsed && section.title && idx > 0 && (
-                   <div className="my-4 border-t border-slate-800/50 mx-4" />
+                   <div className="my-3 border-t border-slate-800/50 mx-2" />
                )}
 
-               <div className="space-y-1.5">
+               <div className="space-y-1">
                  {section.items.map((item) => {
                     const active = isActive(item.path);
                     return (
@@ -466,8 +468,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                         to={item.path}
                         className={`
                           group flex items-center relative
-                          py-3.5 rounded-2xl transition-all duration-300 ease-out
-                          ${isCollapsed ? 'justify-center px-0 mx-2' : 'px-5 gap-4'}
+                          py-2.5 rounded-xl transition-all duration-300 ease-out
+                          ${isCollapsed ? 'justify-center px-0 mx-1' : 'px-4 gap-3'}
                           ${active 
                             ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/10 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] border border-white/5 backdrop-blur-md' 
                             : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'}
@@ -475,22 +477,22 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                       >
                         {/* Active Indicator Line (Left) */}
                         {active && !isCollapsed && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.6)]"></div>
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.6)]"></div>
                         )}
 
                         <item.icon 
-                            size={isCollapsed ? 24 : 20} 
+                            size={isCollapsed ? 20 : 18} 
                             className={`shrink-0 transition-all duration-300 ${active ? 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' : 'group-hover:text-white group-hover:scale-110'}`} 
                             strokeWidth={active ? 2.5 : 2}
                         />
                         
-                        <span className={`whitespace-nowrap font-medium transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
+                        <span className={`whitespace-nowrap text-sm font-medium transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
                             {item.label}
                         </span>
 
                         {/* Collapsed Tooltip */}
                         {isCollapsed && (
-                            <div className="absolute left-full ml-5 px-3 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 border border-slate-700 translate-x-2 group-hover:translate-x-0">
+                            <div className="absolute left-full ml-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-50 border border-slate-700 translate-x-2 group-hover:translate-x-0">
                                 {item.label}
                                 <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
                             </div>
@@ -506,48 +508,48 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           {user?.role === UserRole.ADMIN && renderAdminSupportWidget()}
         </nav>
 
-        {/* USER PROFILE FOOTER */}
-        <div className="p-6 border-t border-slate-800/60 bg-[#0f172a]/30 shrink-0 relative z-10" ref={userMenuRef}>
+        {/* USER PROFILE FOOTER - COMPACT */}
+        <div className="p-4 border-t border-slate-800/60 bg-[#0f172a]/30 shrink-0 relative z-10" ref={userMenuRef}>
           <div 
              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
              className={`
-                flex items-center rounded-2xl transition-all duration-300 relative
-                ${isCollapsed ? 'justify-center p-0' : 'p-3 bg-slate-800/40 border border-slate-700/50 gap-3 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 group'}
+                flex items-center rounded-xl transition-all duration-300 relative
+                ${isCollapsed ? 'justify-center p-0' : 'p-2.5 bg-slate-800/40 border border-slate-700/50 gap-3 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 group'}
           `}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-white font-bold shadow-inner border border-slate-500/30 shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-white font-bold shadow-inner border border-slate-500/30 shrink-0 text-sm">
               {user?.name.charAt(0)}
             </div>
             <div className={`flex-1 overflow-hidden transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
-              <p className="text-sm font-semibold text-white truncate group-hover:text-blue-200 transition-colors">{user?.name}</p>
-              <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs font-semibold text-white truncate group-hover:text-blue-200 transition-colors">{user?.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
-                  <p className="text-[10px] text-slate-400 truncate uppercase tracking-wider font-bold">{roleLabel}</p>
+                  <p className="text-[9px] text-slate-400 truncate uppercase tracking-wider font-bold">{roleLabel}</p>
               </div>
             </div>
             
             {!isCollapsed && isUserMenuOpen && (
                 <div className="absolute bottom-full left-0 mb-4 w-full bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 z-50">
-                    <button onClick={() => setIsChangePasswordOpen(true)} className="w-full text-left px-5 py-3.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-3 transition-colors">
-                        <Lock size={16} className="text-blue-500" /> {t('common.changePassword')}
+                    <button onClick={() => setIsChangePasswordOpen(true)} className="w-full text-left px-5 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-3 transition-colors">
+                        <Lock size={14} className="text-blue-500" /> {t('common.changePassword')}
                     </button>
                     <div className="h-px bg-slate-700/50" />
-                    <button onClick={() => setIsPrivacyOpen(true)} className="w-full text-left px-5 py-3.5 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-3 transition-colors">
-                        <Shield size={16} className="text-blue-500" /> {t('common.privacy')}
+                    <button onClick={() => setIsPrivacyOpen(true)} className="w-full text-left px-5 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-3 transition-colors">
+                        <Shield size={14} className="text-blue-500" /> {t('common.privacy')}
                     </button>
                     <div className="h-px bg-slate-700/50" />
-                    <button onClick={logout} className="w-full text-left px-5 py-3.5 text-xs font-bold text-red-400 hover:bg-red-900/20 flex items-center gap-3 transition-colors">
-                        <LogOut size={16} /> {t('common.logout')}
+                    <button onClick={logout} className="w-full text-left px-5 py-3 text-xs font-bold text-red-400 hover:bg-red-900/20 flex items-center gap-3 transition-colors">
+                        <LogOut size={14} /> {t('common.logout')}
                     </button>
                 </div>
             )}
             
             {isCollapsed && (
-                <div className="absolute right-0 top-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#0f172a] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute right-0 top-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#0f172a] opacity-0 group-hover:opacity-100 transition-opacity"></div>
             )}
           </div>
            {isCollapsed && (
-             <button onClick={logout} className="mt-4 w-full flex justify-center items-center py-3 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-xl transition-all group relative">
-                <LogOut size={20} />
+             <button onClick={logout} className="mt-3 w-full flex justify-center items-center py-2 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-xl transition-all group relative">
+                <LogOut size={18} />
             </button>
           )}
         </div>

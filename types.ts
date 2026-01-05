@@ -93,15 +93,21 @@ export interface AppNotification {
   link?: string; // Optional navigation link
 }
 
+export type TicketFlow = 'CLIENT_TO_QUALITY' | 'QUALITY_TO_ADMIN' | 'ADMIN_TO_DEV';
+
 export interface SupportTicket {
   id: string;
-  userId: string;
-  userName: string;
+  flow: TicketFlow; // Define quem atende quem
+  userId: string; // Quem abriu
+  userName: string; 
+  clientId?: string; // Contexto da organização (se aplicável)
   subject: string;
-  description: string;
+  description: string; // O problema relatado
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  resolutionNote?: string; // Texto preenchido por quem resolveu
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface MaintenanceEvent {

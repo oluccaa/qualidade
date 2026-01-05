@@ -3,9 +3,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer } from '../components/FileExplorer.tsx';
+import { SupportModal } from '../components/SupportModal.tsx';
 import { useAuth } from '../services/authContext.tsx';
 import { getRecentFiles, getLibraryFiles, getFileSignedUrl, getFavorites } from '../services/fileService.ts';
-import { FileNode, LibraryFilters } from '../types.ts';
+import * as adminService from '../services/adminService.ts';
+import { FileNode, LibraryFilters, SupportTicket } from '../types.ts';
 import { useTranslation } from 'react-i18next';
 import { 
     Search, 
@@ -17,7 +19,12 @@ import {
     History,
     CheckCircle2,
     ShieldCheck,
-    Shield
+    Shield,
+    LifeBuoy,
+    Plus,
+    Clock,
+    AlertCircle,
+    MessageSquare
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -28,13 +35,14 @@ const Dashboard: React.FC = () => {
   
   // View State
   const queryParams = new URLSearchParams(location.search);
-  const currentView = queryParams.get('view') || 'home'; // 'home' | 'files' | 'recent' | 'favorites'
+  const currentView = queryParams.get('view') || 'home'; // 'home' | 'files' | 'recent' | 'favorites' | 'tickets'
 
   // --- HOME VIEW STATE ---
   const [quickSearch, setQuickSearch] = useState('');
 
-  // --- LIBRARY / FAVORITES / RECENT VIEW STATE ---
+  // --- DATA STATE ---
   const [viewFiles, setViewFiles] = useState<FileNode[]>([]);
+  const [clientTickets, setClientTickets] = useState<SupportTicket[]>([]); // Tickets State
   const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState<LibraryFilters>({
       startDate: '',
@@ -42,6 +50,9 @@ const Dashboard: React.FC = () => {
       status: 'ALL',
       search: ''
   });
+
+  // --- MODAL STATE ---
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   // Main Data Fetcher based on View
   const fetchData = useCallback(async () => {
@@ -56,8 +67,13 @@ const Dashboard: React.FC = () => {
               const results = await getFavorites(user);
               setViewFiles(results);
           } else if (currentView === 'recent') {
-              const results = await getRecentFiles(user, 50); // Fetch more history for dedicated page
+              const results = await getRecentFiles(user, 50); 
               setViewFiles(results);
+          } else if (currentView === 'tickets') {
+              const results = await adminService.getMyTickets(user);
+              // Sort by Date Descending
+              results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              setClientTickets(results);
           }
       } finally {
           setIsLoading(false);
@@ -67,14 +83,35 @@ const Dashboard: React.FC = () => {
   // Trigger fetch when view or filters change
   useEffect(() => {
       if (currentView !== 'home') {
-          // Debounce slightly for search/filter inputs
           const timeoutId = setTimeout(fetchData, 300);
           return () => clearTimeout(timeoutId);
       }
   }, [fetchData, currentView]);
 
+  // Close modal and refresh tickets
+  const handleSupportClose = () => {
+      setIsSupportModalOpen(false);
+      if (currentView === 'tickets') fetchData(); 
+  };
+
   const clearFilters = () => {
       setFilters({ startDate: '', endDate: '', status: 'ALL', search: '' });
+  };
+
+  const getTicketStatusColor = (status: string) => {
+      switch (status) {
+          case 'RESOLVED': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+          case 'IN_PROGRESS': return 'bg-blue-100 text-blue-700 border-blue-200';
+          default: return 'bg-orange-100 text-orange-700 border-orange-200';
+      }
+  };
+
+  const getStatusIcon = (status: string) => {
+      switch (status) {
+          case 'RESOLVED': return <CheckCircle2 size={14} />;
+          case 'IN_PROGRESS': return <Clock size={14} />;
+          default: return <AlertCircle size={14} />;
+      }
   };
 
   // --- RENDER: HOME VIEW ---
@@ -221,7 +258,9 @@ const Dashboard: React.FC = () => {
       );
   }
 
-  // --- RENDER: LIBRARY / FAVORITES / RECENT VIEW ---
+  // --- RENDER: LIBRARY / FAVORITES / RECENT / TICKETS VIEW ---
+  
+  // Also Render Support Modal if open
   
   let pageTitle = t('dashboard.libraryTitle');
   let pageIcon = <Filter size={20} className="text-blue-500" />;
@@ -233,10 +272,15 @@ const Dashboard: React.FC = () => {
   } else if (currentView === 'recent') {
       pageTitle = t('dashboard.historyTitle');
       pageIcon = <History size={20} className="text-orange-500" />;
+  } else if (currentView === 'tickets') {
+      pageTitle = t('dashboard.ticketsTitle');
+      pageIcon = <LifeBuoy size={20} className="text-red-500" />;
   }
 
   return (
     <Layout title={pageTitle}>
+        <SupportModal isOpen={isSupportModalOpen} onClose={handleSupportClose} />
+
         <div className="flex flex-col gap-6 h-[calc(100vh-140px)]">
             
             {/* Advanced Filters Bar - ONLY for Library View */}
@@ -314,13 +358,26 @@ const Dashboard: React.FC = () => {
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <div className="flex items-center gap-2">
                         {pageIcon}
-                        <h2 className="font-bold text-slate-700">{pageTitle}</h2>
-                        <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full border border-slate-200">
-                            {viewFiles.length}
-                        </span>
+                        <div className="flex flex-col">
+                            <h2 className="font-bold text-slate-700">{pageTitle}</h2>
+                            {currentView === 'tickets' && <span className="text-[10px] text-slate-400">{t('dashboard.ticketsIntro')}</span>}
+                        </div>
+                        {currentView !== 'tickets' && (
+                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                                {viewFiles.length}
+                            </span>
+                        )}
                     </div>
                     {currentView === 'favorites' && (
                         <p className="text-xs text-slate-400 hidden sm:block">{t('dashboard.quickAccessItems')}</p>
+                    )}
+                    {currentView === 'tickets' && (
+                        <button 
+                            onClick={() => setIsSupportModalOpen(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors shadow-sm"
+                        >
+                            <Plus size={16} /> {t('dashboard.openTicket')}
+                        </button>
                     )}
                 </div>
                 
@@ -328,13 +385,60 @@ const Dashboard: React.FC = () => {
                     <div className="flex-1 flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
+                ) : currentView === 'tickets' ? (
+                    /* --- TICKETS VIEW RENDER --- */
+                    <div className="flex-1 overflow-auto bg-slate-50 p-4">
+                        {clientTickets.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                                <MessageSquare size={48} className="mb-4 text-slate-200" />
+                                <p className="font-medium">{t('dashboard.noTickets')}</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {clientTickets.map(ticket => (
+                                    <div key={ticket.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getTicketStatusColor(ticket.status)}`}>
+                                                    {getStatusIcon(ticket.status)}
+                                                    {t(`admin.tickets.status.${ticket.status}`)}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 font-mono">#{ticket.id}</span>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400">{ticket.createdAt}</span>
+                                        </div>
+                                        
+                                        <h3 className="font-bold text-slate-800 text-sm mb-2 group-hover:text-blue-600 transition-colors">{ticket.subject}</h3>
+                                        
+                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-3">
+                                            <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                                                {ticket.description}
+                                            </p>
+                                        </div>
+
+                                        {ticket.resolutionNote && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100 animate-in fade-in">
+                                                <p className="text-[10px] font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
+                                                    <CheckCircle2 size={10} className="text-emerald-500" /> {t('dashboard.ticketResolution')}
+                                                </p>
+                                                <p className="text-xs text-slate-600 italic bg-emerald-50/50 p-2 rounded text-emerald-800 border border-emerald-100">
+                                                    "{ticket.resolutionNote}"
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 ) : (
+                    /* --- FILES VIEW RENDER --- */
                     <div className="flex-1 overflow-hidden">
                         <FileExplorer 
                             allowUpload={false} 
                             externalFiles={viewFiles} 
                             flatMode={true} 
-                            onRefresh={fetchData} // Allow FileExplorer to trigger a refresh (e.g. after unfavoriting)
+                            onRefresh={fetchData} 
                         />
                     </div>
                 )}

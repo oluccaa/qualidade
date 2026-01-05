@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout.tsx';
-import { MOCK_CLIENTS, MOCK_PORTS, MOCK_FIREWALL_RULES } from '../services/mockData.ts';
+import { MOCK_PORTS, MOCK_FIREWALL_RULES } from '../services/mockData.ts';
 import { getAuditLogs } from '../services/fileService.ts';
 import * as adminService from '../services/adminService.ts';
 import { UserRole, AuditLog, User, ClientOrganization, SupportTicket, MaintenanceEvent, NetworkPort, FirewallRule } from '../types.ts';
@@ -112,7 +112,6 @@ const Admin: React.FC = () => {
   const activeTab = (searchParams.get('tab') as 'overview' | 'users' | 'clients' | 'logs' | 'settings' | 'tickets' | 'firewall') || 'overview';
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null); // For Log Inspector
   
   // Investigation State
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
@@ -128,9 +127,18 @@ const Admin: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isHardening, setIsHardening] = useState(false);
 
+  // Settings State (Mock)
+  const [systemSettings, setSystemSettings] = useState({
+      enforce2FA: true,
+      sessionTimeout: 30,
+      maintenanceMode: false,
+      allowGuestAccess: false,
+      logRetentionDays: 90
+  });
+
   // Data State
   const [usersList, setUsersList] = useState<User[]>([]);
-  const [clientsList, setClientsList] = useState<ClientOrganization[]>(MOCK_CLIENTS);
+  const [clientsList, setClientsList] = useState<ClientOrganization[]>([]);
   const [ticketsList, setTicketsList] = useState<SupportTicket[]>([]);
   const [maintenanceList, setMaintenanceList] = useState<MaintenanceEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -171,14 +179,16 @@ const Admin: React.FC = () => {
   const loadData = async () => {
       setIsLoading(true);
       try {
-          const [users, ticketData, maintenanceData] = await Promise.all([
+          const [users, ticketData, maintenanceData, clients] = await Promise.all([
               userService.getUsers(),
               adminService.getTickets(),
-              adminService.getMaintenanceEvents()
+              adminService.getMaintenanceEvents(),
+              adminService.getClients()
           ]);
           setUsersList(users);
           setTicketsList(ticketData);
           setMaintenanceList(maintenanceData);
+          setClientsList(clients);
           if (user) getAuditLogs(user).then(setLogs);
       } finally {
           setIsLoading(false);
@@ -279,6 +289,19 @@ const Admin: React.FC = () => {
       setIsInvestigationModalOpen(true);
   };
 
+  const handleExportLogs = () => {
+      const csvContent = "data:text/csv;charset=utf-8," 
+          + "Timestamp,User,Role,Action,Target,IP,Severity\n"
+          + filteredLogs.map(l => `${l.timestamp},${l.userName},${l.userRole},${l.action},${l.target},${l.ip},${l.severity}`).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "security_logs.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
   const handleSaveUser = async (e: React.FormEvent) => {
       e.preventDefault();
       
@@ -313,24 +336,22 @@ const Admin: React.FC = () => {
 
   const handleSaveClient = async (e: React.FormEvent) => {
       e.preventDefault();
-      
-      const clientPayload: ClientOrganization = {
-          id: editingClient ? editingClient.id : `c${Date.now()}`,
+      if (!user) return;
+
+      const clientPayload: Partial<ClientOrganization> = {
+          id: editingClient?.id,
           name: clientFormData.name,
           cnpj: clientFormData.cnpj,
           contractDate: clientFormData.contractDate,
           status: clientFormData.status as 'ACTIVE' | 'INACTIVE'
       };
 
-      if (editingClient) {
-          setClientsList(prev => prev.map(c => c.id === clientPayload.id ? clientPayload : c));
-      } else {
-          setClientsList(prev => [...prev, clientPayload]);
-      }
-
+      await adminService.saveClient(user, clientPayload);
+      
       setIsClientModalOpen(false);
       setEditingClient(null);
       resetClientForm();
+      loadData();
   };
 
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -376,13 +397,11 @@ const Admin: React.FC = () => {
       }
   };
 
-  const handleToggleClientStatus = (clientId: string) => {
-      setClientsList(prev => prev.map(c => {
-          if (c.id === clientId) {
-              return { ...c, status: c.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' };
-          }
-          return c;
-      }));
+  const handleToggleClientStatus = async (client: ClientOrganization) => {
+      if (!user) return;
+      const newStatus = client.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      await adminService.saveClient(user, { ...client, status: newStatus });
+      loadData();
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -392,10 +411,16 @@ const Admin: React.FC = () => {
       }
   };
 
-  const handleDeleteClient = (clientId: string) => {
+  const handleDeleteClient = async (clientId: string) => {
+      if(!user) return;
       if(window.confirm("Tem certeza que deseja remover esta empresa? Isso pode afetar usuários vinculados.")) {
-          setClientsList(prev => prev.filter(c => c.id !== clientId));
+          await adminService.deleteClient(user, clientId);
+          loadData();
       }
+  };
+
+  const handleToggleSetting = (key: keyof typeof systemSettings) => {
+      setSystemSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const openModal = (userToEdit?: User) => {
@@ -480,7 +505,7 @@ const Admin: React.FC = () => {
     <Layout title={t('menu.management')}>
       
       {/* ADMIN CONTENT AREA */}
-      <div className="flex flex-col relative w-full h-full">
+      <div className="flex flex-col relative w-full">
           
           {/* Toolbar Contextual */}
           {activeTab !== 'overview' && activeTab !== 'settings' && activeTab !== 'firewall' && (
@@ -511,11 +536,16 @@ const Admin: React.FC = () => {
                              <Plus size={16} /> {t('admin.tickets.newTicket')}
                          </button>
                      )}
+                     {activeTab === 'logs' && (
+                         <button onClick={handleExportLogs} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all whitespace-nowrap active:scale-95">
+                             <Download size={16} /> {t('admin.stats.exportCsv')}
+                         </button>
+                     )}
                  </div>
              </div>
           )}
 
-          <div className="w-full h-full flex flex-col">
+          <div className="w-full flex flex-col">
               {/* --- OVERVIEW TAB --- */}
               {activeTab === 'overview' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -582,13 +612,282 @@ const Admin: React.FC = () => {
                   </div>
               )}
 
+              {/* --- LOGS TAB --- */}
+              {activeTab === 'logs' && (
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col animate-in fade-in duration-300">
+                      
+                      {/* Sub-toolbar for filters */}
+                      <div className="p-3 border-b border-slate-100 flex flex-wrap gap-3 bg-slate-50/50 items-center">
+                          <div className="flex items-center gap-2">
+                              <Filter size={14} className="text-slate-400" />
+                              <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.users.filters')}:</span>
+                          </div>
+                          <select 
+                              value={severityFilter}
+                              onChange={(e) => setSeverityFilter(e.target.value as any)}
+                              className="text-xs border-none bg-white py-1.5 px-3 rounded-lg shadow-sm ring-1 ring-slate-200 focus:ring-blue-500 cursor-pointer"
+                          >
+                              <option value="ALL">Todas Severidades</option>
+                              <option value="INFO">Info</option>
+                              <option value="WARNING">Warning</option>
+                              <option value="ERROR">Error</option>
+                              <option value="CRITICAL">Critical</option>
+                          </select>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse min-w-[800px]">
+                              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                                  <tr>
+                                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.headers.timestamp')}</th>
+                                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.headers.user')}</th>
+                                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.headers.action')}</th>
+                                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.headers.target')}</th>
+                                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.headers.ip')}</th>
+                                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.headers.severity')}</th>
+                                      <th className="px-6 py-4 text-right"></th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 bg-white">
+                                  {filteredLogs.map(log => {
+                                      let sevColor = 'bg-blue-100 text-blue-700';
+                                      if (log.severity === 'WARNING') sevColor = 'bg-orange-100 text-orange-700';
+                                      if (log.severity === 'ERROR') sevColor = 'bg-red-100 text-red-700';
+                                      if (log.severity === 'CRITICAL') sevColor = 'bg-red-200 text-red-800 font-black animate-pulse';
+
+                                      return (
+                                          <tr key={log.id} className="hover:bg-slate-50 transition-colors group cursor-pointer" onClick={() => handleOpenInvestigation(log)}>
+                                              <td className="px-6 py-3 text-xs text-slate-500 font-mono whitespace-nowrap">
+                                                  {new Date(log.timestamp).toLocaleString()}
+                                              </td>
+                                              <td className="px-6 py-3 text-sm text-slate-700">
+                                                  <div className="font-medium">{log.userName}</div>
+                                                  <div className="text-xs text-slate-400">{log.userRole}</div>
+                                              </td>
+                                              <td className="px-6 py-3 text-sm font-bold text-slate-700">
+                                                  {log.action}
+                                              </td>
+                                              <td className="px-6 py-3 text-xs text-slate-500 font-mono">
+                                                  {log.target.substring(0, 30)}{log.target.length > 30 && '...'}
+                                              </td>
+                                              <td className="px-6 py-3 text-xs text-slate-500 font-mono">
+                                                  {log.ip}
+                                              </td>
+                                              <td className="px-6 py-3">
+                                                  <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${sevColor}`}>
+                                                      {log.severity}
+                                                  </span>
+                                              </td>
+                                              <td className="px-6 py-3 text-right">
+                                                  <button className="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                      <Eye size={12} /> Investigar
+                                                  </button>
+                                              </td>
+                                          </tr>
+                                      );
+                                  })}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              )}
+
+              {/* --- SETTINGS TAB --- */}
+              {activeTab === 'settings' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
+                      
+                      {/* Security Settings */}
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                          <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                              <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Lock size={20} /></div>
+                              <h3 className="font-bold text-lg text-slate-800">{t('admin.settings.securityTitle')}</h3>
+                          </div>
+                          <div className="p-6 space-y-6">
+                              <div className="flex items-center justify-between">
+                                  <div>
+                                      <h4 className="font-bold text-slate-700 text-sm">{t('admin.settings.security2FA')}</h4>
+                                      <p className="text-xs text-slate-500 mt-1">{t('admin.settings.security2FADesc')}</p>
+                                  </div>
+                                  <button 
+                                      onClick={() => handleToggleSetting('enforce2FA')}
+                                      className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${systemSettings.enforce2FA ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                  >
+                                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${systemSettings.enforce2FA ? 'translate-x-6' : ''}`} />
+                                  </button>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                  <div>
+                                      <h4 className="font-bold text-slate-700 text-sm">{t('admin.settings.sessionTimeout')}</h4>
+                                      <p className="text-xs text-slate-500 mt-1">{t('admin.settings.sessionTimeoutDesc')}</p>
+                                  </div>
+                                  <input 
+                                      type="number" 
+                                      value={systemSettings.sessionTimeout}
+                                      onChange={(e) => setSystemSettings(prev => ({...prev, sessionTimeout: parseInt(e.target.value)}))}
+                                      className="w-20 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-center font-bold outline-none focus:ring-2 focus:ring-blue-500/20"
+                                  />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                  <div>
+                                      <h4 className="font-bold text-slate-700 text-sm">{t('admin.settings.guestAccess')}</h4>
+                                      <p className="text-xs text-slate-500 mt-1">{t('admin.settings.guestAccessDesc')}</p>
+                                  </div>
+                                  <button 
+                                      onClick={() => handleToggleSetting('allowGuestAccess')}
+                                      className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${systemSettings.allowGuestAccess ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                  >
+                                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${systemSettings.allowGuestAccess ? 'translate-x-6' : ''}`} />
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* System Settings */}
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                          <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                              <div className="bg-orange-50 p-2 rounded-lg text-orange-600"><Server size={20} /></div>
+                              <h3 className="font-bold text-lg text-slate-800">{t('admin.settings.systemTitle')}</h3>
+                          </div>
+                          <div className="p-6 space-y-6">
+                              <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
+                                  <div>
+                                      <h4 className="font-bold text-red-800 text-sm flex items-center gap-2"><AlertOctagon size={16}/> {t('admin.settings.maintenance')}</h4>
+                                      <p className="text-xs text-red-600/80 mt-1">{t('admin.settings.maintenanceDesc')}</p>
+                                  </div>
+                                  <button 
+                                      onClick={() => handleToggleSetting('maintenanceMode')}
+                                      className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${systemSettings.maintenanceMode ? 'bg-red-600' : 'bg-slate-300'}`}
+                                  >
+                                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${systemSettings.maintenanceMode ? 'translate-x-6' : ''}`} />
+                                  </button>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                  <div>
+                                      <h4 className="font-bold text-slate-700 text-sm">{t('admin.settings.retention')}</h4>
+                                      <p className="text-xs text-slate-500 mt-1">{t('admin.settings.retentionDesc')}</p>
+                                  </div>
+                                  <input 
+                                      type="number" 
+                                      value={systemSettings.logRetentionDays}
+                                      onChange={(e) => setSystemSettings(prev => ({...prev, logRetentionDays: parseInt(e.target.value)}))}
+                                      className="w-20 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-center font-bold outline-none focus:ring-2 focus:ring-blue-500/20"
+                                  />
+                              </div>
+
+                              <div className="pt-4 border-t border-slate-100">
+                                  <p className="text-xs font-bold text-slate-400 uppercase mb-2">Versão do Sistema</p>
+                                  <div className="flex justify-between items-center text-sm font-mono bg-slate-50 p-2 rounded-lg text-slate-600">
+                                      <span>v2.4.0-stable</span>
+                                      <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">Atualizado</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              )}
+
+              {/* --- CLIENTS TAB --- */}
+              {activeTab === 'clients' && (
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                      <div className="p-3 border-b border-slate-100 flex flex-wrap gap-3 bg-slate-50/50 items-center">
+                          <div className="flex items-center gap-2">
+                              <Filter size={14} className="text-slate-400" />
+                              <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.users.filters')}:</span>
+                          </div>
+                          <select 
+                              value={statusFilter}
+                              onChange={(e) => setStatusFilter(e.target.value as any)}
+                              className="text-xs border-none bg-white py-1.5 px-3 rounded-lg shadow-sm ring-1 ring-slate-200 focus:ring-blue-500 cursor-pointer"
+                          >
+                              <option value="ALL">{t('admin.users.allStatus')}</option>
+                              <option value="ACTIVE">{t('dashboard.active')}</option>
+                              <option value="INACTIVE">Inativo</option>
+                          </select>
+                          <div className="ml-auto text-xs text-slate-400 font-medium">
+                              {filteredClients.length} organizações
+                          </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse min-w-[800px]">
+                            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.organizations')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">CNPJ</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Data Contrato</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Usuários</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider">{t('common.actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                                {filteredClients.map(c => (
+                                    <tr key={c.id} className="hover:bg-slate-50 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 shrink-0">
+                                                    <Building2 size={18} />
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-slate-900 text-sm whitespace-nowrap">{c.name}</p>
+                                                    <p className="text-xs text-slate-400">ID: {c.id}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-600 font-mono">
+                                            {c.cnpj}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <StatusBadge status={c.status} />
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-500">
+                                            {c.contractDate}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md w-fit">
+                                                <Users size={12} className="text-slate-400" />
+                                                <span className="text-xs font-bold text-slate-700">{countUsersForClient(c.id)}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right relative">
+                                            <button 
+                                                onClick={() => setActiveClientDropdown(activeClientDropdown === c.id ? null : c.id)}
+                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                            >
+                                                <MoreVertical size={16} />
+                                            </button>
+                                            
+                                            {activeClientDropdown === c.id && (
+                                                <div className="absolute right-8 top-8 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                    <button onClick={() => { openClientModal(c); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                        <Edit2 size={14} /> Editar
+                                                    </button>
+                                                    <button onClick={() => { handleToggleClientStatus(c); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                        {c.status === 'ACTIVE' ? <><Ban size={14} className="text-orange-500"/> Desativar</> : <><CheckCircle2 size={14} className="text-emerald-500"/> Ativar</>}
+                                                    </button>
+                                                    <div className="h-px bg-slate-100 my-1" />
+                                                    <button onClick={() => { handleDeleteClient(c.id); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                                        <Trash2 size={14} /> Excluir
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                      </div>
+                  </div>
+              )}
+
               {/* ... FIREWALL AND TICKETS TABS ... */}
               {/* --- FIREWALL / NETSEC TAB --- */}
               {activeTab === 'firewall' && (
-                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full animate-in fade-in duration-300">
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[calc(100vh-160px)] min-h-[600px] animate-in fade-in duration-300">
                       
                       {/* Left: Port Scanner */}
-                      <div className="xl:col-span-1 flex flex-col gap-6">
+                      <div className="xl:col-span-1 flex flex-col gap-6 h-full">
                           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full">
                               <div className="flex justify-between items-center mb-6">
                                   <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -948,6 +1247,88 @@ const Admin: React.FC = () => {
           </div> {/* Fecha o container interno das abas */}
       </div> {/* Fecha o container principal do conteúdo admin */}
 
+      {/* MODAL: Investigation */}
+      {isInvestigationModalOpen && investigationData.targetLog && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                          <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Eye size={20}/></div>
+                          <div>
+                              <h3 className="font-bold text-slate-800 text-lg">Detalhes da Investigação</h3>
+                              <p className="text-xs text-slate-500 font-mono">ID: {investigationData.targetLog.id}</p>
+                          </div>
+                      </div>
+                      <button onClick={() => setIsInvestigationModalOpen(false)}><X className="text-slate-400 hover:text-red-500" /></button>
+                  </div>
+                  
+                  <div className="p-6 overflow-y-auto space-y-6">
+                      {/* Risk Score */}
+                      <div className="flex items-center justify-between bg-slate-900 text-white p-4 rounded-xl">
+                          <div>
+                              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Pontuação de Risco</p>
+                              <div className="text-2xl font-bold flex items-center gap-2">
+                                  {investigationData.riskScore}/100 
+                                  {investigationData.riskScore > 50 && <AlertTriangle size={20} className="text-orange-500"/>}
+                              </div>
+                          </div>
+                          <div className="text-right">
+                              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Severidade</p>
+                              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-bold uppercase ${investigationData.targetLog.severity === 'CRITICAL' ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                  {investigationData.targetLog.severity}
+                              </span>
+                          </div>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Usuário</span>
+                              <div className="font-bold text-slate-800 text-sm">{investigationData.targetLog.userName}</div>
+                              <div className="text-xs text-slate-500">{investigationData.targetLog.userRole}</div>
+                          </div>
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Origem</span>
+                              <div className="font-mono text-slate-800 text-sm">{investigationData.targetLog.ip}</div>
+                              <div className="text-xs text-slate-500">{investigationData.targetLog.location}</div>
+                          </div>
+                      </div>
+
+                      {/* Metadata */}
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Metadados Técnicos</h4>
+                          <div className="bg-slate-900 text-slate-300 p-4 rounded-xl font-mono text-xs overflow-x-auto">
+                              <pre>{JSON.stringify(investigationData.targetLog, null, 2)}</pre>
+                          </div>
+                      </div>
+
+                      {/* Related Logs */}
+                      {investigationData.relatedLogs.length > 0 && (
+                          <div>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Eventos Correlacionados ({investigationData.relatedLogs.length})</h4>
+                              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                  {investigationData.relatedLogs.slice(0, 5).map(log => (
+                                      <div key={log.id} className="p-3 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50 text-xs">
+                                          <div className="flex justify-between font-medium">
+                                              <span className={log.severity === 'ERROR' ? 'text-red-600' : 'text-slate-700'}>{log.action}</span>
+                                              <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                          </div>
+                                          <div className="text-slate-500 mt-0.5 truncate">{log.target}</div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      )}
+                  </div>
+                  
+                  <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+                      <button onClick={() => alert("Usuário bloqueado preventivamente.")} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 text-sm">Bloquear Usuário</button>
+                      <button onClick={() => alert("IP adicionado à blacklist do Firewall.")} className="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 text-sm">Bloquear IP</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* MODAL: Create/Edit User */}
       {isUserModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -1057,31 +1438,31 @@ const Admin: React.FC = () => {
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
                   <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                       <h3 className="text-lg font-bold text-slate-800">{editingClient ? "Editar Empresa" : "Nova Empresa"}</h3>
-                      <button onClick={() => setIsClientModalOpen(false)} className="text-slate-400 hover:text-red-500"><X size={20} /></button>
+                      <button onClick={() => setIsClientModalOpen(false)} className="text-slate-400 hover:text-red-500 rounded-full p-2 hover:bg-red-50 transition-colors"><X size={20} /></button>
                   </div>
                   <form onSubmit={handleSaveClient} className="p-6 space-y-4">
                       <div className="space-y-1">
                           <label className="text-sm font-bold text-slate-700">Razão Social</label>
-                          <input required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={clientFormData.name} onChange={e => setClientFormData({...clientFormData, name: e.target.value})} />
+                          <input required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" value={clientFormData.name} onChange={e => setClientFormData({...clientFormData, name: e.target.value})} placeholder="Ex: Indústria XYZ Ltda" />
                       </div>
                       <div className="space-y-1">
                           <label className="text-sm font-bold text-slate-700">CNPJ</label>
-                          <input required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={clientFormData.cnpj} onChange={e => setClientFormData({...clientFormData, cnpj: e.target.value})} />
+                          <input required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" value={clientFormData.cnpj} onChange={e => setClientFormData({...clientFormData, cnpj: e.target.value})} placeholder="00.000.000/0001-00" />
                       </div>
                       <div className="space-y-1">
                           <label className="text-sm font-bold text-slate-700">Data Contrato</label>
-                          <input type="date" required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={clientFormData.contractDate} onChange={e => setClientFormData({...clientFormData, contractDate: e.target.value})} />
+                          <input type="date" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium" value={clientFormData.contractDate} onChange={e => setClientFormData({...clientFormData, contractDate: e.target.value})} />
                       </div>
                       <div className="space-y-1">
                           <label className="text-sm font-bold text-slate-700">Status</label>
-                          <select className="w-full px-4 py-2 border rounded-lg" value={clientFormData.status} onChange={e => setClientFormData({...clientFormData, status: e.target.value})}>
+                          <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium cursor-pointer" value={clientFormData.status} onChange={e => setClientFormData({...clientFormData, status: e.target.value})}>
                               <option value="ACTIVE">Ativo</option>
                               <option value="INACTIVE">Inativo</option>
                           </select>
                       </div>
                       <div className="pt-4 flex justify-end gap-3">
-                          <button type="button" onClick={() => setIsClientModalOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancelar</button>
-                          <button type="submit" className="px-6 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800">Salvar</button>
+                          <button type="button" onClick={() => setIsClientModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                          <button type="submit" className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2"><Save size={18}/> Salvar</button>
                       </div>
                   </form>
               </div>

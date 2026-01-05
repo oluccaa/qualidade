@@ -56,6 +56,7 @@ const resources = {
         quickAccess: "Acesso Rápido",
         recent: "Recentes",
         favorites: "Favoritos",
+        tickets: "Meus Chamados",
         operation: "Operação",
         dashboard: "Dashboard",
         documents: "Documentos",
@@ -88,11 +89,18 @@ const resources = {
         libraryTitle: "Biblioteca de Laudos",
         favoritesTitle: "Meus Favoritos",
         historyTitle: "Histórico de Acesso",
+        ticketsTitle: "Central de Ajuda",
         filters: "Filtros",
         textSearch: "Busca Textual",
         period: "Período",
         clear: "Limpar",
-        quickAccessItems: "Itens marcados para acesso rápido"
+        quickAccessItems: "Itens marcados para acesso rápido",
+        ticketsIntro: "Acompanhe o status das suas solicitações de suporte.",
+        openTicket: "Abrir Novo Chamado",
+        noTickets: "Você ainda não abriu nenhum chamado.",
+        ticketSubject: "Assunto",
+        ticketDate: "Data Abertura",
+        ticketResolution: "Resolução"
       },
       admin: {
         tabs: {
@@ -119,25 +127,32 @@ const resources = {
           auditTrail: "Trilha de Auditoria",
           exportCsv: "Exportar CSV",
           headers: {
-             timestamp: "Carimbo de Tempo",
+             timestamp: "Data/Hora",
              user: "Usuário",
              action: "Ação",
-             target: "Alvo"
+             target: "Alvo",
+             ip: "Endereço IP",
+             severity: "Severidade"
           }
         },
         settings: {
-           securityTitle: "Segurança",
+           securityTitle: "Segurança & Acesso",
+           systemTitle: "Sistema & Manutenção",
            security2FA: "Imposição de 2FA",
-           security2FADesc: "Forçar 2FA para admins e equipe de qualidade.",
-           sessionTimeout: "Timeout de Sessão",
-           sessionTimeoutDesc: "Deslogar usuários inativos após 30 minutos.",
+           security2FADesc: "Forçar autenticação de dois fatores para administradores e equipe de qualidade.",
+           sessionTimeout: "Timeout de Sessão (min)",
+           sessionTimeoutDesc: "Tempo de inatividade para logout automático.",
            maintenance: "Modo de Manutenção",
-           maintenanceDesc: "Gerenciar janelas de manutenção e disponibilidade.",
+           maintenanceDesc: "Suspende o acesso de clientes temporariamente para atualizações.",
            scheduleMaintenance: "Agendar Manutenção",
            techSupport: "Suporte do Sistema (Externo)",
            techSupportDesc: "Solicitar alterações estruturais, correções de dados ou melhorias de infraestrutura ao fornecedor.",
            openTicket: "Abrir Solicitação Externa",
-           version: "Versão do Portal"
+           version: "Versão do Portal",
+           guestAccess: "Acesso Visitante",
+           guestAccessDesc: "Permitir visualização pública de documentos marcados como públicos.",
+           retention: "Retenção de Logs (dias)",
+           retentionDesc: "Período de armazenamento de logs de auditoria antes do arquivamento."
         },
         n3Support: {
             title: "Solicitação de Serviço Externo",

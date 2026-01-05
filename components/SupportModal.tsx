@@ -78,7 +78,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
             </div>
             <div>
                 <h2 className="text-xl font-bold text-slate-800">{t('menu.support')}</h2>
-                <p className="text-xs text-slate-500">Central de Ajuda e Chamados</p>
+                <p className="text-xs text-slate-500">Central de Ajuda</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
@@ -127,6 +127,12 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
                                             {t(`admin.tickets.status.${ticket.status}`)}
                                         </div>
                                     </div>
+                                    {ticket.resolutionNote && (
+                                        <div className="mt-3 bg-slate-50 p-2 rounded border border-slate-100">
+                                            <p className="text-[10px] font-bold text-slate-700">Resolução:</p>
+                                            <p className="text-xs text-slate-600 italic">"{ticket.resolutionNote}"</p>
+                                        </div>
+                                    )}
                                     <div className="mt-3 pt-3 border-t border-slate-50 flex justify-between items-center text-xs text-slate-400">
                                         <span>ID: {ticket.id}</span>
                                         <span className="font-mono">{ticket.createdAt}</span>
@@ -197,7 +203,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
                                 disabled={loading}
                                 className="flex-[2] py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
                             >
-                                {loading ? 'Enviando...' : <><Send size={18} /> {t('admin.settings.openTicket')}</>}
+                                {loading ? 'Enviando...' : <><Send size={18} /> Criar Chamado</>}
                             </button>
                         </div>
                     </form>
