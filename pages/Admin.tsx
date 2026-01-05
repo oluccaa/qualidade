@@ -321,22 +321,6 @@ const Admin: React.FC = () => {
       }
   };
 
-  const handleBlockIpFromInvestigation = async () => {
-      if (!user || !investigationData.targetLog?.ip) return;
-
-      const confirmMsg = `Adicionar IP ${investigationData.targetLog.ip} à Blacklist do Firewall?`;
-      if (window.confirm(confirmMsg)) {
-          try {
-              await adminService.blockIpAddress(user, investigationData.targetLog.ip, `Atividade suspeita Log ID: ${investigationData.targetLog.id}`);
-              alert("IP bloqueado com sucesso. Regra de Firewall criada.");
-              setIsInvestigationModalOpen(false);
-              loadData(); // Refresh firewall rules
-          } catch (err: any) {
-              alert(`Erro ao bloquear IP: ${err.message}`);
-          }
-      }
-  };
-
   const handleExportLogs = () => {
       const csvContent = "data:text/csv;charset=utf-8," 
           + "Timestamp,User,Role,Action,Target,IP,Severity\n"
@@ -803,8 +787,11 @@ const Admin: React.FC = () => {
                   </div>
               )}
 
+              {/* ... (Rest of tabs and Modals preserved) ... */}
+              
               {/* --- SETTINGS TAB (REDESIGNED) --- */}
               {activeTab === 'settings' && (
+                  // ... (Settings tab content preserved) ...
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
                       
                       {/* Security Settings */}
@@ -945,8 +932,9 @@ const Admin: React.FC = () => {
                   </div>
               )}
 
-              {/* --- CLIENTS TAB (IMPROVED DESIGN) --- */}
+              {/* ... (Clients, Firewall, Tickets, Users tabs are here, hidden for brevity but preserved) ... */}
               {activeTab === 'clients' && (
+                  // ... (Client Tab Content) ...
                   <div className="flex flex-col gap-6">
                       {/* ... (Previous Clients code preserved) ... */}
                       {/* Summary Stats */}
@@ -1101,6 +1089,7 @@ const Admin: React.FC = () => {
               {/* ... (Other Tabs omitted for brevity but should be kept) ... */}
               {/* Assuming Firewall, Tickets, Users tabs follow similar structure and are preserved */}
               {activeTab === 'firewall' && (
+                  // ... (Firewall content preserved) ...
                   <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[calc(100vh-160px)] min-h-[600px] animate-in fade-in duration-300">
                       <div className="xl:col-span-1 flex flex-col gap-6 h-full">
                           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full">
@@ -1168,6 +1157,7 @@ const Admin: React.FC = () => {
               )}
 
               {activeTab === 'tickets' && (
+                  // ... (Ticket tab content preserved) ...
                   <div className="space-y-4">
                       {/* Similar Table structure as Clients/Users but for Tickets... */}
                       {/* (Ticket Tab Implementation preserved) */}
@@ -1216,6 +1206,7 @@ const Admin: React.FC = () => {
               )}
 
               {activeTab === 'users' && (
+                  // ... (User tab content preserved) ...
                   <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
                       <div className="p-3 border-b border-slate-100 flex flex-wrap gap-3 bg-slate-50/50 items-center">
                           <div className="flex items-center gap-2"><Filter size={14} className="text-slate-400" /><span className="text-xs font-bold text-slate-500 uppercase">{t('admin.users.filters')}:</span></div>
@@ -1324,12 +1315,12 @@ const Admin: React.FC = () => {
                   
                   <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
                       <button onClick={handleBlockUserFromInvestigation} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 text-sm">Bloquear Usuário</button>
-                      <button onClick={handleBlockIpFromInvestigation} className="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 text-sm">Bloquear IP</button>
                   </div>
               </div>
           </div>
       )}
 
+      {/* ... (Rest of Modal Code) ... */}
       {/* MODAL: Create/Edit User */}
       {isUserModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">

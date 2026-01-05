@@ -233,31 +233,6 @@ export const getFirewallRules = async (): Promise<FirewallRule[]> => {
     return [...firewallRules];
 };
 
-export const blockIpAddress = async (adminUser: User, targetIp: string, reason: string): Promise<void> => {
-    if (adminUser.role !== UserRole.ADMIN) throw new Error("Acesso negado");
-    
-    // Check if rule exists
-    const exists = firewallRules.find(r => r.source === targetIp || r.source === `${targetIp}/32`);
-    if (exists && exists.action === 'DENY' && exists.active) {
-        throw new Error("IP já está bloqueado.");
-    }
-
-    const newRule: FirewallRule = {
-        id: `fw-${Date.now()}`,
-        name: `AUTO-BLOCK: ${reason.substring(0, 15)}...`,
-        type: 'INBOUND',
-        protocol: 'ANY',
-        port: 'ANY',
-        source: targetIp,
-        action: 'DENY',
-        active: true,
-        priority: 999 // High Priority
-    };
-
-    firewallRules.unshift(newRule);
-    await fileService.logAction(adminUser, 'SECURITY_BLOCK_IP', `Bloqueou IP ${targetIp} via Auditoria`, 'CRITICAL');
-};
-
 // --- MAINTENANCE ---
 
 export const getMaintenanceEvents = async (): Promise<MaintenanceEvent[]> => {
