@@ -945,6 +945,8 @@ const Admin: React.FC = () => {
                       </div>
                   </div>
               )}
+          </div> {/* Fecha o container interno das abas */}
+      </div> {/* Fecha o container principal do conteúdo admin */}
 
       {/* MODAL: Create/Edit User */}
       {isUserModalOpen && (
