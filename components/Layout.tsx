@@ -2,12 +2,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../services/authContext.tsx';
 import * as notificationService from '../services/notificationService.ts';
-import { AppNotification, UserRole } from '../types.ts';
+import * as adminService from '../services/adminService.ts'; // Added import
+import { AppNotification, UserRole, SystemStatus } from '../types.ts'; // Added SystemStatus
 import { CookieBanner } from './CookieBanner.tsx';
 import { PrivacyModal } from './PrivacyModal.tsx';
 import { SupportModal } from './SupportModal.tsx';
 import { N3SupportModal } from './N3SupportModal.tsx';
 import { ChangePasswordModal } from './ChangePasswordModal.tsx';
+import { MaintenanceBanner } from './MaintenanceBanner.tsx'; // Added import
 import { useTranslation } from 'react-i18next';
 import { 
   LogOut, 
@@ -80,6 +82,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const [isN3SupportOpen, setIsN3SupportOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
+  // System Status State for Banner (Moved from Middleware to here for Layout control)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>({ mode: 'ONLINE' });
+
   // Persist collapsed state
   const [isCollapsed, setIsCollapsed] = useState(() => {
       const stored = localStorage.getItem('sidebar_collapsed');
@@ -97,8 +102,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   useEffect(() => {
       if (user) {
           fetchNotifications();
+          checkSystemStatus();
       }
   }, [user]);
+
+  // Poll for system status updates
+  useEffect(() => {
+      const interval = setInterval(checkSystemStatus, 30000);
+      return () => clearInterval(interval);
+  }, []);
+
+  const checkSystemStatus = async () => {
+      const status = await adminService.getSystemStatus();
+      setSystemStatus(status);
+  };
 
   // Click Outside to close notifications & user menu
   useEffect(() => {
@@ -412,7 +429,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
         <button 
             onClick={toggleSidebar}
-            className="absolute -right-3 top-8 z-[70] bg-white text-slate-600 border border-slate-200 rounded-full h-6 w-6 flex items-center justify-center shadow-lg hover:text-blue-600 hover:border-blue-400 hover:scale-110 transition-all cursor-pointer ring-2 ring-slate-50/50"
+            className={`
+                absolute -right-3 top-8 z-[70] 
+                bg-white/90 backdrop-blur-md 
+                text-slate-600 border border-slate-200/60 
+                rounded-full h-7 w-7 flex items-center justify-center 
+                shadow-[0_2px_8px_rgba(0,0,0,0.1)] 
+                hover:text-blue-600 hover:border-blue-400 hover:scale-110 
+                transition-all cursor-pointer 
+            `}
             title={isCollapsed ? t('common.expand') : t('common.collapse')}
         >
             {isCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
@@ -433,7 +458,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         </div>
 
         {/* MENU ITEMS - SCROLLABLE (But Compact) */}
-        <nav className="flex-1 py-3 space-y-1 relative z-10 overflow-y-auto custom-scrollbar overflow-x-hidden min-h-0">
+        <nav className="flex-1 py-3 space-y-1 relative z-10 overflow-y-auto sidebar-scrollbar overflow-x-hidden min-h-0">
           {menuSections.map((section, idx) => (
             <div key={idx} className="px-3">
                {!isCollapsed && section.title && (
@@ -544,6 +569,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       {/* --- MAIN CONTENT WRAPPER --- */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 w-full min-w-0">
         
+        {/* GLOBAL SYSTEM BANNER (Now inside the right column, above Header) */}
+        <MaintenanceBanner status={systemStatus} isAdmin={user?.role === UserRole.ADMIN} />
+
         {/* MOBILE HEADER (Minimalist) */}
         <header className="md:hidden h-16 bg-slate-900 text-white flex items-center justify-between px-4 shadow-md z-20 shrink-0">
           <div className="flex items-center gap-3">

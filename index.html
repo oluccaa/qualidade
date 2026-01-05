@@ -46,6 +46,21 @@
           border-color: transparent;
           background-clip: content-box;
       }
+
+      /* Sidebar Specific Scrollbar (Dark Theme) */
+      .sidebar-scrollbar::-webkit-scrollbar {
+          width: 4px; /* Thin */
+      }
+      .sidebar-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+      }
+      .sidebar-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.1); /* Subtle white on dark */
+          border-radius: 4px;
+      }
+      .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(255, 255, 255, 0.2);
+      }
     </style>
   <script type="importmap">
 {

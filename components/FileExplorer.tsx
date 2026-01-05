@@ -12,7 +12,7 @@ import {
   ChevronRight, 
   Download, 
   ArrowUp,
-  CheckCircle2,
+  CheckCircle2, 
   Clock,
   FileCheck,
   Star,
@@ -27,7 +27,9 @@ import {
   Calendar,
   Layers,
   LayoutGrid,
-  List
+  List,
+  MoreHorizontal,
+  Home
 } from 'lucide-react';
 
 export interface FileExplorerHandle {
@@ -396,6 +398,101 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
       }
   };
 
+  // --- SMART BREADCRUMBS COMPONENT ---
+  const renderBreadcrumbs = () => {
+      if (flatMode) {
+          return (
+              <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Search size={18}/></span>
+                  <span className="font-bold text-slate-800 text-lg">
+                      {processedData.count} {t('files.docsFound')}
+                  </span>
+              </div>
+          );
+      }
+
+      const count = breadcrumbs.length;
+      
+      // Render simple list if short
+      if (count <= 3) {
+          return (
+              <nav className="flex items-center flex-wrap gap-2 text-sm">
+                  {breadcrumbs.map((crumb, idx) => {
+                      const isLast = idx === count - 1;
+                      const isRoot = crumb.id === 'root';
+                      return (
+                          <div key={crumb.id} className="flex items-center group">
+                              {idx > 0 && <ChevronRight size={14} className="mx-1 text-slate-300" />}
+                              <button
+                                  onClick={() => crumb.id !== 'search' && handleNavigate(isRoot ? null : crumb.id)}
+                                  disabled={crumb.id === 'search'}
+                                  className={`
+                                      flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all border
+                                      ${isLast 
+                                          ? 'bg-slate-100 border-slate-200 text-slate-800 font-bold shadow-sm' 
+                                          : 'bg-transparent border-transparent text-slate-500 hover:bg-slate-50 hover:text-blue-600'
+                                      }
+                                  `}
+                              >
+                                  {isRoot && <Home size={14} className={isLast ? 'text-slate-800' : 'text-slate-400 group-hover:text-blue-600'} />}
+                                  <span className="max-w-[150px] truncate">{crumb.name}</span>
+                              </button>
+                          </div>
+                      );
+                  })}
+              </nav>
+          );
+      }
+
+      // Render collapsed list if long
+      const first = breadcrumbs[0];
+      const last = breadcrumbs[count - 1];
+      const middleCrumbs = breadcrumbs.slice(1, count - 1);
+
+      return (
+          <nav className="flex items-center flex-wrap gap-2 text-sm">
+              {/* Root */}
+              <button 
+                  onClick={() => handleNavigate(null)} 
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-500 hover:bg-slate-50 hover:text-blue-600 transition-all group"
+              >
+                  <Home size={14} className="text-slate-400 group-hover:text-blue-600" />
+                  <span className="max-w-[100px] truncate">{first.name}</span>
+              </button>
+              
+              <ChevronRight size={14} className="text-slate-300" />
+              
+              {/* Collapsed Menu */}
+              <div className="relative group">
+                  <button className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                      <MoreHorizontal size={16} />
+                  </button>
+                  <div className="absolute left-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-50 hidden group-hover:block animate-in fade-in zoom-in-95 duration-200">
+                      {middleCrumbs.map(crumb => (
+                          <button
+                              key={crumb.id}
+                              onClick={() => handleNavigate(crumb.id)}
+                              className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors truncate"
+                          >
+                              <Folder size={14} />
+                              {crumb.name}
+                          </button>
+                      ))}
+                  </div>
+              </div>
+
+              <ChevronRight size={14} className="text-slate-300" />
+
+              {/* Current (Last) */}
+              <div className="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                  <span className="font-bold text-slate-800 text-sm max-w-[200px] truncate block">
+                      {last.name}
+                  </span>
+              </div>
+          </nav>
+      );
+  };
+
   const showActions = isManager && (onEdit || onDelete);
 
   // --- RENDER COMPONENT: FileCard (Grid) ---
@@ -531,8 +628,6 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
             ${isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}
         `}
     >
-        {/* ... (Previous Mobile Item Implementation - kept consistent) ... */}
-        {/* (Simplified for brevity as logic didn't change, just the mapping context) */}
         <div className="flex items-stretch">
             <div 
                 className="flex flex-col items-center justify-center p-3 w-16 bg-slate-50 border-r border-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
@@ -604,138 +699,126 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
 
       <FilePreviewModal file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)} />
 
-      {/* Toolbar */}
+      {/* Toolbar - Redesigned with Flex Wrap, Smart Breadcrumbs and Z-Index Fix */}
       {!hideToolbar && (
-        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center text-sm text-slate-600 overflow-x-auto whitespace-nowrap pb-2 md:pb-0">
-            {!flatMode ? breadcrumbs.map((crumb, index) => (
-                <div key={crumb.id} className="flex items-center">
-                {index > 0 && <ChevronRight size={16} className="mx-2 text-slate-400" />}
-                <button 
-                    onClick={() => crumb.id !== 'search' && handleNavigate(crumb.id === 'root' ? null : crumb.id)}
-                    className={`hover:text-blue-600 transition-colors ${index === breadcrumbs.length - 1 ? 'font-bold text-slate-900' : ''}`}
-                    disabled={crumb.id === 'search'}
-                >
-                    {crumb.name}
-                </button>
-                </div>
-            )) : (
-                <span className="font-bold text-slate-800 text-base">
-                    {processedData.count} {t('files.docsFound')}
-                </span>
-            )}
+        <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 relative z-30">
+            
+            {/* Left: Smart Breadcrumbs */}
+            <div className="flex-1 min-w-[200px]">
+                {renderBreadcrumbs()}
             </div>
 
-            <div className="flex items-center gap-3">
-            {selectedFiles.size > 0 && (
-                <button onClick={handleBulkDownload} className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium animate-in fade-in zoom-in-95 shadow-md">
-                    <Download size={16} /> <span className="hidden sm:inline">{t('files.bulkDownload')}</span> ({selectedFiles.size})
-                </button>
-            )}
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                {selectedFiles.size > 0 && (
+                    <button onClick={handleBulkDownload} className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium animate-in fade-in zoom-in-95 shadow-md">
+                        <Download size={16} /> <span className="hidden sm:inline">{t('files.bulkDownload')}</span> ({selectedFiles.size})
+                    </button>
+                )}
 
-            {!externalFiles && (
-                <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500" size={18} />
-                    <input 
-                    type="text"
-                    placeholder={t('common.search')}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48 lg:w-64 bg-slate-50 focus:bg-white transition-all"
-                    />
-                </div>
-            )}
-            
-            {/* View Options Dropdown */}
-            <div className="relative">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); setIsViewMenuOpen(!isViewMenuOpen); }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${isViewMenuOpen ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                >
-                    <SlidersHorizontal size={16} />
-                    <span className="hidden sm:inline">{t('files.viewOptions')}</span>
-                </button>
-
-                {isViewMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 p-1" onClick={(e) => e.stopPropagation()}>
-                        
-                        <div className="p-2">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-2">{t('files.sortBy')}</span>
-                            <div className="space-y-1">
-                                {[
-                                    { id: 'NAME_ASC', label: t('files.sort.nameAsc'), icon: ArrowDownAZ },
-                                    { id: 'NAME_DESC', label: t('files.sort.nameDesc'), icon: ArrowUpZA },
-                                    { id: 'DATE_NEW', label: t('files.sort.dateNew'), icon: Calendar },
-                                    { id: 'DATE_OLD', label: t('files.sort.dateOld'), icon: Calendar },
-                                    { id: 'STATUS', label: t('files.sort.status'), icon: CheckCircle2 }
-                                ].map(opt => (
-                                    <button 
-                                        key={opt.id}
-                                        onClick={() => { setSortBy(opt.id as SortOption); setIsViewMenuOpen(false); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${sortBy === opt.id ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
-                                    >
-                                        <opt.icon size={14} /> {opt.label}
-                                        {sortBy === opt.id && <Check size={14} className="ml-auto" />}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="h-px bg-slate-100 mx-2" />
-
-                        <div className="p-2">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-2">{t('files.groupBy')}</span>
-                            <div className="space-y-1">
-                                {[
-                                    { id: 'NONE', label: t('files.group.none'), icon: List },
-                                    { id: 'STATUS', label: t('files.group.status'), icon: Layers },
-                                    { id: 'PRODUCT', label: t('files.group.product'), icon: Folder },
-                                    { id: 'DATE', label: t('files.group.date'), icon: Calendar }
-                                ].map(opt => (
-                                    <button 
-                                        key={opt.id}
-                                        onClick={() => { setGroupBy(opt.id as GroupOption); setIsViewMenuOpen(false); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${groupBy === opt.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
-                                    >
-                                        <opt.icon size={14} /> {opt.label}
-                                        {groupBy === opt.id && <Check size={14} className="ml-auto" />}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="h-px bg-slate-100 mx-2" />
-
-                        {/* Layout Toggle in Menu for Mobile */}
-                        <div className="p-2 flex gap-2">
-                             <button 
-                                onClick={() => setViewMode('grid')} 
-                                className={`flex-1 flex justify-center items-center py-2 rounded-lg border ${viewMode === 'grid' ? 'bg-slate-100 border-slate-300 text-slate-900' : 'border-slate-100 text-slate-400'}`}
-                             >
-                                 <LayoutGrid size={16} />
-                             </button>
-                             <button 
-                                onClick={() => setViewMode('list')} 
-                                className={`flex-1 flex justify-center items-center py-2 rounded-lg border ${viewMode === 'list' ? 'bg-slate-100 border-slate-300 text-slate-900' : 'border-slate-100 text-slate-400'}`}
-                             >
-                                 <List size={16} />
-                             </button>
-                        </div>
+                {!externalFiles && (
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500" size={18} />
+                        <input 
+                        type="text"
+                        placeholder={t('common.search')}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48 bg-slate-50 focus:bg-white transition-all"
+                        />
                     </div>
                 )}
-            </div>
+                
+                {/* View Options Dropdown */}
+                <div className="relative">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setIsViewMenuOpen(!isViewMenuOpen); }}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${isViewMenuOpen ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                        <SlidersHorizontal size={16} />
+                        <span className="hidden lg:inline">{t('files.viewOptions')}</span>
+                    </button>
 
-            {allowUpload && (
-                <button onClick={handleUploadTrigger} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                    <ArrowUp size={18} /> <span className="hidden sm:inline">{t('common.upload')}</span>
-                </button>
-            )}
+                    {isViewMenuOpen && (
+                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 p-1" onClick={(e) => e.stopPropagation()}>
+                            
+                            <div className="p-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-2">{t('files.sortBy')}</span>
+                                <div className="space-y-1">
+                                    {[
+                                        { id: 'NAME_ASC', label: t('files.sort.nameAsc'), icon: ArrowDownAZ },
+                                        { id: 'NAME_DESC', label: t('files.sort.nameDesc'), icon: ArrowUpZA },
+                                        { id: 'DATE_NEW', label: t('files.sort.dateNew'), icon: Calendar },
+                                        { id: 'DATE_OLD', label: t('files.sort.dateOld'), icon: Calendar },
+                                        { id: 'STATUS', label: t('files.sort.status'), icon: CheckCircle2 }
+                                    ].map(opt => (
+                                        <button 
+                                            key={opt.id}
+                                            onClick={() => { setSortBy(opt.id as SortOption); setIsViewMenuOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${sortBy === opt.id ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <opt.icon size={14} /> {opt.label}
+                                            {sortBy === opt.id && <Check size={14} className="ml-auto" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-slate-100 mx-2" />
+
+                            <div className="p-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 px-2">{t('files.groupBy')}</span>
+                                <div className="space-y-1">
+                                    {[
+                                        { id: 'NONE', label: t('files.group.none'), icon: List },
+                                        { id: 'STATUS', label: t('files.group.status'), icon: Layers },
+                                        { id: 'PRODUCT', label: t('files.group.product'), icon: Folder },
+                                        { id: 'DATE', label: t('files.group.date'), icon: Calendar }
+                                    ].map(opt => (
+                                        <button 
+                                            key={opt.id}
+                                            onClick={() => { setGroupBy(opt.id as GroupOption); setIsViewMenuOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${groupBy === opt.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            <opt.icon size={14} /> {opt.label}
+                                            {groupBy === opt.id && <Check size={14} className="ml-auto" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-slate-100 mx-2" />
+
+                            {/* Layout Toggle in Menu for Mobile */}
+                            <div className="p-2 flex gap-2">
+                                 <button 
+                                    onClick={() => setViewMode('grid')} 
+                                    className={`flex-1 flex justify-center items-center py-2 rounded-lg border ${viewMode === 'grid' ? 'bg-slate-100 border-slate-300 text-slate-900' : 'border-slate-100 text-slate-400'}`}
+                                 >
+                                     <LayoutGrid size={16} />
+                                 </button>
+                                 <button 
+                                    onClick={() => setViewMode('list')} 
+                                    className={`flex-1 flex justify-center items-center py-2 rounded-lg border ${viewMode === 'list' ? 'bg-slate-100 border-slate-300 text-slate-900' : 'border-slate-100 text-slate-400'}`}
+                                 >
+                                     <List size={16} />
+                                 </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {allowUpload && (
+                    <button onClick={handleUploadTrigger} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                        <ArrowUp size={18} /> <span className="hidden sm:inline">{t('common.upload')}</span>
+                    </button>
+                )}
             </div>
         </div>
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 p-0 md:p-2 bg-slate-50/50 ${autoHeight ? '' : 'overflow-hidden'}`}>
+      <div className={`flex-1 p-0 md:p-2 bg-slate-50/50 relative z-0 ${autoHeight ? '' : 'overflow-hidden'}`}>
         {loading ? (
             <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
         ) : processedData.count === 0 ? (

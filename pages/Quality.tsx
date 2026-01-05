@@ -269,10 +269,20 @@ const Quality: React.FC = () => {
       e.preventDefault();
       const ownerId = activeView === 'master' ? MASTER_ORG_ID : selectedClient?.id;
       if (!user || !ownerId) return;
+      
+      // LOGIC UPDATE: If uploading to a client (not Master), force status to APPROVED
+      // "Documents shown to clients automatically should be OK"
+      const statusToSet = ownerId !== MASTER_ORG_ID ? 'APPROVED' : (uploadFormData.status as any);
+
       const newFile: Partial<FileNode> = {
           name: uploadFormData.name || uploadFormData.file?.name || 'Novo Arquivo',
           parentId: currentFolderId || rootFolderId,
-          metadata: { batchNumber: uploadFormData.batchNumber, invoiceNumber: uploadFormData.invoiceNumber, productName: uploadFormData.productName, status: uploadFormData.status as any }
+          metadata: { 
+              batchNumber: uploadFormData.batchNumber, 
+              invoiceNumber: uploadFormData.invoiceNumber, 
+              productName: uploadFormData.productName, 
+              status: statusToSet 
+          }
       };
       await fileService.uploadFile(user, newFile, ownerId);
       setIsUploadModalOpen(false); setUploadFormData({ name: '', batchNumber: '', invoiceNumber: '', productName: '', status: 'APPROVED', file: null }); handleRefresh();

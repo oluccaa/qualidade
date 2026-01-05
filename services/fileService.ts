@@ -43,7 +43,10 @@ export const getFavorites = async (user: User): Promise<FileNode[]> => {
     // Apply security check (just in case permissions changed)
     const accessibleFiles = files.filter(file => {
          if (user.role === UserRole.CLIENT) {
-             return file.ownerId === user.clientId;
+             // Client sees only their files AND approved files (or folders)
+             const isOwner = file.ownerId === user.clientId;
+             const isApproved = file.type === FileType.FOLDER || file.metadata?.status === 'APPROVED';
+             return isOwner && isApproved;
          }
          return true;
     });
@@ -61,7 +64,10 @@ export const getFiles = async (user: User, folderId: string | null): Promise<Fil
     // 2. Security / Data Isolation Check
     if (user.role === UserRole.CLIENT) {
       // Client can ONLY see files owned by their clientId
-      return file.ownerId === user.clientId;
+      const isOwner = file.ownerId === user.clientId;
+      // LOGIC UPDATE: Clients only see APPROVED files (Folders are always visible)
+      const isApproved = file.type === FileType.FOLDER || file.metadata?.status === 'APPROVED';
+      return isOwner && isApproved;
     }
 
     // Admin and Quality can see everything (Including Master Org)
@@ -96,7 +102,11 @@ export const importFilesFromMaster = async (user: User, fileIds: string[], targe
         parentId: targetFolderId, // Move to client folder
         ownerId: targetOwnerId, // Assign ownership to client
         updatedAt: new Date().toISOString().split('T')[0], // Fresh date
-        name: mf.name // Keep original name (or could append "Copy")
+        name: mf.name, // Keep original name (or could append "Copy")
+        metadata: {
+            ...mf.metadata,
+            status: 'APPROVED' // LOGIC UPDATE: Imported files are automatically APPROVED for the client
+        }
     }));
 
     currentFiles.push(...newFiles);
@@ -110,7 +120,7 @@ export const getRecentFiles = async (user: User, limit: number = 20): Promise<Fi
     let files = currentFiles.filter(f => f.type !== FileType.FOLDER);
 
     if (user.role === UserRole.CLIENT) {
-        files = files.filter(f => f.ownerId === user.clientId);
+        files = files.filter(f => f.ownerId === user.clientId && f.metadata?.status === 'APPROVED');
     }
 
     // Sort by Date Descending (Mock logic: using updatedAt as access time for demo)
@@ -129,7 +139,7 @@ export const getLibraryFiles = async (user: User, filters: LibraryFilters): Prom
 
     // 2. Security Check
     if (user.role === UserRole.CLIENT) {
-        files = files.filter(f => f.ownerId === user.clientId);
+        files = files.filter(f => f.ownerId === user.clientId && f.metadata?.status === 'APPROVED');
     }
 
     // 3. Apply Filters
@@ -169,22 +179,25 @@ export const getDashboardStats = async (user: User) => {
 
     if (user.role === UserRole.CLIENT) {
         // Client View: Only their files
-        relevantFiles = relevantFiles.filter(f => f.ownerId === user.clientId);
+        // LOGIC UPDATE: We look at ALL files belonging to them to calculate underlying stats, 
+        // but since the rule is "Upload = Approved", we mock 100% compliance.
+        const allClientFiles = relevantFiles.filter(f => f.ownerId === user.clientId);
         
-        const totalDocs = relevantFiles.length;
-        const pendingDocs = relevantFiles.filter(f => f.metadata?.status === 'PENDING').length;
-        const approvedDocs = relevantFiles.filter(f => f.metadata?.status === 'APPROVED').length;
+        // However, technically, only APPROVED files are visible.
+        const visibleFiles = allClientFiles.filter(f => f.metadata?.status === 'APPROVED');
         
-        // Calculate compliance score (Mock logic)
-        const compliance = totalDocs > 0 ? Math.round((approvedDocs / totalDocs) * 100) : 100;
+        const totalDocs = visibleFiles.length;
+        
+        // Compliance is visually 100% because if they see it, it's valid.
+        const compliance = 100;
 
         return {
             mainLabel: 'Conformidade Documental',
-            subLabel: 'Lotes Auditados',
+            subLabel: 'Lotes Disponíveis',
             mainValue: compliance,
             subValue: totalDocs,
-            pendingValue: pendingDocs,
-            status: pendingDocs > 0 ? 'PENDING_ACTIONS' : 'REGULAR'
+            pendingValue: 0, // Clients have no visibility of pending items
+            status: 'REGULAR'
         };
     } else {
         // Quality/Admin View: System Wide (excluding Master)
@@ -300,7 +313,10 @@ export const searchFiles = async (user: User, query: string): Promise<FileNode[]
 
     // Security Check
     if (user.role === UserRole.CLIENT) {
-      return file.ownerId === user.clientId;
+      const isOwner = file.ownerId === user.clientId;
+      // LOGIC UPDATE: Clients only find APPROVED files
+      const isApproved = file.type === FileType.FOLDER || file.metadata?.status === 'APPROVED';
+      return isOwner && isApproved;
     }
     return true;
   });
@@ -363,8 +379,9 @@ export const getFileSignedUrl = async (user: User, fileId: string): Promise<stri
     const file = currentFiles.find(f => f.id === fileId);
     if (!file) throw new Error("File not found");
 
-    if (user.role === UserRole.CLIENT && file.ownerId !== user.clientId) {
-        throw new Error("Access Denied");
+    if (user.role === UserRole.CLIENT) {
+        if (file.ownerId !== user.clientId) throw new Error("Access Denied: Owner Mismatch");
+        if (file.metadata?.status !== 'APPROVED') throw new Error("Access Denied: Document not Approved");
     }
 
     // Log the access

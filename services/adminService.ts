@@ -12,10 +12,10 @@ let firewallRules = [...MOCK_FIREWALL_RULES]; // Firewall State
 
 // Global System Status (Persisted in Memory for Mock)
 let currentSystemStatus: SystemStatus = {
-    mode: 'ONLINE',
-    message: '',
-    scheduledStart: '',
-    scheduledEnd: ''
+    mode: 'SCHEDULED',
+    message: 'O sistema ficará indisponível.',
+    scheduledStart: '2026-12-12T17:00:00',
+    scheduledEnd: '2026-12-12T20:00:00'
 };
 
 // --- SYSTEM STATUS (MAINTENANCE MODE) ---

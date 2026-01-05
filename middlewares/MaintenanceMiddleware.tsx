@@ -5,7 +5,6 @@ import { useAuth } from '../services/authContext.tsx';
 import * as adminService from '../services/adminService.ts';
 import { UserRole, SystemStatus } from '../types.ts';
 import { MaintenanceScreen } from '../components/MaintenanceScreen.tsx';
-import { MaintenanceBanner } from '../components/MaintenanceBanner.tsx';
 
 export const MaintenanceMiddleware: React.FC = () => {
   const { user } = useAuth();
@@ -36,7 +35,8 @@ export const MaintenanceMiddleware: React.FC = () => {
 
   return (
     <>
-        <MaintenanceBanner status={status} isAdmin={user?.role === UserRole.ADMIN} />
+        {/* Banner removed from here to prevent pushing the Layout sidebar down. 
+            It is now handled inside Layout.tsx for correct positioning. */}
         <Outlet context={{ systemStatus: status }} />
     </>
   );

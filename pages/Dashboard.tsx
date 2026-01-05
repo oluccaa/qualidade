@@ -1,17 +1,16 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer } from '../components/FileExplorer.tsx';
 import { SupportModal } from '../components/SupportModal.tsx';
 import { useAuth } from '../services/authContext.tsx';
-import { getRecentFiles, getLibraryFiles, getFileSignedUrl, getFavorites, getDashboardStats } from '../services/fileService.ts';
+import { getRecentFiles, getLibraryFiles, getFavorites, getDashboardStats } from '../services/fileService.ts';
 import * as adminService from '../services/adminService.ts';
-import { FileNode, LibraryFilters, SupportTicket, UserRole } from '../types.ts';
+import { FileNode, LibraryFilters, SupportTicket, UserRole, SystemStatus } from '../types.ts';
 import { useTranslation } from 'react-i18next';
 import { 
     Search, 
-    Download, 
     ArrowRight, 
     Filter,
     XCircle,
@@ -19,14 +18,21 @@ import {
     History,
     CheckCircle2,
     ShieldCheck,
-    Shield,
     LifeBuoy,
     Plus,
     Clock,
     AlertCircle,
     MessageSquare,
+    FileText,
+    TrendingUp,
+    Zap,
+    Bell,
+    ChevronRight,
+    CalendarDays,
     FileCheck,
-    Users
+    Server,
+    AlertTriangle,
+    CalendarClock
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -37,7 +43,7 @@ const Dashboard: React.FC = () => {
   
   // View State
   const queryParams = new URLSearchParams(location.search);
-  const currentView = queryParams.get('view') || 'home'; // 'home' | 'files' | 'recent' | 'favorites' | 'tickets'
+  const currentView = queryParams.get('view') || 'home'; 
 
   // --- HOME VIEW STATE ---
   const [quickSearch, setQuickSearch] = useState('');
@@ -45,10 +51,12 @@ const Dashboard: React.FC = () => {
       mainValue: 0, subValue: 0, pendingValue: 0, 
       status: 'REGULAR', mainLabel: '', subLabel: '', activeClients: 0 
   });
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>({ mode: 'ONLINE' });
 
   // --- DATA STATE ---
   const [viewFiles, setViewFiles] = useState<FileNode[]>([]);
-  const [clientTickets, setClientTickets] = useState<SupportTicket[]>([]); // Tickets State
+  const [recentFiles, setRecentFiles] = useState<FileNode[]>([]); // Specific for Feed
+  const [clientTickets, setClientTickets] = useState<SupportTicket[]>([]); 
   const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState<LibraryFilters>({
       startDate: '',
@@ -60,16 +68,24 @@ const Dashboard: React.FC = () => {
   // --- MODAL STATE ---
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
-  // Main Data Fetcher based on View
+  // Main Data Fetcher
   const fetchData = useCallback(async () => {
       if (!user) return;
       
       setIsLoading(true);
       try {
+          // Always fetch stats for the sidebar/header context
+          const data = await getDashboardStats(user);
+          const sysData = await adminService.getSystemStatus();
+          setStats(data);
+          setSystemStatus(sysData);
+
           if (currentView === 'home') {
-              // Fetch stats specifically for Home view
-              const data = await getDashboardStats(user);
-              setStats(data);
+              const recents = await getRecentFiles(user, 5);
+              setRecentFiles(recents);
+              // Also fetch tickets for the "Mini Widget"
+              const tickets = await adminService.getMyTickets(user);
+              setClientTickets(tickets.slice(0, 3));
           } else if (currentView === 'files') {
               const results = await getLibraryFiles(user, filters);
               setViewFiles(results);
@@ -81,7 +97,6 @@ const Dashboard: React.FC = () => {
               setViewFiles(results);
           } else if (currentView === 'tickets') {
               const results = await adminService.getMyTickets(user);
-              // Sort by Date Descending
               results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
               setClientTickets(results);
           }
@@ -90,14 +105,11 @@ const Dashboard: React.FC = () => {
       }
   }, [user, currentView, filters]);
 
-  // Trigger fetch when view or filters change
   useEffect(() => {
-      // Immediate fetch or with small debounce
       const timeoutId = setTimeout(fetchData, 100);
       return () => clearTimeout(timeoutId);
   }, [fetchData, currentView]);
 
-  // Close modal and refresh tickets
   const handleSupportClose = () => {
       setIsSupportModalOpen(false);
       if (currentView === 'tickets') fetchData(); 
@@ -105,6 +117,14 @@ const Dashboard: React.FC = () => {
 
   const clearFilters = () => {
       setFilters({ startDate: '', endDate: '', status: 'ALL', search: '' });
+  };
+
+  // --- UI HELPERS ---
+  const getGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Bom dia';
+      if (hour < 18) return 'Boa tarde';
+      return 'Boa noite';
   };
 
   const getTicketStatusColor = (status: string) => {
@@ -115,179 +135,261 @@ const Dashboard: React.FC = () => {
       }
   };
 
-  const getStatusIcon = (status: string) => {
-      switch (status) {
-          case 'RESOLVED': return <CheckCircle2 size={14} />;
-          case 'IN_PROGRESS': return <Clock size={14} />;
-          default: return <AlertCircle size={14} />;
-      }
-  };
+  // --- SUB-COMPONENTS (Local) ---
 
-  const isClient = user?.role === UserRole.CLIENT;
+  const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick }: any) => (
+      <div 
+        onClick={onClick}
+        className={`
+            relative overflow-hidden bg-white p-5 rounded-2xl border border-slate-100 shadow-sm cursor-pointer group transition-all duration-300 hover:shadow-lg hover:-translate-y-1
+        `}
+      >
+          <div className={`absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 transition-opacity text-${color}-600 transform scale-150 -translate-y-2 translate-x-2`}>
+              <Icon size={100} />
+          </div>
+          <div className="relative z-10">
+              <div className={`w-12 h-12 rounded-xl bg-${color}-50 text-${color}-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
+                  <Icon size={24} />
+              </div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+              <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{value}</h3>
+              {subtext && <p className={`text-xs font-medium mt-2 text-${color}-600 bg-${color}-50 inline-block px-2 py-0.5 rounded-full`}>{subtext}</p>}
+          </div>
+      </div>
+  );
 
-  // --- RENDER: HOME VIEW ---
+  const ActivityFeedItem = ({ file }: { file: FileNode }) => (
+      <div className="flex gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors border-l-2 border-transparent hover:border-blue-500 group">
+          <div className="mt-1 relative">
+              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <FileText size={18} />
+              </div>
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-0.5 h-full bg-slate-100 -z-10 group-last:hidden"></div>
+          </div>
+          <div className="flex-1">
+              <div className="flex justify-between items-start">
+                  <h4 className="text-sm font-bold text-slate-800">{file.name}</h4>
+                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded-full">{file.updatedAt}</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+                  Documento processado e disponível para download. 
+                  {file.metadata?.batchNumber && <span className="font-mono text-slate-600 ml-1">Lote: {file.metadata.batchNumber}</span>}
+              </p>
+              <div className="flex gap-2 mt-2">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-white border-slate-200 text-slate-500 flex items-center gap-1">
+                      {file.metadata?.status === 'APPROVED' ? <CheckCircle2 size={10} className="text-emerald-500"/> : <Clock size={10} className="text-orange-500"/>}
+                      {file.metadata?.status === 'APPROVED' ? 'Aprovado' : 'Pendente'}
+                  </span>
+              </div>
+          </div>
+      </div>
+  );
+
+  // --- RENDER: HOME VIEW (CLIENT COMMAND CENTER) ---
   if (currentView === 'home') {
       return (
         <Layout title={t('menu.dashboard')}>
+          <SupportModal isOpen={isSupportModalOpen} onClose={handleSupportClose} />
           
-          {/* TOP GRID: SEARCH + STATUS CARD */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-8">
               
-              {/* HERO / SEARCH SECTION */}
-              <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden flex flex-col justify-center">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 -translate-y-1/2 translate-x-1/2"></div>
-                  
-                  <div className="relative z-10">
-                      <h1 className="text-xl font-bold text-slate-900 mb-1">
-                          {t('dashboard.hello')}, {user?.name.split(' ')[0]}. {t('dashboard.whatLookingFor')}
-                      </h1>
-                      <p className="text-sm text-slate-500 mb-5">
-                          {isClient 
-                            ? "Acesse o Portal da Qualidade para gerenciar seus certificados e laudos."
-                            : "Gerencie o repositório central e as pendências dos clientes."
-                          }
-                      </p>
+              {/* 1. HERO SECTION: Welcome & Global Status */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  <div className="lg:col-span-8 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[280px]">
+                        {/* Background Decor */}
+                        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+                        
+                        <div className="relative z-10 max-w-2xl">
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-slate-900/20">
+                                    Portal do Cliente
+                                </span>
+                                <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                                    <CalendarDays size={12} /> {new Date().toLocaleDateString()}
+                                </span>
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
+                                {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name.split(' ')[0]}</span>.
+                            </h1>
+                            <p className="text-slate-500 text-sm md:text-base leading-relaxed mb-8">
+                                O status da sua conta é <strong className="text-emerald-600">{stats.status === 'REGULAR' ? 'Saudável' : 'Requer Atenção'}</strong>. 
+                                Você possui <strong className="text-slate-800">{stats.subValue} documentos</strong> processados e <strong className="text-slate-800">{clientTickets.filter(t => t.status !== 'RESOLVED').length} chamados</strong> em aberto.
+                            </p>
 
-                      <div className="relative group max-w-xl">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                          </div>
-                          <input
-                              type="text"
-                              className="block w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all shadow-sm text-sm"
-                              placeholder={t('dashboard.searchPlaceholder')}
-                              value={quickSearch}
-                              onChange={(e) => setQuickSearch(e.target.value)}
-                              onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && quickSearch) {
-                                      setFilters(prev => ({ ...prev, search: quickSearch }));
-                                      navigate('/dashboard?view=files');
-                                  }
-                              }}
-                          />
-                          <div className="absolute inset-y-0 right-1.5 flex items-center">
-                              <button 
-                                 onClick={() => {
-                                     setFilters(prev => ({ ...prev, search: quickSearch }));
-                                     navigate('/dashboard?view=files');
-                                 }}
-                                 className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-                               >
-                                  <ArrowRight size={16} />
-                              </button>
-                          </div>
-                      </div>
+                            {/* Intelligent Search Bar */}
+                            <div className="relative group max-w-lg">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                                </div>
+                                <input
+                                    type="text"
+                                    className="block w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm group-hover:shadow-md text-sm font-medium"
+                                    placeholder={t('dashboard.searchPlaceholder')}
+                                    value={quickSearch}
+                                    onChange={(e) => setQuickSearch(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && quickSearch) {
+                                            setFilters(prev => ({ ...prev, search: quickSearch }));
+                                            navigate('/dashboard?view=files');
+                                        }
+                                    }}
+                                />
+                                <div className="absolute inset-y-0 right-2 flex items-center">
+                                    <button 
+                                        onClick={() => {
+                                            setFilters(prev => ({ ...prev, search: quickSearch }));
+                                            navigate('/dashboard?view=files');
+                                        }}
+                                        className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-md active:scale-95"
+                                    >
+                                        <ArrowRight size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Quick Filter Tags */}
+                        <div className="flex flex-wrap gap-2 mt-6 relative z-10">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider py-1.5 mr-2">Acesso Rápido:</span>
+                            <button onClick={() => navigate('/dashboard?view=recent')} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm flex items-center gap-1.5"><History size={12}/> Recentes</button>
+                            <button onClick={() => navigate('/dashboard?view=favorites')} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:border-yellow-300 hover:text-yellow-600 transition-all shadow-sm flex items-center gap-1.5"><Star size={12}/> Favoritos</button>
+                            <button onClick={() => {setFilters(prev => ({...prev, status: 'PENDING'})); navigate('/dashboard?view=files');}} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:border-orange-300 hover:text-orange-600 transition-all shadow-sm flex items-center gap-1.5"><Clock size={12}/> Pendentes</button>
+                        </div>
+                  </div>
+
+                  {/* Right Column: Key Action & Status */}
+                  <div className="lg:col-span-4 flex flex-col gap-6">
                       
-                      <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
-                          <span className="font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.suggestions')}:</span>
-                          <button onClick={() => { setFilters(prev => ({...prev, search: 'SAE 1045'})); navigate('/dashboard?view=files'); }} className="hover:text-blue-600 hover:underline decoration-blue-600/30 underline-offset-4">SAE 1045</button>
-                          <button onClick={() => { setFilters(prev => ({...prev, status: 'PENDING'})); navigate('/dashboard?view=files'); }} className="hover:text-blue-600 hover:underline decoration-blue-600/30 underline-offset-4">{t('dashboard.pendingCerts')}</button>
+                      {/* SYSTEM STATUS / MAINTENANCE CARD */}
+                      <div className={`flex-1 rounded-3xl p-6 text-white relative overflow-hidden group shadow-xl ${systemStatus.mode === 'SCHEDULED' ? 'bg-gradient-to-br from-orange-600 to-orange-500' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}>
+                          {/* Decorators */}
+                          <div className="absolute top-0 right-0 p-6 opacity-10">
+                              {systemStatus.mode === 'SCHEDULED' ? <AlertTriangle size={120} /> : <Server size={120} />}
+                          </div>
+                          
+                          <div className="relative z-10 flex flex-col h-full justify-between">
+                              <div>
+                                  <p className="text-xs font-bold text-white/60 uppercase tracking-wider mb-1">Status do Sistema</p>
+                                  <h3 className="text-2xl font-bold flex items-center gap-2">
+                                      {systemStatus.mode === 'SCHEDULED' ? 'Manutenção Agendada' : 'Operação Normal'}
+                                  </h3>
+                              </div>
+
+                              {systemStatus.mode === 'SCHEDULED' && systemStatus.scheduledStart ? (
+                                   <div className="bg-white/15 rounded-xl p-4 backdrop-blur-sm border border-white/10 mt-4 shadow-inner">
+                                       <div className="flex items-center gap-2 mb-2 text-white">
+                                           <CalendarClock size={18} />
+                                           <span className="font-bold text-sm">
+                                               {new Date(systemStatus.scheduledStart).toLocaleDateString()} às {new Date(systemStatus.scheduledStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                           </span>
+                                       </div>
+                                       <p className="text-xs text-white/90 leading-relaxed font-medium">
+                                           {systemStatus.message || 'O sistema passará por atualizações programadas. Planeje suas atividades.'}
+                                       </p>
+                                   </div>
+                              ) : (
+                                   <div className="mt-6 space-y-4">
+                                       <p className="text-sm text-slate-300 leading-relaxed">
+                                           Todos os serviços estão operacionais. Nenhuma interrupção prevista para as próximas 24 horas.
+                                       </p>
+                                       <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-950/30 w-fit px-3 py-1.5 rounded-full border border-emerald-500/20">
+                                           <CheckCircle2 size={14} /> Monitoramento Ativo
+                                       </div>
+                                   </div>
+                              )}
+                          </div>
                       </div>
+
+                      {/* Quick Ticket Action */}
+                      <button onClick={() => setIsSupportModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-1 shadow-lg group hover:shadow-blue-500/20 transition-all active:scale-[0.98]">
+                          <div className="bg-white rounded-[20px] p-4 flex items-center justify-between h-full group-hover:bg-blue-50/50 transition-colors">
+                              <div className="flex items-center gap-4">
+                                  <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl group-hover:scale-110 transition-transform"><LifeBuoy size={24}/></div>
+                                  <div className="text-left">
+                                      <span className="block font-bold text-slate-800">Precisa de Ajuda?</span>
+                                      <span className="text-xs text-slate-500">Falar com Qualidade</span>
+                                  </div>
+                              </div>
+                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                  <Plus size={18} />
+                              </div>
+                          </div>
+                      </button>
                   </div>
               </div>
 
-              {/* STATUS CARD (Dynamic per Role) */}
-              <div className="xl:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl overflow-hidden text-white relative group min-h-[240px] flex flex-col justify-center">
-                    {/* Animated Background Gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                    
-                    {/* Decorative Elements */}
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Shield size={100} />
-                    </div>
+              {/* 2. KPI GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <KpiCard 
+                    icon={FileText} label="Biblioteca Total" value={stats.subValue} subtext="Arquivos" color="blue" 
+                    onClick={() => navigate('/dashboard?view=files')}
+                  />
+                  <KpiCard 
+                    icon={Clock} label="Pendências" value={stats.pendingValue} subtext="Aguardando" color="orange" 
+                    onClick={() => { setFilters(prev => ({...prev, status: 'PENDING'})); navigate('/dashboard?view=files'); }}
+                  />
+                  <KpiCard 
+                    icon={MessageSquare} label="Meus Chamados" value={clientTickets.filter(t => t.status !== 'RESOLVED').length} subtext="Em aberto" color="indigo" 
+                    onClick={() => navigate('/dashboard?view=tickets')}
+                  />
+              </div>
 
-                    <div className="relative z-10 p-6 flex flex-col h-full justify-between">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                {isClient ? <><ShieldCheck size={14} className="text-emerald-400" /> {t('dashboard.accountStatus')}</> : <><Users size={14} className="text-blue-400" /> Visão Global da Qualidade</>}
-                            </h3>
-                            {stats.status === 'REGULAR' ? (
-                                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                                    {t('dashboard.verified')}
-                                </span>
-                            ) : (
-                                <span className="bg-orange-500/10 text-orange-400 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.2)]">
-                                    AÇÃO NECESSÁRIA
-                                </span>
-                            )}
-                        </div>
+              {/* 3. SPLIT SECTION: Recent Activity & File Explorer Preview */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 pb-10">
+                  
+                  {/* Left: Activity Feed */}
+                  <div className="xl:col-span-1 space-y-4">
+                      <div className="flex items-center justify-between px-1">
+                          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                              <Zap size={20} className="text-yellow-500 fill-current" /> Atividade Recente
+                          </h3>
+                          <button onClick={() => navigate('/dashboard?view=recent')} className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors">Ver tudo</button>
+                      </div>
+                      
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+                          {recentFiles.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8 text-center">
+                                  <Bell size={48} className="mb-4 opacity-20" />
+                                  <p className="text-sm">Nenhuma atividade recente registrada.</p>
+                              </div>
+                          ) : (
+                              <div className="divide-y divide-slate-50">
+                                  {recentFiles.map(file => (
+                                      <ActivityFeedItem key={file.id} file={file} />
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                  </div>
 
-                        <div>
-                            <div className="flex items-baseline gap-2 mb-2">
-                                <span className="text-3xl font-bold text-white tracking-tight">
-                                    {stats.status === 'REGULAR' ? (isClient ? t('dashboard.regular') : "Operacional") : "Atenção"}
-                                </span>
-                                {stats.status === 'REGULAR' && (
-                                    <span className="text-emerald-400 font-medium text-xs flex items-center gap-1">
-                                        <CheckCircle2 size={12} /> {t('dashboard.active')}
-                                    </span>
-                                )}
-                            </div>
-                            
-                            <p className="text-slate-400 text-xs leading-relaxed max-w-[95%]">
-                                {isClient 
-                                    ? stats.pendingValue > 0 ? "Você possui documentos pendentes aguardando revisão ou aprovação." : t('dashboard.statusDesc')
-                                    : "Monitoramento em tempo real do repositório central e auditorias de clientes."
-                                }
-                            </p>
-                        </div>
+                  {/* Right: Integrated File Workspace */}
+                  <div className="xl:col-span-2 space-y-4">
+                      <div className="flex items-center justify-between px-1">
+                          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                              <FileCheck size={20} className="text-blue-500" /> Documentos & Certificados
+                          </h3>
+                          <button onClick={() => navigate('/dashboard?view=files')} className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
+                              Biblioteca Completa <ChevronRight size={14} />
+                          </button>
+                      </div>
 
-                        {/* Progress Section (Dynamic) */}
-                        <div className="mt-4 space-y-1.5">
-                            <div className="flex justify-between items-end">
-                                <span className="text-[10px] font-medium text-slate-300">{stats.mainLabel}</span>
-                                <span className={`text-[10px] font-bold ${stats.mainValue === 100 ? 'text-emerald-400' : 'text-blue-400'}`}>{stats.mainValue}%</span>
-                            </div>
-                            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                                <div 
-                                    className={`h-full rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-1000 ${stats.mainValue === 100 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-blue-500 to-blue-400'}`}
-                                    style={{ width: `${stats.mainValue}%` }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        {/* Footer Metrics */}
-                        <div className="mt-4 pt-3 border-t border-slate-700/50 grid grid-cols-2 gap-4">
-                            <div>
-                                <span className="block text-xl font-bold text-white">{stats.subValue}</span>
-                                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{stats.subLabel}</span>
-                            </div>
-                            <div className="border-l border-slate-700/50 pl-4">
-                                <span className={`block text-xl font-bold ${stats.pendingValue > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>{stats.pendingValue}</span>
-                                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{isClient ? t('dashboard.pendencies') : 'Pendências Globais'}</span>
-                            </div>
-                        </div>
-                    </div>
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[400px] flex flex-col">
+                          {/* We reuse FileExplorer but pass props to make it fit nicely */}
+                          <FileExplorer 
+                              allowUpload={false} 
+                              hideToolbar={false}
+                              autoHeight={false} // Use internal scroll
+                          />
+                      </div>
+                  </div>
               </div>
           </div>
-
-          {/* MAIN CONTENT: FULL WIDTH FILE EXPLORER */}
-          <div className="flex flex-col gap-4">
-                 <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <Filter size={18} className="text-slate-400" /> 
-                        {t('dashboard.folderNav')}
-                    </h2>
-                    <button 
-                        onClick={() => navigate('/dashboard?view=files')}
-                        className="text-xs font-bold text-blue-600 hover:underline"
-                    >
-                        {t('dashboard.viewFullLib')}
-                    </button>
-                 </div>
-
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[450px]">
-                     <FileExplorer allowUpload={false} autoHeight={true} />
-                 </div>
-          </div>
-
         </Layout>
       );
   }
 
-  // --- RENDER: LIBRARY / FAVORITES / RECENT / TICKETS VIEW ---
-  
-  // Also Render Support Modal if open
+  // --- RENDER: OTHER VIEWS (Library, Favorites, etc.) ---
+  // Reuse existing layouts but wrapped in Layout
   
   let pageTitle = t('dashboard.libraryTitle');
   let pageIcon = <Filter size={20} className="text-blue-500" />;
@@ -312,7 +414,7 @@ const Dashboard: React.FC = () => {
             
             {/* Advanced Filters Bar - ONLY for Library View */}
             {showFilters && (
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-12 gap-4 items-end animate-in fade-in slide-in-from-top-2">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-12 gap-4 items-end animate-in fade-in slide-in-from-top-2">
                     {/* Search Term */}
                     <div className="md:col-span-4 lg:col-span-5 space-y-1">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('dashboard.textSearch')}</label>
@@ -320,7 +422,7 @@ const Dashboard: React.FC = () => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input 
                                 type="text" 
-                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                 placeholder={t('dashboard.searchPlaceholder')}
                                 value={filters.search}
                                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -335,7 +437,7 @@ const Dashboard: React.FC = () => {
                             <div className="relative flex-1">
                                 <input 
                                     type="date" 
-                                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                                     value={filters.startDate}
                                     onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
                                 />
@@ -344,7 +446,7 @@ const Dashboard: React.FC = () => {
                             <div className="relative flex-1">
                                 <input 
                                     type="date" 
-                                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                                     value={filters.endDate}
                                     onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
                                 />
@@ -356,7 +458,7 @@ const Dashboard: React.FC = () => {
                     <div className="md:col-span-3 lg:col-span-2 space-y-1">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('common.status')}</label>
                         <select 
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer"
                             value={filters.status}
                             onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
                         >
@@ -381,8 +483,9 @@ const Dashboard: React.FC = () => {
             )}
 
             {/* Results Area */}
-            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            {/* Removed overflow-hidden from wrapper to prevent clipping dropdowns */}
+            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col relative">
+                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl z-10 relative">
                     <div className="flex items-center gap-2">
                         {pageIcon}
                         <div className="flex flex-col">
@@ -414,7 +517,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 ) : currentView === 'tickets' ? (
                     /* --- TICKETS VIEW RENDER --- */
-                    <div className="flex-1 overflow-auto bg-slate-50 p-4">
+                    <div className="flex-1 overflow-auto bg-slate-50 p-4 rounded-b-2xl">
                         {clientTickets.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-slate-400">
                                 <MessageSquare size={48} className="mb-4 text-slate-200" />
@@ -427,7 +530,7 @@ const Dashboard: React.FC = () => {
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="flex items-center gap-2">
                                                 <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getTicketStatusColor(ticket.status)}`}>
-                                                    {getStatusIcon(ticket.status)}
+                                                    {ticket.status === 'RESOLVED' ? <CheckCircle2 size={12}/> : <Clock size={12}/>}
                                                     {t(`admin.tickets.status.${ticket.status}`)}
                                                 </span>
                                                 <span className="text-[10px] text-slate-400 font-mono">#{ticket.id}</span>
@@ -460,7 +563,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 ) : (
                     /* --- FILES VIEW RENDER --- */
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 flex flex-col min-h-0 rounded-b-2xl">
                         <FileExplorer 
                             allowUpload={false} 
                             externalFiles={viewFiles} 
