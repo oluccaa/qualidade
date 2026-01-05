@@ -54,7 +54,11 @@ import {
   ToggleRight,
   Shield,
   Zap,
-  Briefcase
+  Briefcase,
+  LayoutGrid,
+  List,
+  Calendar,
+  MoreHorizontal
 } from 'lucide-react';
 
 // --- Components ---
@@ -143,11 +147,12 @@ const Admin: React.FC = () => {
   const [maintenanceList, setMaintenanceList] = useState<MaintenanceEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Filters State
+  // Filters & View Mode State
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'BLOCKED' | 'INACTIVE'>('ALL');
   const [severityFilter, setSeverityFilter] = useState<'ALL' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'>('ALL');
+  const [clientViewMode, setClientViewMode] = useState<'grid' | 'list'>('grid');
 
   // Modal & Form State (Users)
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -213,6 +218,14 @@ const Admin: React.FC = () => {
           return matchesSearch && matchesStatus;
       });
   }, [clientsList, searchTerm, statusFilter]);
+
+  // Helper Stats for Clients Tab
+  const clientStats = useMemo(() => {
+      const total = clientsList.length;
+      const active = clientsList.filter(c => c.status === 'ACTIVE').length;
+      const inactive = total - active;
+      return { total, active, inactive };
+  }, [clientsList]);
 
   const filteredLogs = useMemo(() => {
       return logs.filter(l => {
@@ -501,6 +514,69 @@ const Admin: React.FC = () => {
       }
   }
 
+  // --- Client Card Component ---
+  const ClientCard = ({ client }: { client: ClientOrganization }) => {
+      const userCount = countUsersForClient(client.id);
+      return (
+          <div className="bg-white rounded-xl border border-slate-200 hover:border-blue-400 shadow-sm hover:shadow-md transition-all flex flex-col p-5 group relative animate-in fade-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-4">
+                  <div className="bg-indigo-50 p-3 rounded-lg text-indigo-600 border border-indigo-100 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                      <Building2 size={24} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <StatusBadge status={client.status} />
+                      <button 
+                          onClick={() => setActiveClientDropdown(activeClientDropdown === client.id ? null : client.id)}
+                          className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                          <MoreHorizontal size={20} />
+                      </button>
+                  </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 mb-4">
+                  <h3 className="font-bold text-slate-800 text-lg leading-tight mb-1 line-clamp-2" title={client.name}>{client.name}</h3>
+                  <div className="flex items-center gap-2 text-sm text-slate-500 font-mono bg-slate-50 w-fit px-2 py-0.5 rounded border border-slate-100">
+                      <Hash size={12} className="text-slate-400"/> {client.cnpj}
+                  </div>
+              </div>
+
+              {/* Metadata */}
+              <div className="grid grid-cols-2 gap-3 mb-4 pt-4 border-t border-slate-50 border-dashed">
+                  <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Usuários</span>
+                      <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                          <Users size={14} className="text-blue-500" /> {userCount}
+                      </div>
+                  </div>
+                  <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Desde</span>
+                      <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                          <Calendar size={14} className="text-emerald-500" /> {new Date(client.contractDate).getFullYear()}
+                      </div>
+                  </div>
+              </div>
+
+              {/* Quick Actions (Hover Overlay or Always Visible depending on dropdown) */}
+              {activeClientDropdown === client.id && (
+                  <div className="absolute top-14 right-4 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      <button onClick={() => { openClientModal(client); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50">
+                          <Edit2 size={14} className="text-blue-500" /> Editar Dados
+                      </button>
+                      <button onClick={() => { handleToggleClientStatus(client); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50">
+                          {client.status === 'ACTIVE' ? <><Ban size={14} className="text-orange-500"/> Desativar Acesso</> : <><CheckCircle2 size={14} className="text-emerald-500"/> Reativar Acesso</>}
+                      </button>
+                      <button onClick={() => { handleDeleteClient(client.id); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
+                          <Trash2 size={14} /> Excluir Contrato
+                      </button>
+                  </div>
+              )}
+          </div>
+      );
+  };
+
   return (
     <Layout title={t('menu.management')}>
       
@@ -787,100 +863,156 @@ const Admin: React.FC = () => {
                   </div>
               )}
 
-              {/* ... REST OF TABS (CLIENTS, FIREWALL, TICKETS, USERS) KEPT AS IS ... */}
-              {/* (The rest of the code is preserved exactly as in the original file, truncated here for brevity but included in the change application context if needed) */}
-              
-              {/* --- CLIENTS TAB --- */}
+              {/* --- CLIENTS TAB (IMPROVED DESIGN) --- */}
               {activeTab === 'clients' && (
-                  <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                      <div className="p-3 border-b border-slate-100 flex flex-wrap gap-3 bg-slate-50/50 items-center">
-                          <div className="flex items-center gap-2">
-                              <Filter size={14} className="text-slate-400" />
-                              <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.users.filters')}:</span>
+                  <div className="flex flex-col gap-6">
+                      
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2">
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                              <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><Building2 size={24} /></div>
+                              <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total de Empresas</p>
+                                  <p className="text-2xl font-bold text-slate-800">{clientStats.total}</p>
+                              </div>
                           </div>
-                          <select 
-                              value={statusFilter}
-                              onChange={(e) => setStatusFilter(e.target.value as any)}
-                              className="text-xs border-none bg-white py-1.5 px-3 rounded-lg shadow-sm ring-1 ring-slate-200 focus:ring-blue-500 cursor-pointer"
-                          >
-                              <option value="ALL">{t('admin.users.allStatus')}</option>
-                              <option value="ACTIVE">{t('dashboard.active')}</option>
-                              <option value="INACTIVE">Inativo</option>
-                          </select>
-                          <div className="ml-auto text-xs text-slate-400 font-medium">
-                              {filteredClients.length} organizações
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><CheckCircle2 size={24} /></div>
+                              <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Contratos Ativos</p>
+                                  <p className="text-2xl font-bold text-emerald-600">{clientStats.active}</p>
+                              </div>
+                          </div>
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                              <div className="p-3 bg-red-50 text-red-600 rounded-lg"><Ban size={24} /></div>
+                              <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bloqueados / Inativos</p>
+                                  <p className="text-2xl font-bold text-red-600">{clientStats.inactive}</p>
+                              </div>
                           </div>
                       </div>
 
-                      <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.organizations')}</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">CNPJ</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Data Contrato</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Usuários</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                                {filteredClients.map(c => (
-                                    <tr key={c.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 shrink-0">
-                                                    <Building2 size={18} />
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-slate-900 text-sm whitespace-nowrap">{c.name}</p>
-                                                    <p className="text-xs text-slate-400">ID: {c.id}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 font-mono">
-                                            {c.cnpj}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <StatusBadge status={c.status} />
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">
-                                            {c.contractDate}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md w-fit">
-                                                <Users size={12} className="text-slate-400" />
-                                                <span className="text-xs font-bold text-slate-700">{countUsersForClient(c.id)}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right relative">
-                                            <button 
-                                                onClick={() => setActiveClientDropdown(activeClientDropdown === c.id ? null : c.id)}
-                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                            >
-                                                <MoreVertical size={16} />
-                                            </button>
-                                            
-                                            {activeClientDropdown === c.id && (
-                                                <div className="absolute right-8 top-8 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                    <button onClick={() => { openClientModal(c); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                                        <Edit2 size={14} /> Editar
-                                                    </button>
-                                                    <button onClick={() => { handleToggleClientStatus(c); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                                        {c.status === 'ACTIVE' ? <><Ban size={14} className="text-orange-500"/> Desativar</> : <><CheckCircle2 size={14} className="text-emerald-500"/> Ativar</>}
-                                                    </button>
-                                                    <div className="h-px bg-slate-100 my-1" />
-                                                    <button onClick={() => { handleDeleteClient(c.id); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2">
-                                                        <Trash2 size={14} /> Excluir
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                          </table>
+                      {/* Filter & Toolbar */}
+                      <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-2 items-center justify-between sticky top-20 z-10">
+                          <div className="flex items-center gap-2 px-2">
+                              <select 
+                                  value={statusFilter}
+                                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                                  className="text-xs font-bold text-slate-600 bg-slate-50 border-none py-2 px-3 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                              >
+                                  <option value="ALL">Status: Todos</option>
+                                  <option value="ACTIVE">Ativos</option>
+                                  <option value="INACTIVE">Inativos</option>
+                              </select>
+                          </div>
+                          
+                          <div className="flex bg-slate-100 p-1 rounded-lg">
+                              <button 
+                                  onClick={() => setClientViewMode('grid')}
+                                  className={`p-2 rounded-md transition-all ${clientViewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                  title="Visualização em Grade"
+                              >
+                                  <LayoutGrid size={18} />
+                              </button>
+                              <button 
+                                  onClick={() => setClientViewMode('list')}
+                                  className={`p-2 rounded-md transition-all ${clientViewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                  title="Visualização em Lista"
+                              >
+                                  <List size={18} />
+                              </button>
+                          </div>
                       </div>
+
+                      {/* Content Area */}
+                      {clientViewMode === 'grid' ? (
+                          /* GRID VIEW */
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                              {filteredClients.length === 0 ? (
+                                  <div className="col-span-full py-12 text-center text-slate-400">
+                                      <Building2 size={48} className="mx-auto mb-2 opacity-20" />
+                                      <p>Nenhuma empresa encontrada com os filtros atuais.</p>
+                                  </div>
+                              ) : (
+                                  filteredClients.map(client => (
+                                      <ClientCard key={client.id} client={client} />
+                                  ))
+                              )}
+                          </div>
+                      ) : (
+                          /* LIST VIEW (Enhanced Table) */
+                          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                              <div className="overflow-x-auto">
+                                  <table className="w-full text-left border-collapse min-w-[800px]">
+                                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">{t('admin.stats.organizations')}</th>
+                                            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">CNPJ</th>
+                                            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Data Contrato</th>
+                                            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">Usuários</th>
+                                            <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider">{t('common.actions')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {filteredClients.map(c => (
+                                            <tr key={c.id} className="hover:bg-slate-50 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 shrink-0">
+                                                            <Building2 size={18} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-semibold text-slate-900 text-sm whitespace-nowrap">{c.name}</p>
+                                                            <p className="text-xs text-slate-400">ID: {c.id}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-600 font-mono">
+                                                    {c.cnpj}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <StatusBadge status={c.status} />
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-500">
+                                                    {c.contractDate}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md w-fit">
+                                                        <Users size={12} className="text-slate-400" />
+                                                        <span className="text-xs font-bold text-slate-700">{countUsersForClient(c.id)}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right relative">
+                                                    <button 
+                                                        onClick={() => setActiveClientDropdown(activeClientDropdown === c.id ? null : c.id)}
+                                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                    >
+                                                        <MoreHorizontal size={16} />
+                                                    </button>
+                                                    
+                                                    {activeClientDropdown === c.id && (
+                                                        <div className="absolute right-8 top-8 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                            <button onClick={() => { openClientModal(c); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                                <Edit2 size={14} /> Editar
+                                                            </button>
+                                                            <button onClick={() => { handleToggleClientStatus(c); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                                {c.status === 'ACTIVE' ? <><Ban size={14} className="text-orange-500"/> Desativar</> : <><CheckCircle2 size={14} className="text-emerald-500"/> Ativar</>}
+                                                            </button>
+                                                            <div className="h-px bg-slate-100 my-1" />
+                                                            <button onClick={() => { handleDeleteClient(c.id); setActiveClientDropdown(null); }} className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                                                <Trash2 size={14} /> Excluir
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      )}
                   </div>
               )}
 

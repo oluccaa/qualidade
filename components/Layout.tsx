@@ -45,7 +45,9 @@ import {
   ShieldAlert,
   Server,
   Network,
-  Lock
+  Lock,
+  Database,
+  Inbox
 } from 'lucide-react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 
@@ -177,16 +179,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     if (role === UserRole.QUALITY) {
       return [
         {
-          title: t('menu.operation'),
+          title: 'Gestão da Qualidade',
           items: [
-            { label: t('menu.dashboard'), icon: LayoutDashboard, path: '/dashboard' },
-            { label: t('menu.documents'), icon: FolderOpen, path: '/quality' },
+            { label: 'Visão Geral', icon: LayoutDashboard, path: '/quality?view=overview' },
+            { label: 'Carteira de Clientes', icon: Users, path: '/quality?view=clients' },
+            { label: 'Biblioteca Mestra', icon: Database, path: '/quality?view=master' },
+            { label: 'Service Desk', icon: Inbox, path: '/quality?view=tickets' },
           ]
         }
       ];
     }
 
-    // ADMIN - Expanded Menu Merged directly here
+    // ADMIN
     return [
       {
         title: t('menu.management'),
@@ -219,7 +223,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       } else if (role === UserRole.ADMIN) {
           items.push({ label: 'Admin', icon: BarChart3, path: '/admin', exact: false });
       } else {
-          items.push({ label: t('menu.documents'), icon: FolderOpen, path: '/quality', exact: false });
+          // Quality Bottom Nav
+          items.push({ label: 'Clientes', icon: Users, path: '/quality?view=clients', exact: false });
+          items.push({ label: 'Mestre', icon: Database, path: '/quality?view=master', exact: false });
       }
 
       return items;
@@ -230,7 +236,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const isActive = (path: string, exact = false) => {
       if (exact) return location.pathname === path && location.search === '';
-      if (path.includes('?')) return (location.pathname + location.search) === path;
+      // Specific logic for Quality Views to highlight correctly
+      if (path.includes('?view=')) {
+          return location.pathname + location.search === path;
+      }
       return location.pathname.startsWith(path);
   };
 
@@ -242,8 +251,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           default: return { icon: Info, bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' };
       }
   };
-
-  // Widget Removed as requested
 
   // NEW: Render Admin N3 Support Button
   const renderAdminSupportWidget = () => {
