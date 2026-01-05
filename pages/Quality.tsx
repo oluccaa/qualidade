@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer, FileExplorerHandle } from '../components/FileExplorer.tsx';
@@ -318,7 +319,7 @@ const Quality: React.FC = () => {
           SCHEDULED: 'Agendado'
       };
       return (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${colors[status] || 'bg-slate-100 text-slate-600'}`}>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider whitespace-nowrap ${colors[status] || 'bg-slate-100 text-slate-600'}`}>
               {labels[status] || status}
           </span>
       );
@@ -348,7 +349,8 @@ const Quality: React.FC = () => {
         </div>
 
         {/* Main Workspace */}
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)] bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden relative">
+        {/* Adjusted Height to use flex-grow for better responsiveness */}
+        <div className="flex flex-col lg:flex-row h-[75vh] md:h-[calc(100vh-200px)] bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden relative">
             
             {/* 1. LEFT PANE: Client Selector */}
             <div className={`
@@ -433,7 +435,7 @@ const Quality: React.FC = () => {
                             </button>
                         </div>
                         {selectedClient && activeView === 'DOCS' && (
-                            <span className="text-xs font-medium text-slate-400 border-l pl-4 border-slate-200 truncate max-w-[200px]">{selectedClient.name}</span>
+                            <span className="text-xs font-medium text-slate-400 border-l pl-4 border-slate-200 truncate max-w-[150px] md:max-w-[200px] hidden sm:block">{selectedClient.name}</span>
                         )}
                         </div>
 
@@ -486,7 +488,7 @@ const Quality: React.FC = () => {
                             )
                         ) : (
                             /* --- SERVICE DESK DASHBOARD (ROBUST VIEW) --- */
-                            <div className="flex flex-col h-full bg-slate-50 p-6 overflow-auto">
+                            <div className="flex flex-col h-full bg-slate-50 p-4 md:p-6 overflow-auto">
                                 
                                 {/* Section 1: INCOMING (Clients -> Quality) */}
                                 <div className="mb-8">
@@ -497,45 +499,47 @@ const Quality: React.FC = () => {
                                     </div>
                                     
                                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                                                <tr>
-                                                    <th className="px-6 py-4 font-bold uppercase text-xs">Status</th>
-                                                    <th className="px-6 py-4 font-bold uppercase text-xs">Prioridade</th>
-                                                    <th className="px-6 py-4 font-bold uppercase text-xs">Assunto</th>
-                                                    <th className="px-6 py-4 font-bold uppercase text-xs">Cliente / Solicitante</th>
-                                                    <th className="px-6 py-4 font-bold uppercase text-xs">Abertura</th>
-                                                    <th className="px-6 py-4 font-bold uppercase text-xs text-right">Ação</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {inboxTickets.length === 0 ? (
-                                                    <tr><td colSpan={6} className="p-8 text-center text-slate-400">Nenhum chamado de cliente encontrado.</td></tr>
-                                                ) : (
-                                                    inboxTickets.map(ticket => (
-                                                        <tr key={ticket.id} className="hover:bg-slate-50 transition-colors group">
-                                                            <td className="px-6 py-4"><StatusPill status={ticket.status} /></td>
-                                                            <td className="px-6 py-4">
-                                                                <span className={`text-[10px] font-bold ${ticket.priority === 'HIGH' || ticket.priority === 'CRITICAL' ? 'text-red-600' : 'text-slate-500'}`}>
-                                                                    {t(`admin.tickets.priority.${ticket.priority}`)}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 font-medium text-slate-800">{ticket.subject}</td>
-                                                            <td className="px-6 py-4 text-slate-600 flex flex-col">
-                                                                <span className="font-bold text-xs">{ticket.userName}</span>
-                                                                <span className="text-[10px] text-slate-400">ID: {ticket.userId}</span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-slate-500 font-mono text-xs">{ticket.createdAt}</td>
-                                                            <td className="px-6 py-4 text-right">
-                                                                <button onClick={() => openTicketDetail(ticket)} className="text-blue-600 hover:text-blue-800 font-bold text-xs border border-blue-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all">
-                                                                    Gerenciar
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left text-sm min-w-[700px]">
+                                                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                                                    <tr>
+                                                        <th className="px-6 py-4 font-bold uppercase text-xs">Status</th>
+                                                        <th className="px-6 py-4 font-bold uppercase text-xs">Prioridade</th>
+                                                        <th className="px-6 py-4 font-bold uppercase text-xs">Assunto</th>
+                                                        <th className="px-6 py-4 font-bold uppercase text-xs">Cliente / Solicitante</th>
+                                                        <th className="px-6 py-4 font-bold uppercase text-xs">Abertura</th>
+                                                        <th className="px-6 py-4 font-bold uppercase text-xs text-right">Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {inboxTickets.length === 0 ? (
+                                                        <tr><td colSpan={6} className="p-8 text-center text-slate-400">Nenhum chamado de cliente encontrado.</td></tr>
+                                                    ) : (
+                                                        inboxTickets.map(ticket => (
+                                                            <tr key={ticket.id} className="hover:bg-slate-50 transition-colors group">
+                                                                <td className="px-6 py-4"><StatusPill status={ticket.status} /></td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`text-[10px] font-bold ${ticket.priority === 'HIGH' || ticket.priority === 'CRITICAL' ? 'text-red-600' : 'text-slate-500'}`}>
+                                                                        {t(`admin.tickets.priority.${ticket.priority}`)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 font-medium text-slate-800">{ticket.subject}</td>
+                                                                <td className="px-6 py-4 text-slate-600 flex flex-col">
+                                                                    <span className="font-bold text-xs">{ticket.userName}</span>
+                                                                    <span className="text-[10px] text-slate-400">ID: {ticket.userId}</span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-slate-500 font-mono text-xs">{ticket.createdAt}</td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    <button onClick={() => openTicketDetail(ticket)} className="text-blue-600 hover:text-blue-800 font-bold text-xs border border-blue-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all">
+                                                                        Gerenciar
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -547,7 +551,8 @@ const Quality: React.FC = () => {
                                     </div>
 
                                     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                        {/* Adjusted Grid Columns for better responsiveness on Tablets/Laptops */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                                             {outboxTickets.length === 0 ? (
                                                 <div className="col-span-full text-center py-8 text-slate-400 text-sm">Você não tem chamados abertos para a administração.</div>
                                             ) : (
@@ -968,18 +973,20 @@ const Quality: React.FC = () => {
                                     onChange={e => setUploadFormData({...uploadFormData, invoiceNumber: e.target.value})}
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">{t('common.status')}</label>
-                                <select 
-                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"
-                                    value={uploadFormData.status}
-                                    onChange={e => setUploadFormData({...uploadFormData, status: e.target.value})}
-                                >
-                                    <option value="APPROVED">{t('common.status')} {t('dashboard.active')}</option>
-                                    <option value="PENDING">Pending (Internal)</option>
-                                    <option value="REJECTED">Rejected</option>
-                                </select>
-                            </div>
+                            {isEditModalOpen && (
+                                <div className="space-y-1">
+                                    <label className="text-sm font-semibold text-slate-700">{t('common.status')}</label>
+                                    <select 
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"
+                                        value={uploadFormData.status}
+                                        onChange={e => setUploadFormData({...uploadFormData, status: e.target.value})}
+                                    >
+                                        <option value="APPROVED">{t('common.status')} {t('dashboard.active')}</option>
+                                        <option value="PENDING">Pending (Internal)</option>
+                                        <option value="REJECTED">Rejected</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-6 bg-blue-50 p-3 rounded-lg flex gap-3 text-xs text-blue-800 border border-blue-100">
                              <AlertCircle size={16} className="shrink-0 mt-0.5" />

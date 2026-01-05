@@ -21,9 +21,12 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
   // Reset scale when file changes
   useEffect(() => {
       if (isOpen) {
-          // Ajuste inicial de zoom baseado na largura da tela para melhor experiência mobile
-          const isMobile = window.innerWidth < 768;
-          setScale(isMobile ? 0.6 : 1);
+          // Ajuste inteligente de zoom baseado na largura da tela
+          const width = window.innerWidth;
+          if (width < 640) setScale(0.5); // Mobile small
+          else if (width < 768) setScale(0.6); // Tablet portrait
+          else if (width < 1024) setScale(0.8); // Tablet landscape
+          else setScale(1.0); // Desktop
       }
   }, [isOpen, file]);
 
@@ -276,9 +279,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ file, isOpen
           </button>
       </div>
 
-      {/* 2. MAIN PREVIEW AREA */}
+      {/* 2. MAIN PREVIEW AREA - ADDED OVERFLOW-X-AUTO */}
       <div 
-        className="flex-1 overflow-auto bg-slate-800/50 custom-scrollbar p-0 md:p-8 flex items-start justify-center pb-24 md:pb-8" 
+        className="flex-1 overflow-x-auto overflow-y-auto bg-slate-800/50 custom-scrollbar p-0 md:p-8 flex items-start justify-center pb-24 md:pb-8" 
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
           {renderContent()}

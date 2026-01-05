@@ -120,6 +120,15 @@ export interface MaintenanceEvent {
   createdBy: string;
 }
 
+// NEW: Global System Status for Maintenance Mode
+export interface SystemStatus {
+    mode: 'ONLINE' | 'MAINTENANCE' | 'SCHEDULED';
+    message?: string;
+    scheduledStart?: string;
+    scheduledEnd?: string;
+    updatedBy?: string;
+}
+
 // NEW: Network Security Types
 export interface NetworkPort {
   port: number;

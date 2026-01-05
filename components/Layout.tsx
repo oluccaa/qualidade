@@ -243,27 +243,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       }
   };
 
-  const renderClientSupportWidget = () => {
-    if (isCollapsed) return null; 
-    
-    return (
-      <div className="mx-3 mt-4 p-3 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 relative overflow-hidden group animate-in fade-in duration-300">
-          <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
-              <ShieldCheck size={40} className="text-blue-400" />
-          </div>
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('menu.help')}?</h4>
-          <p className="text-[10px] text-slate-400 mb-2 leading-relaxed">
-              {t('layout.supportQuestion')}
-          </p>
-          <button 
-            onClick={() => setIsSupportOpen(true)}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-1.5 px-2 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
-          >
-              <Phone size={12} /> {t('menu.support')}
-          </button>
-      </div>
-    );
-  };
+  // Widget Removed as requested
 
   // NEW: Render Admin N3 Support Button
   const renderAdminSupportWidget = () => {
@@ -504,7 +484,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             </div>
           ))}
           
-          {(user?.role === UserRole.CLIENT || user?.role === UserRole.QUALITY) && renderClientSupportWidget()}
           {user?.role === UserRole.ADMIN && renderAdminSupportWidget()}
         </nav>
 

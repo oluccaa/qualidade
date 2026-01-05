@@ -5,9 +5,9 @@ import { Layout } from '../components/Layout.tsx';
 import { FileExplorer } from '../components/FileExplorer.tsx';
 import { SupportModal } from '../components/SupportModal.tsx';
 import { useAuth } from '../services/authContext.tsx';
-import { getRecentFiles, getLibraryFiles, getFileSignedUrl, getFavorites } from '../services/fileService.ts';
+import { getRecentFiles, getLibraryFiles, getFileSignedUrl, getFavorites, getDashboardStats } from '../services/fileService.ts';
 import * as adminService from '../services/adminService.ts';
-import { FileNode, LibraryFilters, SupportTicket } from '../types.ts';
+import { FileNode, LibraryFilters, SupportTicket, UserRole } from '../types.ts';
 import { useTranslation } from 'react-i18next';
 import { 
     Search, 
@@ -24,7 +24,9 @@ import {
     Plus,
     Clock,
     AlertCircle,
-    MessageSquare
+    MessageSquare,
+    FileCheck,
+    Users
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -39,6 +41,10 @@ const Dashboard: React.FC = () => {
 
   // --- HOME VIEW STATE ---
   const [quickSearch, setQuickSearch] = useState('');
+  const [stats, setStats] = useState<any>({ 
+      mainValue: 0, subValue: 0, pendingValue: 0, 
+      status: 'REGULAR', mainLabel: '', subLabel: '', activeClients: 0 
+  });
 
   // --- DATA STATE ---
   const [viewFiles, setViewFiles] = useState<FileNode[]>([]);
@@ -60,7 +66,11 @@ const Dashboard: React.FC = () => {
       
       setIsLoading(true);
       try {
-          if (currentView === 'files') {
+          if (currentView === 'home') {
+              // Fetch stats specifically for Home view
+              const data = await getDashboardStats(user);
+              setStats(data);
+          } else if (currentView === 'files') {
               const results = await getLibraryFiles(user, filters);
               setViewFiles(results);
           } else if (currentView === 'favorites') {
@@ -82,10 +92,9 @@ const Dashboard: React.FC = () => {
 
   // Trigger fetch when view or filters change
   useEffect(() => {
-      if (currentView !== 'home') {
-          const timeoutId = setTimeout(fetchData, 300);
-          return () => clearTimeout(timeoutId);
-      }
+      // Immediate fetch or with small debounce
+      const timeoutId = setTimeout(fetchData, 100);
+      return () => clearTimeout(timeoutId);
   }, [fetchData, currentView]);
 
   // Close modal and refresh tickets
@@ -114,33 +123,38 @@ const Dashboard: React.FC = () => {
       }
   };
 
+  const isClient = user?.role === UserRole.CLIENT;
+
   // --- RENDER: HOME VIEW ---
   if (currentView === 'home') {
       return (
         <Layout title={t('menu.dashboard')}>
           
           {/* TOP GRID: SEARCH + STATUS CARD */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
               
               {/* HERO / SEARCH SECTION */}
-              <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative overflow-hidden flex flex-col justify-center">
+              <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden flex flex-col justify-center">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 -translate-y-1/2 translate-x-1/2"></div>
                   
                   <div className="relative z-10">
-                      <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                      <h1 className="text-xl font-bold text-slate-900 mb-1">
                           {t('dashboard.hello')}, {user?.name.split(' ')[0]}. {t('dashboard.whatLookingFor')}
                       </h1>
-                      <p className="text-slate-500 mb-6">
-                          {t('dashboard.whatLookingFor')}
+                      <p className="text-sm text-slate-500 mb-5">
+                          {isClient 
+                            ? "Acesse o Portal da Qualidade para gerenciar seus certificados e laudos."
+                            : "Gerencie o repositório central e as pendências dos clientes."
+                          }
                       </p>
 
-                      <div className="relative group max-w-2xl">
-                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                              <Search className="h-6 w-6 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <div className="relative group max-w-xl">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                           </div>
                           <input
                               type="text"
-                              className="block w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all shadow-sm text-lg"
+                              className="block w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:bg-white transition-all shadow-sm text-sm"
                               placeholder={t('dashboard.searchPlaceholder')}
                               value={quickSearch}
                               onChange={(e) => setQuickSearch(e.target.value)}
@@ -151,7 +165,7 @@ const Dashboard: React.FC = () => {
                                   }
                               }}
                           />
-                          <div className="absolute inset-y-0 right-2 flex items-center">
+                          <div className="absolute inset-y-0 right-1.5 flex items-center">
                               <button 
                                  onClick={() => {
                                      setFilters(prev => ({ ...prev, search: quickSearch }));
@@ -159,75 +173,88 @@ const Dashboard: React.FC = () => {
                                  }}
                                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
                                >
-                                  <ArrowRight size={20} />
+                                  <ArrowRight size={16} />
                               </button>
                           </div>
                       </div>
                       
-                      <div className="mt-4 flex items-center gap-3 text-sm text-slate-500">
-                          <span className="font-medium text-slate-400 uppercase text-xs tracking-wider">{t('dashboard.suggestions')}:</span>
+                      <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
+                          <span className="font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.suggestions')}:</span>
                           <button onClick={() => { setFilters(prev => ({...prev, search: 'SAE 1045'})); navigate('/dashboard?view=files'); }} className="hover:text-blue-600 hover:underline decoration-blue-600/30 underline-offset-4">SAE 1045</button>
                           <button onClick={() => { setFilters(prev => ({...prev, status: 'PENDING'})); navigate('/dashboard?view=files'); }} className="hover:text-blue-600 hover:underline decoration-blue-600/30 underline-offset-4">{t('dashboard.pendingCerts')}</button>
                       </div>
                   </div>
               </div>
 
-              {/* STATUS CARD (Moved Up) */}
-              <div className="xl:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl overflow-hidden text-white relative group min-h-[280px] flex flex-col justify-center">
+              {/* STATUS CARD (Dynamic per Role) */}
+              <div className="xl:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl overflow-hidden text-white relative group min-h-[240px] flex flex-col justify-center">
                     {/* Animated Background Gradient */}
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                     
                     {/* Decorative Elements */}
-                    <div className="absolute top-0 right-0 p-6 opacity-10">
-                        <Shield size={140} />
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Shield size={100} />
                     </div>
 
                     <div className="relative z-10 p-6 flex flex-col h-full justify-between">
                         <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                <ShieldCheck size={16} className="text-emerald-400" /> {t('dashboard.accountStatus')}
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                {isClient ? <><ShieldCheck size={14} className="text-emerald-400" /> {t('dashboard.accountStatus')}</> : <><Users size={14} className="text-blue-400" /> Visão Global da Qualidade</>}
                             </h3>
-                            <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                                {t('dashboard.verified')}
-                            </span>
+                            {stats.status === 'REGULAR' ? (
+                                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                    {t('dashboard.verified')}
+                                </span>
+                            ) : (
+                                <span className="bg-orange-500/10 text-orange-400 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.2)]">
+                                    AÇÃO NECESSÁRIA
+                                </span>
+                            )}
                         </div>
 
                         <div>
                             <div className="flex items-baseline gap-2 mb-2">
-                                <span className="text-4xl font-bold text-white tracking-tight">{t('dashboard.regular')}</span>
-                                <span className="text-emerald-400 font-medium text-sm flex items-center gap-1">
-                                    <CheckCircle2 size={14} /> {t('dashboard.active')}
+                                <span className="text-3xl font-bold text-white tracking-tight">
+                                    {stats.status === 'REGULAR' ? (isClient ? t('dashboard.regular') : "Operacional") : "Atenção"}
                                 </span>
+                                {stats.status === 'REGULAR' && (
+                                    <span className="text-emerald-400 font-medium text-xs flex items-center gap-1">
+                                        <CheckCircle2 size={12} /> {t('dashboard.active')}
+                                    </span>
+                                )}
                             </div>
                             
-                            <p className="text-slate-400 text-sm leading-relaxed max-w-[90%]">
-                                {t('dashboard.statusDesc')}
+                            <p className="text-slate-400 text-xs leading-relaxed max-w-[95%]">
+                                {isClient 
+                                    ? stats.pendingValue > 0 ? "Você possui documentos pendentes aguardando revisão ou aprovação." : t('dashboard.statusDesc')
+                                    : "Monitoramento em tempo real do repositório central e auditorias de clientes."
+                                }
                             </p>
                         </div>
 
-                        {/* Progress Section */}
-                        <div className="mt-4 space-y-2">
+                        {/* Progress Section (Dynamic) */}
+                        <div className="mt-4 space-y-1.5">
                             <div className="flex justify-between items-end">
-                                <span className="text-xs font-medium text-slate-300">{t('dashboard.docCompliance')}</span>
-                                <span className="text-xs font-bold text-emerald-400">100%</span>
+                                <span className="text-[10px] font-medium text-slate-300">{stats.mainLabel}</span>
+                                <span className={`text-[10px] font-bold ${stats.mainValue === 100 ? 'text-emerald-400' : 'text-blue-400'}`}>{stats.mainValue}%</span>
                             </div>
-                            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                                 <div 
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-1000" 
-                                    style={{ width: '100%' }}
+                                    className={`h-full rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-1000 ${stats.mainValue === 100 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-blue-500 to-blue-400'}`}
+                                    style={{ width: `${stats.mainValue}%` }}
                                 ></div>
                             </div>
                         </div>
 
                         {/* Footer Metrics */}
-                        <div className="mt-4 pt-4 border-t border-slate-700/50 grid grid-cols-2 gap-4">
+                        <div className="mt-4 pt-3 border-t border-slate-700/50 grid grid-cols-2 gap-4">
                             <div>
-                                <span className="block text-2xl font-bold text-white">24</span>
-                                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t('dashboard.auditedBatches')}</span>
+                                <span className="block text-xl font-bold text-white">{stats.subValue}</span>
+                                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{stats.subLabel}</span>
                             </div>
                             <div className="border-l border-slate-700/50 pl-4">
-                                <span className="block text-2xl font-bold text-emerald-400">0</span>
-                                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{t('dashboard.pendencies')}</span>
+                                <span className={`block text-xl font-bold ${stats.pendingValue > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>{stats.pendingValue}</span>
+                                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{isClient ? t('dashboard.pendencies') : 'Pendências Globais'}</span>
                             </div>
                         </div>
                     </div>
@@ -235,21 +262,21 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* MAIN CONTENT: FULL WIDTH FILE EXPLORER */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <Filter size={20} className="text-slate-400" /> 
+                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <Filter size={18} className="text-slate-400" /> 
                         {t('dashboard.folderNav')}
                     </h2>
                     <button 
                         onClick={() => navigate('/dashboard?view=files')}
-                        className="text-sm font-medium text-blue-600 hover:underline"
+                        className="text-xs font-bold text-blue-600 hover:underline"
                     >
                         {t('dashboard.viewFullLib')}
                     </button>
                  </div>
 
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[500px]">
+                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[450px]">
                      <FileExplorer allowUpload={false} autoHeight={true} />
                  </div>
           </div>

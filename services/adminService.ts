@@ -1,4 +1,5 @@
-import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, TicketFlow } from '../types.ts';
+
+import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, TicketFlow, SystemStatus } from '../types.ts';
 import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS } from './mockData.ts';
 import * as fileService from './fileService.ts';
 import * as notificationService from './notificationService.ts';
@@ -6,7 +7,57 @@ import * as notificationService from './notificationService.ts';
 // In-memory state
 let tickets = [...MOCK_TICKETS];
 let maintenanceEvents = [...MOCK_MAINTENANCE];
-let clients = [...MOCK_CLIENTS]; // State for Clients
+let clients = [...MOCK_CLIENTS]; 
+
+// Global System Status (Persisted in Memory for Mock)
+let currentSystemStatus: SystemStatus = {
+    mode: 'ONLINE',
+    message: '',
+    scheduledStart: '',
+    scheduledEnd: ''
+};
+
+// --- SYSTEM STATUS (MAINTENANCE MODE) ---
+
+export const getSystemStatus = async (): Promise<SystemStatus> => {
+    // Check if scheduled maintenance has started automatically
+    if (currentSystemStatus.mode === 'SCHEDULED' && currentSystemStatus.scheduledStart) {
+        const now = new Date();
+        const start = new Date(currentSystemStatus.scheduledStart);
+        if (now >= start) {
+            currentSystemStatus.mode = 'MAINTENANCE';
+        }
+    }
+    return { ...currentSystemStatus };
+};
+
+export const updateSystemStatus = async (user: User, newStatus: Partial<SystemStatus>): Promise<SystemStatus> => {
+    const previousMode = currentSystemStatus.mode;
+    
+    currentSystemStatus = {
+        ...currentSystemStatus,
+        ...newStatus,
+        updatedBy: user.name
+    };
+
+    // LOGIC: Notify users when coming BACK online
+    if (previousMode === 'MAINTENANCE' && newStatus.mode === 'ONLINE') {
+        await notificationService.addNotification(
+            'ALL',
+            '🟢 Sistema Online',
+            'A manutenção foi concluída e o sistema está totalmente operacional.',
+            'SUCCESS'
+        );
+        await fileService.logAction(user, 'MAINTENANCE_OFF', 'Sistema reaberto para todos os usuários.', 'INFO');
+    }
+
+    // LOGIC: Notify when maintenance starts/is activated manually
+    if (previousMode !== 'MAINTENANCE' && newStatus.mode === 'MAINTENANCE') {
+        await fileService.logAction(user, 'MAINTENANCE_ON', 'Sistema colocado em modo de manutenção (Bloqueio Total).', 'WARNING');
+    }
+
+    return currentSystemStatus;
+};
 
 // --- CLIENTS (EMPRESAS) ---
 
@@ -183,6 +234,20 @@ export const getMaintenanceEvents = async (): Promise<MaintenanceEvent[]> => {
 
 export const scheduleMaintenance = async (user: User, event: Partial<MaintenanceEvent>): Promise<MaintenanceEvent> => {
     await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Also update global system status if it's a schedule
+    if (event.scheduledDate) {
+        const start = new Date(event.scheduledDate);
+        const end = new Date(start.getTime() + (event.durationMinutes || 60) * 60000);
+        
+        await updateSystemStatus(user, {
+            mode: 'SCHEDULED',
+            scheduledStart: start.toISOString(),
+            scheduledEnd: end.toISOString(),
+            message: event.description
+        });
+    }
+
     const newEvent: MaintenanceEvent = {
         id: `m-${Date.now()}`,
         title: event.title || 'Manutenção',
@@ -209,6 +274,12 @@ export const scheduleMaintenance = async (user: User, event: Partial<Maintenance
 export const cancelMaintenance = async (user: User, eventId: string): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     const idx = maintenanceEvents.findIndex(m => m.id === eventId);
+    
+    // Reset system status if canceling pending maintenance
+    if (currentSystemStatus.mode === 'SCHEDULED' || currentSystemStatus.mode === 'MAINTENANCE') {
+        await updateSystemStatus(user, { mode: 'ONLINE', message: '' });
+    }
+
     if (idx !== -1) {
         const event = maintenanceEvents[idx];
         maintenanceEvents[idx] = { ...event, status: 'CANCELLED' };

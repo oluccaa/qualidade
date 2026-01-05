@@ -1,6 +1,6 @@
 
 import { FileNode, User, UserRole, AuditLog, FileType, LibraryFilters, FileMetadata } from '../types.ts';
-import { MOCK_FILES, MOCK_LOGS, MASTER_ORG_ID } from './mockData.ts';
+import { MOCK_FILES, MOCK_LOGS, MASTER_ORG_ID, MOCK_CLIENTS } from './mockData.ts';
 
 // Simulate a database state
 let currentFiles = [...MOCK_FILES];
@@ -156,6 +156,51 @@ export const getLibraryFiles = async (user: User, filters: LibraryFilters): Prom
     });
 
     return filtered.map(f => ({ ...f, isFavorite: isFileFavorite(user.id, f.id) }));
+};
+
+// --- Dashboard Statistics ---
+export const getDashboardStats = async (user: User) => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    let relevantFiles = currentFiles.filter(f => f.type !== FileType.FOLDER);
+
+    if (user.role === UserRole.CLIENT) {
+        // Client View: Only their files
+        relevantFiles = relevantFiles.filter(f => f.ownerId === user.clientId);
+        
+        const totalDocs = relevantFiles.length;
+        const pendingDocs = relevantFiles.filter(f => f.metadata?.status === 'PENDING').length;
+        const approvedDocs = relevantFiles.filter(f => f.metadata?.status === 'APPROVED').length;
+        
+        // Calculate compliance score (Mock logic)
+        const compliance = totalDocs > 0 ? Math.round((approvedDocs / totalDocs) * 100) : 100;
+
+        return {
+            mainLabel: 'Conformidade Documental',
+            subLabel: 'Lotes Auditados',
+            mainValue: compliance,
+            subValue: totalDocs,
+            pendingValue: pendingDocs,
+            status: pendingDocs > 0 ? 'PENDING_ACTIONS' : 'REGULAR'
+        };
+    } else {
+        // Quality/Admin View: System Wide (excluding Master)
+        relevantFiles = relevantFiles.filter(f => f.ownerId !== MASTER_ORG_ID);
+        
+        const totalDocs = relevantFiles.length;
+        const totalPending = relevantFiles.filter(f => f.metadata?.status === 'PENDING').length;
+        const activeClients = MOCK_CLIENTS.filter(c => c.status === 'ACTIVE').length;
+
+        return {
+            mainLabel: 'Eficiência Operacional', // Metric name
+            subLabel: 'Total de Arquivos',
+            mainValue: 98, // Mock efficiency score
+            subValue: totalDocs, // Total files in system
+            pendingValue: totalPending, // Total pending approvals
+            activeClients: activeClients,
+            status: 'REGULAR'
+        };
+    }
 };
 
 // --- Mutation Methods (Quality Management) ---
