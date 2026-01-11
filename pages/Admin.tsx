@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout.tsx';
 // Fix: Import from services/index.ts to use the correctly typed and initialized service instances
 import { fileService, adminService, userService } from '../services/index.ts';
 import { UserRole, AuditLog, User, ClientOrganization, SupportTicket, NetworkPort } from '../types.ts';
+import { AdminStatsData } from '../services/interfaces.ts';
 import { useAuth } from '../services/authContext.tsx';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,7 @@ const Admin: React.FC = () => {
   const [usersList, setUsersList] = useState<User[]>([]);
   const [clientsList, setClientsList] = useState<ClientOrganization[]>([]);
   const [ticketsList, setTicketsList] = useState<SupportTicket[]>([]);
+  const [adminStats, setAdminStats] = useState<AdminStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,19 +47,30 @@ const Admin: React.FC = () => {
   const [editingClient, setEditingClient] = useState<ClientOrganization | null>(null);
   const [clientFormData, setClientFormData] = useState({ name: '', cnpj: '', contractDate: '', status: 'ACTIVE' });
 
-  useEffect(() => { loadData(); }, [user]);
+  useEffect(() => { loadData(); }, [user, activeTab]);
 
   const loadData = async () => {
       setIsLoading(true);
       try {
-          const [users, ticketData, clients, networkPorts] = await Promise.all([
-              userService.getUsers(), adminService.getTickets(), adminService.getClients(), adminService.getPorts()
+          const [users, ticketData, clients, networkPorts, stats] = await Promise.all([
+              userService.getUsers(), 
+              adminService.getTickets(), 
+              adminService.getClients(), 
+              adminService.getPorts(),
+              adminService.getAdminStats()
           ]);
           setUsersList(users); 
           setTicketsList(ticketData); 
           setClientsList(clients);
           setPorts(networkPorts);
-          if (user) fileService.getAuditLogs(user).then(setLogs);
+          setAdminStats(stats);
+          
+          if (user) {
+              const auditLogs = await fileService.getAuditLogs(user);
+              setLogs(auditLogs);
+          }
+      } catch (err) {
+          console.error("Erro ao carregar dados administrativos:", err);
       } finally { setIsLoading(false); }
   };
 
@@ -127,13 +139,13 @@ const Admin: React.FC = () => {
              </div>
           )}
 
-          {activeTab === 'overview' && (
+          {activeTab === 'overview' && adminStats && (
               <AdminStats 
-                  usersCount={usersList.length} 
-                  activeUsersCount={usersList.filter(u => u.status === 'ACTIVE').length}
-                  clientsCount={clientsList.length}
-                  ticketsCount={ticketsList.filter(t => t.status !== 'RESOLVED').length}
-                  logsCount={logs.length}
+                  usersCount={adminStats.totalUsers} 
+                  activeUsersCount={adminStats.activeUsers}
+                  clientsCount={adminStats.activeClients}
+                  ticketsCount={adminStats.openTickets}
+                  logsCount={adminStats.logsLast24h}
               />
           )}
 
@@ -193,3 +205,6 @@ const Admin: React.FC = () => {
     </Layout>
   );
 };
+
+// Add default export for React.lazy compatibility
+export default Admin;

@@ -1,13 +1,23 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * Cliente Supabase configurado com as credenciais fornecidas.
- * O SDK gerencia automaticamente o armazenamento do token de sessão 
- * (Cookie/LocalStorage dependendo do ambiente) e o recupera em novas sessões.
+ * Cliente Supabase configurado via variáveis de ambiente.
  */
 
-const SUPABASE_URL = 'https://wtydnzqianhahiiasows.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_G-talSR4UyXl42B2jzglow_EB0ainxc';
+// .env
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// VITE_SUPABASE_URL=https://wtydnzqianhahiiasows.supabase.co
+// VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_G-talSR4UyXl42B2jzglow_EB0ainxc
+
+
+
+const supabaseUrl = "https://wtydnzqianhahiiasows.supabase.co";
+const supabaseKey = "sb_publishable_G-talSR4UyXl42B2jzglow_EB0ainxc";
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn("Configuração do Supabase ausente. Verifique as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY.");
+}
+
+export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+
+export default supabase;

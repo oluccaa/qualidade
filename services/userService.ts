@@ -40,6 +40,23 @@ export const MockUserService: IUserService = {
         return result;
     },
 
+    // Fix: Implement missing signUp method required by IUserService
+    signUp: async (email: string, password: string, fullName: string, organizationId?: string, department?: string): Promise<void> => {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const id = `u${Date.now()}`;
+        const newUser: User = {
+            id,
+            name: fullName,
+            email,
+            role: UserRole.CLIENT, // Padrão para auto-cadastro
+            clientId: organizationId,
+            status: 'ACTIVE',
+            department: department || 'Geral'
+        };
+        currentUsers.push(newUser);
+        userPasswords[id] = password;
+    },
+
     getUsers: async (): Promise<User[]> => {
         await new Promise(resolve => setTimeout(resolve, 400));
         return [...currentUsers];

@@ -1,4 +1,3 @@
-
 import { 
   User, UserRole, FileNode, FileType, AuditLog, LibraryFilters, 
   ClientOrganization, SupportTicket, SystemStatus, NetworkPort, 
@@ -11,8 +10,18 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
+export interface AdminStatsData {
+  totalUsers: number;
+  activeUsers: number;
+  activeClients: number;
+  openTickets: number;
+  logsLast24h: number;
+  systemHealthStatus: 'HEALTHY' | 'WARNING' | 'CRITICAL';
+}
+
 export interface IUserService {
   authenticate: (email: string, password: string) => Promise<boolean>;
+  signUp: (email: string, password: string, fullName: string, organizationId?: string, department?: string) => Promise<void>;
   getCurrentUser: () => Promise<User | null>;
   logout: () => Promise<void>;
   getUsers: () => Promise<User[]>;
@@ -49,6 +58,7 @@ export interface IAdminService {
   getSystemStatus: () => Promise<SystemStatus>;
   updateSystemStatus: (user: User, newStatus: Partial<SystemStatus>) => Promise<SystemStatus>;
   subscribeToSystemStatus: (listener: (status: SystemStatus) => void) => () => void;
+  getAdminStats: () => Promise<AdminStatsData>;
   getClients: () => Promise<ClientOrganization[]>;
   saveClient: (user: User, clientData: Partial<ClientOrganization>) => Promise<ClientOrganization>;
   deleteClient: (user: User, clientId: string) => Promise<void>;

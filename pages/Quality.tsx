@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer, FileExplorerHandle } from '../components/FileExplorer.tsx';
@@ -163,3 +162,6 @@ const Quality: React.FC = () => {
     </Layout>
   );
 };
+
+// Add default export for React.lazy compatibility
+export default Quality;

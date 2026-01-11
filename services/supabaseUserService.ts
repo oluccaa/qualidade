@@ -1,4 +1,3 @@
-
 import { User, UserRole } from '../types.ts';
 import { IUserService } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
@@ -8,6 +7,36 @@ export const SupabaseUserService: IUserService = {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         return true;
+    },
+
+    signUp: async (email, password, fullName, organizationId, department): Promise<void> => {
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: fullName,
+                }
+            }
+        });
+
+        if (error) throw error;
+        if (!data.user) throw new Error("Erro ao criar usuário.");
+
+        // O trigger no DB geralmente cria o profile, mas para garantir via código caso o trigger não exista:
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: data.user.id,
+                full_name: fullName,
+                role: UserRole.CLIENT, // Padrão para auto-cadastro
+                organization_id: organizationId || null,
+                department: department || 'Geral',
+                status: 'ACTIVE',
+                updated_at: new Date().toISOString()
+            });
+
+        if (profileError) throw profileError;
     },
 
     getCurrentUser: async (): Promise<User | null> => {

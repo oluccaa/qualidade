@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../services/authContext.tsx';
 import { CookieBanner } from '../components/CookieBanner.tsx';
 import { PrivacyModal } from '../components/PrivacyModal.tsx';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { 
   ShieldCheck, 
   Loader2, 
@@ -271,7 +271,10 @@ const Login: React.FC = () => {
                 </form>
             )}
 
-            <div className="text-center pt-4">
+            <div className="text-center pt-4 space-y-4">
+                <p className="text-sm text-slate-600 font-medium">
+                  Não possui conta? <Link to="/signup" className="text-blue-600 font-bold hover:underline">Solicite seu acesso</Link>
+                </p>
                 <p className="text-xs text-slate-400">
                     Acesso restrito a colaboradores e clientes autorizados.
                 </p>

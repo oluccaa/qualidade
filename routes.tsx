@@ -1,4 +1,3 @@
-
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthMiddleware } from './middlewares/AuthMiddleware.tsx';
@@ -10,9 +9,10 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 
 // --- Lazy Load Pages ---
 const Login = React.lazy(() => import('./pages/Login.tsx'));
+const SignUp = React.lazy(() => import('./pages/SignUp.tsx'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard.tsx'));
 const Quality = React.lazy(() => import('./pages/Quality.tsx'));
-const Admin = React.lazy(() => import('./pages/Admin.tsx') as Promise<{ default: React.ComponentType<any> }>);
+const Admin = React.lazy(() => import('./pages/Admin.tsx'));
 
 // --- Internal Components for Routing Logic ---
 
@@ -50,6 +50,7 @@ export const AppRoutes: React.FC = () => {
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
         
         {/* Maintenance Middleware wraps all protected routes */}
         <Route element={<MaintenanceMiddleware />}> 

@@ -1,7 +1,8 @@
 
 import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, SystemStatus, FirewallRule, NetworkPort } from '../types.ts';
 import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS, MOCK_FIREWALL_RULES, MOCK_PORTS } from './mockData.ts';
-import { IAdminService } from './interfaces.ts';
+// Fix: Import AdminStatsData to correctly type the missing method
+import { IAdminService, AdminStatsData } from './interfaces.ts';
 
 let tickets = [...MOCK_TICKETS];
 let clients = [...MOCK_CLIENTS];
@@ -18,6 +19,17 @@ export const MockAdminService: IAdminService = {
     subscribeToSystemStatus: (listener) => {
         statusListeners.push(listener);
         return () => { const i = statusListeners.indexOf(listener); if (i > -1) statusListeners.splice(i, 1); };
+    },
+    // Fix: Implement missing getAdminStats method required by IAdminService
+    getAdminStats: async (): Promise<AdminStatsData> => {
+        return {
+            totalUsers: 10,
+            activeUsers: 8,
+            activeClients: 3,
+            openTickets: 2,
+            logsLast24h: 15,
+            systemHealthStatus: 'HEALTHY'
+        };
     },
     getClients: async () => [...clients],
     saveClient: async (user, data) => {
