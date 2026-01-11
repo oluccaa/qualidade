@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { X, Briefcase, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import * as adminService from '../services/adminService.ts';
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { adminService } from '../services/index.ts';
 import { User } from '../types.ts';
 
 interface N3SupportModalProps {

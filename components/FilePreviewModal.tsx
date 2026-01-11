@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Download, Printer, ZoomIn, ZoomOut, FileText, CheckCircle2, RotateCcw, Loader2 } from 'lucide-react';
 import { FileNode, FileType } from '../types.ts';
 import { useAuth } from '../services/authContext.tsx';
-import * as fileService from '../services/fileService.ts';
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { fileService } from '../services/index.ts';
 import { useTranslation } from 'react-i18next';
 
 interface FilePreviewModalProps {

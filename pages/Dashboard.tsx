@@ -5,8 +5,8 @@ import { Layout } from '../components/Layout.tsx';
 import { FileExplorer } from '../components/FileExplorer.tsx';
 import { SupportModal } from '../components/SupportModal.tsx';
 import { useAuth } from '../services/authContext.tsx';
-import { getRecentFiles, getLibraryFiles, getFavorites, getDashboardStats } from '../services/fileService.ts';
-import * as adminService from '../services/adminService.ts';
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { fileService, adminService } from '../services/index.ts';
 import { FileNode, LibraryFilters, SupportTicket, UserRole, SystemStatus } from '../types.ts';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -55,7 +55,7 @@ const Dashboard: React.FC = () => {
 
   // --- DATA STATE ---
   const [viewFiles, setViewFiles] = useState<FileNode[]>([]);
-  const [recentFiles, setRecentFiles] = useState<FileNode[]>([]); // Specific for Feed
+  const [recentFiles, setRecentFiles] = useState<FileNode[]>([]); 
   const [clientTickets, setClientTickets] = useState<SupportTicket[]>([]); 
   const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState<LibraryFilters>({
@@ -74,26 +74,26 @@ const Dashboard: React.FC = () => {
       
       setIsLoading(true);
       try {
-          // Always fetch stats for the sidebar/header context
-          const data = await getDashboardStats(user);
+          // Fix: Use instance methods from fileService and adminService
+          const data = await fileService.getDashboardStats(user);
           const sysData = await adminService.getSystemStatus();
           setStats(data);
           setSystemStatus(sysData);
 
           if (currentView === 'home') {
-              const recents = await getRecentFiles(user, 5);
+              const recents = await fileService.getRecentFiles(user, 5);
               setRecentFiles(recents);
               // Also fetch tickets for the "Mini Widget"
               const tickets = await adminService.getMyTickets(user);
               setClientTickets(tickets.slice(0, 3));
           } else if (currentView === 'files') {
-              const results = await getLibraryFiles(user, filters);
+              const results = await fileService.getLibraryFiles(user, filters);
               setViewFiles(results);
           } else if (currentView === 'favorites') {
-              const results = await getFavorites(user);
+              const results = await fileService.getFavorites(user);
               setViewFiles(results);
           } else if (currentView === 'recent') {
-              const results = await getRecentFiles(user, 50); 
+              const results = await fileService.getRecentFiles(user, 50); 
               setViewFiles(results);
           } else if (currentView === 'tickets') {
               const results = await adminService.getMyTickets(user);
@@ -158,35 +158,10 @@ const Dashboard: React.FC = () => {
       </div>
   );
 
-  const ActivityFeedItem = ({ file }: { file: FileNode }) => (
-      <div className="flex gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors border-l-2 border-transparent hover:border-blue-500 group">
-          <div className="mt-1 relative">
-              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <FileText size={18} />
-              </div>
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 w-0.5 h-full bg-slate-100 -z-10 group-last:hidden"></div>
-          </div>
-          <div className="flex-1">
-              <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-bold text-slate-800">{file.name}</h4>
-                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded-full">{file.updatedAt}</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-                  Documento processado e disponível para download. 
-                  {file.metadata?.batchNumber && <span className="font-mono text-slate-600 ml-1">Lote: {file.metadata.batchNumber}</span>}
-              </p>
-              <div className="flex gap-2 mt-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-white border-slate-200 text-slate-500 flex items-center gap-1">
-                      {file.metadata?.status === 'APPROVED' ? <CheckCircle2 size={10} className="text-emerald-500"/> : <Clock size={10} className="text-orange-500"/>}
-                      {file.metadata?.status === 'APPROVED' ? 'Aprovado' : 'Pendente'}
-                  </span>
-              </div>
-          </div>
-      </div>
-  );
-
   // --- RENDER: HOME VIEW (CLIENT COMMAND CENTER) ---
   if (currentView === 'home') {
+      const openTicketCount = clientTickets.filter(t => t.status !== 'RESOLVED').length;
+
       return (
         <Layout title={t('menu.dashboard')}>
           <SupportModal isOpen={isSupportModalOpen} onClose={handleSupportClose} />
@@ -209,11 +184,11 @@ const Dashboard: React.FC = () => {
                                 </span>
                             </div>
                             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
-                                {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name.split(' ')[0]}</span>.
+                                {getGreeting()}, {user?.name.split(' ')[0]}.
                             </h1>
                             <p className="text-slate-500 text-sm md:text-base leading-relaxed mb-8">
-                                O status da sua conta é <strong className="text-emerald-600">{stats.status === 'REGULAR' ? 'Saudável' : 'Requer Atenção'}</strong>. 
-                                Você possui <strong className="text-slate-800">{stats.subValue} documentos</strong> processados e <strong className="text-slate-800">{clientTickets.filter(t => t.status !== 'RESOLVED').length} chamados</strong> em aberto.
+                                O status da sua conta é {stats.status === 'REGULAR' ? 'Saudável' : 'Requer Atenção'}. 
+                                Você possui {stats.subValue} documentos processados e {openTicketCount} chamado{openTicketCount !== 1 ? 's' : ''} em aberto.
                             </p>
 
                             {/* Intelligent Search Bar */}
@@ -334,53 +309,23 @@ const Dashboard: React.FC = () => {
                   />
               </div>
 
-              {/* 3. SPLIT SECTION: Recent Activity & File Explorer Preview */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 pb-10">
-                  
-                  {/* Left: Activity Feed */}
-                  <div className="xl:col-span-1 space-y-4">
-                      <div className="flex items-center justify-between px-1">
-                          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                              <Zap size={20} className="text-yellow-500 fill-current" /> Atividade Recente
-                          </h3>
-                          <button onClick={() => navigate('/dashboard?view=recent')} className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors">Ver tudo</button>
-                      </div>
-                      
-                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
-                          {recentFiles.length === 0 ? (
-                              <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8 text-center">
-                                  <Bell size={48} className="mb-4 opacity-20" />
-                                  <p className="text-sm">Nenhuma atividade recente registrada.</p>
-                              </div>
-                          ) : (
-                              <div className="divide-y divide-slate-50">
-                                  {recentFiles.map(file => (
-                                      <ActivityFeedItem key={file.id} file={file} />
-                                  ))}
-                              </div>
-                          )}
-                      </div>
+              {/* 3. INTEGRATED FILE WORKSPACE (FULL WIDTH) */}
+              <div className="pb-10 space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                      <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                          <FileCheck size={20} className="text-blue-500" /> Documentos & Certificados
+                      </h3>
+                      <button onClick={() => navigate('/dashboard?view=files')} className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
+                          Biblioteca Completa <ChevronRight size={14} />
+                      </button>
                   </div>
 
-                  {/* Right: Integrated File Workspace */}
-                  <div className="xl:col-span-2 space-y-4">
-                      <div className="flex items-center justify-between px-1">
-                          <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                              <FileCheck size={20} className="text-blue-500" /> Documentos & Certificados
-                          </h3>
-                          <button onClick={() => navigate('/dashboard?view=files')} className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors">
-                              Biblioteca Completa <ChevronRight size={14} />
-                          </button>
-                      </div>
-
-                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[400px] flex flex-col">
-                          {/* We reuse FileExplorer but pass props to make it fit nicely */}
-                          <FileExplorer 
-                              allowUpload={false} 
-                              hideToolbar={false}
-                              autoHeight={false} // Use internal scroll
-                          />
-                      </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[500px] flex flex-col">
+                      <FileExplorer 
+                          allowUpload={false} 
+                          hideToolbar={false}
+                          autoHeight={false} 
+                      />
                   </div>
               </div>
           </div>

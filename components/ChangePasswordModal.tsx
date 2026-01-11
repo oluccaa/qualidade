@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { X, Lock, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../services/authContext.tsx';
-import * as userService from '../services/userService.ts';
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { userService } from '../services/index.ts';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;

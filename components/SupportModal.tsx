@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { X, LifeBuoy, Plus, MessageSquare, CheckCircle2, Clock, AlertCircle, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../services/authContext.tsx';
-import * as adminService from '../services/adminService.ts';
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { adminService } from '../services/index.ts';
 import { SupportTicket } from '../types.ts';
 
 interface SupportModalProps {

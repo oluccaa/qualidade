@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../services/authContext.tsx';
-import * as notificationService from '../services/notificationService.ts';
-import * as adminService from '../services/adminService.ts'; // Added import
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { notificationService, adminService } from '../services/index.ts';
 import { AppNotification, UserRole, SystemStatus } from '../types.ts'; // Added SystemStatus
 import { CookieBanner } from './CookieBanner.tsx';
 import { PrivacyModal } from './PrivacyModal.tsx';
@@ -55,6 +55,7 @@ type MenuItem = {
   label: string;
   icon: React.ElementType;
   path: string;
+  exact?: boolean;
 };
 
 type MenuSection = {
@@ -189,7 +190,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         {
           title: t('menu.main'),
           items: [
-            { label: t('menu.home'), icon: Home, path: '/dashboard' },
+            { label: t('menu.home'), icon: Home, path: '/dashboard', exact: true }, // Added exact: true
             { label: t('menu.library'), icon: Library, path: '/dashboard?view=files' },
           ]
         },
@@ -263,10 +264,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const bottomNavItems = getBottomNavItems();
 
   const isActive = (path: string, exact = false) => {
+      // 1. Exact Match (for roots like /dashboard)
       if (exact) return location.pathname === path && location.search === '';
-      if (path.includes('?view=')) {
+      
+      // 2. Query Parameter Match (for tabs/views like ?view=files or ?tab=users)
+      if (path.includes('?')) {
           return location.pathname + location.search === path;
       }
+
+      // 3. Prefix Match (default)
       return location.pathname.startsWith(path);
   };
 
@@ -483,7 +489,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
                <div className="space-y-1">
                  {section.items.map((item) => {
-                    const active = isActive(item.path);
+                    const active = isActive(item.path, item.exact);
                     return (
                       <Link
                         key={item.label}

@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../services/authContext.tsx';
-import * as adminService from '../services/adminService.ts';
+// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
+import { adminService } from '../services/index.ts';
 import { UserRole, SystemStatus } from '../types.ts';
 import { MaintenanceScreen } from '../components/MaintenanceScreen.tsx';
 

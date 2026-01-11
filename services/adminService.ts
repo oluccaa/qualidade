@@ -1,408 +1,58 @@
 
-import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, TicketFlow, SystemStatus, FirewallRule } from '../types.ts';
-import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS, MOCK_FIREWALL_RULES } from './mockData.ts';
-import * as fileService from './fileService.ts';
-import * as notificationService from './notificationService.ts';
+import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, SystemStatus, FirewallRule, NetworkPort } from '../types.ts';
+import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS, MOCK_FIREWALL_RULES, MOCK_PORTS } from './mockData.ts';
+import { IAdminService } from './interfaces.ts';
 
-// --- PERSISTENCE LAYER ---
-// Load state from LocalStorage to survive page reloads
-const loadState = <T>(key: string, fallback: T): T => {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : fallback;
-};
-
-const saveState = (key: string, data: any) => {
-    localStorage.setItem(key, JSON.stringify(data));
-};
-
-// In-memory state (Initialized from Storage or Mock)
 let tickets = [...MOCK_TICKETS];
-let clients = [...MOCK_CLIENTS]; 
-let firewallRules = [...MOCK_FIREWALL_RULES]; 
+let clients = [...MOCK_CLIENTS];
+let currentSystemStatus: SystemStatus = { mode: 'ONLINE' };
+const statusListeners: ((s: SystemStatus) => void)[] = [];
 
-// Maintenance specific state
-let maintenanceEvents: MaintenanceEvent[] = loadState('maintenance_events', [...MOCK_MAINTENANCE]);
-let currentSystemStatus: SystemStatus = loadState('system_status', {
-    mode: 'ONLINE', 
-    message: '',
-    scheduledStart: '',
-    scheduledEnd: ''
-});
-
-// --- REAL-TIME SUBSCRIPTION (OBSERVER PATTERN) ---
-type StatusListener = (status: SystemStatus) => void;
-const statusListeners: StatusListener[] = [];
-
-export const subscribeToSystemStatus = (listener: StatusListener) => {
-    statusListeners.push(listener);
-    // Send current status immediately upon subscription
-    listener({ ...currentSystemStatus });
-    return () => {
-        const idx = statusListeners.indexOf(listener);
-        if (idx > -1) statusListeners.splice(idx, 1);
-    };
-};
-
-const notifyStatusListeners = () => {
-    statusListeners.forEach(l => l({ ...currentSystemStatus }));
-};
-
-// --- SYSTEM STATUS (MAINTENANCE MODE) ---
-
-export const getSystemStatus = async (): Promise<SystemStatus> => {
-    // Check auto-start/auto-end logic based on time
-    const now = new Date();
-    let changed = false;
-
-    // 1. Check if a scheduled event should trigger MAINTENANCE mode now
-    if (currentSystemStatus.mode === 'SCHEDULED' && currentSystemStatus.scheduledStart) {
-        const start = new Date(currentSystemStatus.scheduledStart);
-        if (now >= start) {
-            currentSystemStatus.mode = 'MAINTENANCE';
-            changed = true;
+export const MockAdminService: IAdminService = {
+    getSystemStatus: async () => ({ ...currentSystemStatus }),
+    updateSystemStatus: async (user, newStatus) => {
+        currentSystemStatus = { ...currentSystemStatus, ...newStatus };
+        statusListeners.forEach(l => l(currentSystemStatus));
+        return currentSystemStatus;
+    },
+    subscribeToSystemStatus: (listener) => {
+        statusListeners.push(listener);
+        return () => { const i = statusListeners.indexOf(listener); if (i > -1) statusListeners.splice(i, 1); };
+    },
+    getClients: async () => [...clients],
+    saveClient: async (user, data) => {
+        if (data.id) {
+            const i = clients.findIndex(c => c.id === data.id);
+            clients[i] = { ...clients[i], ...data } as ClientOrganization;
+            return clients[i];
         }
-    }
-    
-    // 2. Check if MAINTENANCE mode should end
-    if (currentSystemStatus.mode === 'MAINTENANCE' && currentSystemStatus.scheduledEnd) {
-        const end = new Date(currentSystemStatus.scheduledEnd);
-        if (now >= end) {
-            currentSystemStatus.mode = 'ONLINE';
-            currentSystemStatus.message = '';
-            changed = true;
-        }
-    }
-    
-    if (changed) {
-        saveState('system_status', currentSystemStatus);
-        notifyStatusListeners();
-    }
-    
-    return { ...currentSystemStatus };
-};
-
-export const updateSystemStatus = async (user: User, newStatus: Partial<SystemStatus>): Promise<SystemStatus> => {
-    const previousMode = currentSystemStatus.mode;
-    
-    currentSystemStatus = {
-        ...currentSystemStatus,
-        ...newStatus,
-        updatedBy: user.name
-    };
-    
-    saveState('system_status', currentSystemStatus);
-
-    // LOGIC: Notify users when coming BACK online
-    if (previousMode === 'MAINTENANCE' && newStatus.mode === 'ONLINE') {
-        await notificationService.addNotification(
-            'ALL',
-            '🟢 Sistema Online',
-            'A manutenção foi concluída e o sistema está totalmente operacional.',
-            'SUCCESS'
-        );
-        await fileService.logAction(user, 'MAINTENANCE_OFF', 'Sistema reaberto para todos os usuários.', 'INFO');
-    }
-
-    // LOGIC: Notify when maintenance starts/is activated manually
-    if (previousMode !== 'MAINTENANCE' && newStatus.mode === 'MAINTENANCE') {
-        await fileService.logAction(user, 'MAINTENANCE_ON', 'Sistema colocado em modo de manutenção (Bloqueio Total).', 'WARNING');
-    }
-
-    notifyStatusListeners();
-    return currentSystemStatus;
-};
-
-// --- CLIENTS (EMPRESAS) ---
-
-export const getClients = async (): Promise<ClientOrganization[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return [...clients];
-};
-
-export const saveClient = async (user: User, clientData: Partial<ClientOrganization>): Promise<ClientOrganization> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Update existing
-    if (clientData.id) {
-        const index = clients.findIndex(c => c.id === clientData.id);
-        if (index !== -1) {
-            clients[index] = { ...clients[index], ...clientData } as ClientOrganization;
-            await fileService.logAction(user, 'UPDATE_SYSTEM', `Atualizou empresa: ${clients[index].name}`);
-            return clients[index];
-        }
-    }
-
-    // Create new
-    const newClient: ClientOrganization = {
-        id: `c-${Date.now()}`,
-        name: clientData.name || 'Nova Empresa',
-        cnpj: clientData.cnpj || '',
-        status: clientData.status || 'ACTIVE',
-        contractDate: clientData.contractDate || new Date().toISOString().split('T')[0]
-    };
-    
-    clients.push(newClient);
-    await fileService.logAction(user, 'CREATE_SYSTEM', `Cadastrou nova empresa: ${newClient.name}`);
-    return newClient;
-};
-
-export const deleteClient = async (user: User, clientId: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const clientName = clients.find(c => c.id === clientId)?.name;
-    clients = clients.filter(c => c.id !== clientId);
-    await fileService.logAction(user, 'DELETE_SYSTEM', `Removeu empresa: ${clientName}`);
-};
-
-// --- TICKETS (FLOW SYSTEM) ---
-
-export const getTickets = async (): Promise<SupportTicket[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return [...tickets];
-};
-
-// Retorna tickets onde o usuário é o CRIADOR (Meus Chamados)
-export const getMyTickets = async (user: User): Promise<SupportTicket[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return tickets.filter(t => t.userId === user.id);
-};
-
-// Retorna tickets por ID de usuário (Para SupportModal)
-export const getUserTickets = async (userId: string): Promise<SupportTicket[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return tickets.filter(t => t.userId === userId);
-};
-
-// Retorna tickets que o Departamento de Qualidade deve atender (Cliente -> Qualidade)
-export const getQualityInbox = async (): Promise<SupportTicket[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return tickets.filter(t => t.flow === 'CLIENT_TO_QUALITY');
-};
-
-// Retorna tickets que o Admin deve atender (Qualidade -> Admin)
-export const getAdminInbox = async (): Promise<SupportTicket[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return tickets.filter(t => t.flow === 'QUALITY_TO_ADMIN');
-};
-
-export const createTicket = async (user: User, ticket: Partial<SupportTicket>): Promise<SupportTicket> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    // Determine Flow based on Creator Role
-    let flow: TicketFlow = 'CLIENT_TO_QUALITY'; // Default for Clients
-    if (user.role === UserRole.QUALITY) flow = 'QUALITY_TO_ADMIN';
-    if (user.role === UserRole.ADMIN) flow = 'ADMIN_TO_DEV';
-
-    const newTicket: SupportTicket = {
-        id: `t-${Date.now()}`,
-        flow,
-        userId: user.id,
-        userName: user.name,
-        clientId: user.clientId, 
-        subject: ticket.subject || 'Sem assunto',
-        description: ticket.description || '',
-        priority: ticket.priority || 'MEDIUM',
-        status: 'OPEN',
-        createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        updatedAt: new Date().toISOString()
-    };
-    tickets.unshift(newTicket);
-    await fileService.logAction(user, 'TICKET_UPDATE', `Abriu chamado (${flow}): ${newTicket.subject}`);
-
-    // NOTIFICATION LOGIC: Notify Quality or Admin depending on flow
-    if (flow === 'CLIENT_TO_QUALITY') {
-        // Find Quality users to notify (Mocking finding user 'u2' for simplicity)
-        await notificationService.addNotification('u2', 'Novo Chamado de Cliente', `Cliente ${user.name} abriu: ${newTicket.subject}`, 'INFO', '/quality?view=tickets');
-    }
-
-    return newTicket;
-};
-
-export const resolveTicket = async (user: User, ticketId: string, status: SupportTicket['status'], resolutionNote?: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const idx = tickets.findIndex(t => t.id === ticketId);
-    
-    if (idx !== -1) {
-        const ticket = tickets[idx];
-        
-        // Security check: Quality can only resolve CLIENT_TO_QUALITY, Admin can resolve QUALITY_TO_ADMIN
-        const isAuthorized = 
-            (user.role === UserRole.QUALITY && ticket.flow === 'CLIENT_TO_QUALITY') ||
-            (user.role === UserRole.ADMIN && ticket.flow === 'QUALITY_TO_ADMIN') ||
-            (user.role === UserRole.ADMIN && ticket.flow === 'ADMIN_TO_DEV'); 
-
-        if (!isAuthorized && user.role !== UserRole.ADMIN) { 
-             console.warn("Unauthorized ticket update attempt");
-        }
-
-        tickets[idx] = { 
-            ...ticket, 
-            status, 
-            resolutionNote: resolutionNote || ticket.resolutionNote,
-            updatedAt: new Date().toISOString()
-        };
-        
-        await fileService.logAction(user, 'TICKET_UPDATE', `Alterou status do chamado ${ticketId} para ${status}`);
-
-        // NOTIFICATION: Notify the creator of the ticket
-        if (ticket.userId !== user.id) {
-            await notificationService.addNotification(
-                ticket.userId,
-                'Status do Chamado Atualizado',
-                `Seu chamado "${ticket.subject}" agora está: ${status}.`,
-                status === 'RESOLVED' ? 'SUCCESS' : 'INFO',
-                '/dashboard?view=tickets'
-            );
-        }
-    }
-};
-
-// Updates only the status of a ticket (for Admin grid view)
-export const updateTicketStatus = async (user: User, ticketId: string, status: SupportTicket['status']): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const idx = tickets.findIndex(t => t.id === ticketId);
-    
-    if (idx !== -1) {
-        const ticket = tickets[idx];
-        
-        tickets[idx] = { 
-            ...ticket, 
-            status, 
-            updatedAt: new Date().toISOString()
-        };
-        
-        await fileService.logAction(user, 'TICKET_UPDATE', `Atualizou status do chamado ${ticketId} para ${status}`);
-
-        // NOTIFICATION: Notify the creator of the ticket
-        if (ticket.userId !== user.id) {
-            await notificationService.addNotification(
-                ticket.userId,
-                'Status do Chamado Atualizado',
-                `Seu chamado "${ticket.subject}" agora está: ${status}.`,
-                status === 'RESOLVED' ? 'SUCCESS' : 'INFO',
-                '/dashboard?view=tickets'
-            );
-        }
-    }
-};
-
-// --- FIREWALL & SECURITY ---
-
-export const getFirewallRules = async (): Promise<FirewallRule[]> => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return [...firewallRules];
-};
-
-// --- MAINTENANCE ---
-
-export const getMaintenanceEvents = async (): Promise<MaintenanceEvent[]> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return [...maintenanceEvents];
-};
-
-export const scheduleMaintenance = async (user: User, event: Partial<MaintenanceEvent>): Promise<MaintenanceEvent> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const start = new Date(event.scheduledDate!);
-    const end = new Date(start.getTime() + (event.durationMinutes || 60) * 60000);
-    const now = new Date();
-
-    // Determine Mode immediately
-    const newMode = start <= now ? 'MAINTENANCE' : 'SCHEDULED';
-    
-    // Always update global system status if it's a valid schedule
-    await updateSystemStatus(user, {
-        mode: newMode,
-        scheduledStart: start.toISOString(),
-        scheduledEnd: end.toISOString(),
-        message: event.description || 'Manutenção programada'
-    });
-
-    const newEvent: MaintenanceEvent = {
-        id: `m-${Date.now()}`,
-        title: event.title || 'Manutenção',
-        scheduledDate: event.scheduledDate || new Date().toISOString(),
-        durationMinutes: event.durationMinutes || 60,
-        description: event.description || '',
-        status: 'SCHEDULED',
-        createdBy: user.name
-    };
-    
-    maintenanceEvents.unshift(newEvent);
-    saveState('maintenance_events', maintenanceEvents);
-    
-    await fileService.logAction(user, 'MAINTENANCE_SCHEDULE', `Agendou manutenção: ${newEvent.title}`);
-
-    // NOTIFICATION LOGIC: Broadcast to ALL users
-    const formattedDate = new Date(newEvent.scheduledDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    await notificationService.addNotification(
-        'ALL',
-        '⚠️ Manutenção Agendada',
-        `${newEvent.title} em ${formattedDate}. Duração: ${newEvent.durationMinutes} min.`,
-        'ALERT'
-    );
-
-    return newEvent;
-};
-
-export const cancelMaintenance = async (user: User, eventId: string): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const idx = maintenanceEvents.findIndex(m => m.id === eventId);
-    
-    if (idx !== -1) {
-        const event = maintenanceEvents[idx];
-        maintenanceEvents[idx] = { ...event, status: 'CANCELLED' };
-        saveState('maintenance_events', maintenanceEvents);
-
-        // Check if this was the Active/Scheduled event driving the system status
-        // If the cancelled event's time matches current system status time, we assume it's the one to cancel
-        const isCurrentEvent = currentSystemStatus.scheduledStart === event.scheduledDate;
-        
-        if (isCurrentEvent || currentSystemStatus.mode !== 'ONLINE') {
-            await updateSystemStatus(user, { 
-                mode: 'ONLINE', 
-                message: '',
-                scheduledStart: '',
-                scheduledEnd: ''
-            });
-        }
-
-        await fileService.logAction(user, 'MAINTENANCE_SCHEDULE', `Cancelou manutenção: ${event.title}`);
-
-        await notificationService.addNotification(
-            'ALL',
-            'Manutenção Cancelada',
-            `A manutenção "${event.title}" foi cancelada. O sistema operará normalmente.`,
-            'INFO'
-        );
-    }
-};
-
-// --- INFRASTRUCTURE SUPPORT (ADMIN -> EXTERNAL) ---
-
-export const requestInfrastructureSupport = async (user: User, data: { 
-    component: string, 
-    description: string, 
-    severity: string,
-    affectedContext?: string,
-    module?: string, 
-    steps?: string 
-}): Promise<string> => {
-    
-    console.log("Enviando solicitação para Provedor Externo:", data);
-
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-    
-    const protocolId = `EXT-${new Date().getFullYear()}-${Math.floor(Math.random() * 90000) + 10000}`;
-    
-    // Create an internal ticket record for tracking this external request
-    await createTicket(user, {
-        subject: `[EXTERNO] ${data.component}: ${data.description.substring(0, 30)}...`,
-        description: `Protocolo Externo: ${protocolId}\nDetalhes: ${data.description}\nSeveridade: ${data.severity}`,
-        priority: data.severity as any
-    });
-
-    await fileService.logAction(user, 'TICKET_UPDATE', `Solicitação Fornecedor [${protocolId}]`);
-    
-    return protocolId;
+        const nc = { id: `c-${Date.now()}`, name: data.name!, cnpj: data.cnpj!, status: data.status!, contractDate: data.contractDate! };
+        clients.push(nc);
+        return nc;
+    },
+    deleteClient: async (user, id) => { clients = clients.filter(c => c.id !== id); },
+    getTickets: async () => [...tickets],
+    getMyTickets: async (user) => tickets.filter(t => t.userId === user.id),
+    getUserTickets: async (id) => tickets.filter(t => t.userId === id),
+    getQualityInbox: async () => tickets.filter(t => t.flow === 'CLIENT_TO_QUALITY'),
+    getAdminInbox: async () => tickets.filter(t => t.flow === 'QUALITY_TO_ADMIN'),
+    createTicket: async (user, data) => {
+        const nt: SupportTicket = { id: `t-${Date.now()}`, flow: user.role === UserRole.QUALITY ? 'QUALITY_TO_ADMIN' : 'CLIENT_TO_QUALITY', userId: user.id, userName: user.name, subject: data.subject!, description: data.description!, priority: data.priority!, status: 'OPEN', createdAt: new Date().toISOString() };
+        tickets.unshift(nt);
+        return nt;
+    },
+    resolveTicket: async (user, id, status, note) => {
+        const i = tickets.findIndex(t => t.id === id);
+        if (i !== -1) tickets[i] = { ...tickets[i], status, resolutionNote: note };
+    },
+    updateTicketStatus: async (user, id, status) => {
+        const i = tickets.findIndex(t => t.id === id);
+        if (i !== -1) tickets[i] = { ...tickets[i], status };
+    },
+    getFirewallRules: async () => [...MOCK_FIREWALL_RULES],
+    getPorts: async () => [...MOCK_PORTS],
+    getMaintenanceEvents: async () => [...MOCK_MAINTENANCE],
+    scheduleMaintenance: async (user, data) => ({ ...data, id: 'm-new' } as any),
+    cancelMaintenance: async (user, id) => {},
+    requestInfrastructureSupport: async (user, data) => `EXT-${Date.now()}`
 };
