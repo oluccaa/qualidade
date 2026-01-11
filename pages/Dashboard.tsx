@@ -7,26 +7,21 @@ import { useAuth } from '../services/authContext.tsx';
 import { fileService, adminService } from '../services/index.ts';
 import { FileNode, LibraryFilters, SupportTicket, SystemStatus } from '../types.ts';
 import { useTranslation } from 'react-i18next';
-import { GoogleGenAI } from "@google/genai";
 import { 
     Search, 
     ArrowRight, 
-    Star,
-    History,
     CheckCircle2,
     LifeBuoy,
     Plus,
     Clock,
     MessageSquare,
     FileText,
-    Sparkles,
     ChevronRight,
     CalendarDays,
     FileCheck,
     Server,
     AlertTriangle,
-    CalendarClock,
-    Zap
+    CalendarClock
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -44,8 +39,6 @@ const Dashboard: React.FC = () => {
       status: 'REGULAR', mainLabel: '', subLabel: '', activeClients: 0 
   });
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({ mode: 'ONLINE' });
-  const [aiInsight, setAiInsight] = useState<string>("");
-  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [viewFiles, setViewFiles] = useState<FileNode[]>([]);
   const [clientTickets, setClientTickets] = useState<SupportTicket[]>([]); 
@@ -58,26 +51,6 @@ const Dashboard: React.FC = () => {
   });
 
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
-
-  const fetchAiInsight = useCallback(async (docCount: number, status: string) => {
-    if (!process.env.API_KEY || docCount === 0) return;
-    setIsAiLoading(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Você é o Vital-AI, assistente de qualidade da Aços Vital. 
-        O cliente ${user?.name} tem ${docCount} certificados na biblioteca e status de conta ${status}. 
-        Gere um insight de conformidade técnica curto e proativo em português (máx 140 caracteres).`,
-      });
-      setAiInsight(response.text || "");
-    } catch (e) {
-      console.error("AI Insight error:", e);
-      setAiInsight("Sua biblioteca de certificados está pronta para consulta técnica.");
-    } finally {
-      setIsAiLoading(false);
-    }
-  }, [user]);
 
   const fetchData = useCallback(async () => {
       if (!user) return;
@@ -92,7 +65,6 @@ const Dashboard: React.FC = () => {
           if (currentView === 'home') {
               const tickets = await adminService.getMyTickets(user);
               setClientTickets(tickets.slice(0, 3));
-              fetchAiInsight(data.subValue, data.status);
           } else if (currentView === 'files') {
               const results = await fileService.getLibraryFiles(user, filters);
               setViewFiles(results.items);
@@ -110,7 +82,7 @@ const Dashboard: React.FC = () => {
       } finally {
           setIsLoading(false);
       }
-  }, [user, currentView, filters, fetchAiInsight]);
+  }, [user, currentView, filters]);
 
   useEffect(() => {
       fetchData();
@@ -156,13 +128,13 @@ const Dashboard: React.FC = () => {
           
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-8 pb-12">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-8 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between min-h-[320px]">
+                  <div className="lg:col-span-8 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-center min-h-[320px]">
                         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full blur-3xl opacity-60 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
                         
                         <div className="relative z-10 max-w-2xl">
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-4">
                                 <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-slate-900/20">
-                                    Portal Vital Live
+                                    Portal Vital Link
                                 </span>
                                 <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
                                     <CalendarDays size={12} /> {new Date().toLocaleDateString()}
@@ -171,23 +143,11 @@ const Dashboard: React.FC = () => {
                             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
                                 {getGreeting()}, {user?.name.split(' ')[0]}.
                             </h1>
-                            
-                            {/* AI INSIGHT WIDGET */}
-                            <div className="mt-4 p-4 bg-gradient-to-r from-blue-50/40 to-indigo-50/40 rounded-2xl border border-blue-100/50 flex items-start gap-4 shadow-sm backdrop-blur-sm">
-                                <div className="p-2 bg-white rounded-xl shadow-sm text-blue-600 shrink-0">
-                                    <Sparkles size={20} className={isAiLoading ? "animate-pulse" : ""} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                        <Zap size={10} fill="currentColor" /> Vital-AI Insight
-                                    </p>
-                                    <p className="text-sm text-slate-700 leading-relaxed italic">
-                                        {isAiLoading ? "Gerando análise preditiva..." : aiInsight || "Centralize seus certificados e garanta rastreabilidade total."}
-                                    </p>
-                                </div>
-                            </div>
+                            <p className="text-slate-500 text-sm md:text-base max-w-lg mb-8">
+                                Centralize seus certificados de qualidade e garanta a rastreabilidade total de seus materiais.
+                            </p>
 
-                            <div className="relative group max-w-lg mt-8">
+                            <div className="relative group max-w-lg">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                                 </div>
