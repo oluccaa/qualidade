@@ -2,15 +2,15 @@
 import { IUserService, IFileService, IAdminService, INotificationService } from './interfaces.ts';
 import { SupabaseUserService } from './supabaseUserService.ts';
 import { SupabaseFileService } from './supabaseFileService.ts';
-import { MockAdminService } from './adminService.ts'; // Manter mock até implementar as tabelas admin
+import { SupabaseAdminService } from './supabaseAdminService.ts';
 import { MockNotificationService } from './notificationService.ts';
 
 /**
  * Ponto de Injeção de Dependência.
- * Alteramos aqui para apontar para as implementações do Supabase.
+ * Implementações reais conectadas ao Supabase Postgres.
  */
 
 export const userService: IUserService = SupabaseUserService;
 export const fileService: IFileService = SupabaseFileService;
-export const adminService: IAdminService = MockAdminService;
+export const adminService: IAdminService = SupabaseAdminService;
 export const notificationService: INotificationService = MockNotificationService;

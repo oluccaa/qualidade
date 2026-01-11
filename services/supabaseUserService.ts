@@ -16,7 +16,14 @@ export const SupabaseUserService: IUserService = {
 
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('*, organizations(name)')
+            .select(`
+                id, 
+                full_name, 
+                role, 
+                organization_id, 
+                department, 
+                status
+            `)
             .eq('id', authUser.id)
             .single();
 
@@ -28,7 +35,7 @@ export const SupabaseUserService: IUserService = {
             email: authUser.email!,
             role: profile.role as UserRole,
             clientId: profile.organization_id,
-            status: profile.status,
+            status: profile.status as any,
             department: profile.department
         };
     },
@@ -43,17 +50,15 @@ export const SupabaseUserService: IUserService = {
         return data.map(p => ({
             id: p.id,
             name: p.full_name,
-            email: '', // Email fica no auth.users por segurança
+            email: '', 
             role: p.role as UserRole,
             clientId: p.organization_id,
-            status: p.status,
+            status: p.status as any,
             department: p.department
         }));
     },
 
     saveUser: async (user, initialPassword): Promise<void> => {
-        // Lógica de criação no Auth exige convite ou Admin API do Supabase
-        // Aqui apenas atualizamos o perfil
         const { error } = await supabase.from('profiles').upsert({
             id: user.id,
             full_name: user.name,
@@ -73,7 +78,6 @@ export const SupabaseUserService: IUserService = {
     },
 
     deleteUser: async (userId): Promise<void> => {
-        // Exclusão de usuário no Supabase geralmente é feita via RPC ou Edge Function
         const { error } = await supabase.from('profiles').delete().eq('id', userId);
         if (error) throw error;
     },
