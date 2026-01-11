@@ -3,14 +3,14 @@ import { IUserService, IFileService, IAdminService, INotificationService } from 
 import { SupabaseUserService } from './supabaseUserService.ts';
 import { SupabaseFileService } from './supabaseFileService.ts';
 import { SupabaseAdminService } from './supabaseAdminService.ts';
-import { MockNotificationService } from './notificationService.ts';
+import { SupabaseNotificationService } from './supabaseNotificationService.ts';
 
 /**
- * Ponto de Injeção de Dependência.
- * Implementações reais conectadas ao Supabase Postgres.
+ * Ponto de Injeção de Dependência da Aplicação.
+ * 100% das implementações agora estão conectadas ao Supabase (Produção).
  */
 
 export const userService: IUserService = SupabaseUserService;
 export const fileService: IFileService = SupabaseFileService;
 export const adminService: IAdminService = SupabaseAdminService;
-export const notificationService: INotificationService = MockNotificationService;
+export const notificationService: INotificationService = SupabaseNotificationService;

@@ -63,46 +63,30 @@ const Login: React.FC = () => {
         return;
     }
 
-    const result = await login(email, password);
-    
-    if (!result.success) {
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      setError(result.error || 'Acesso negado.');
+    try {
+        const result = await login(email, password);
+        
+        if (!result.success) {
+          const newAttempts = failedAttempts + 1;
+          setFailedAttempts(newAttempts);
+          setError(result.error || 'Acesso negado.');
 
-      // Security Lockout Policy: 3 Failed Attempts = 30s Lock
-      if (newAttempts >= 3) {
-          setIsLocked(true);
-          setLockTimer(30); // 30 seconds lockout
-          setError('Muitas tentativas falhas. Aguarde para tentar novamente.');
-      }
+          // Security Lockout Policy: 3 Failed Attempts = 30s Lock
+          if (newAttempts >= 5) {
+              setIsLocked(true);
+              setLockTimer(60); // 60 seconds lockout on 5th attempt
+              setError('Muitas tentativas falhas. Por segurança, aguarde para tentar novamente.');
+          }
+        }
+    } catch (e: any) {
+        setError('Erro de conexão com o servidor de autenticação.');
     }
-  };
-
-  const demoAccounts = [
-    { label: 'Admin', email: 'admin@acosvital.com', role: 'Gestão Total' },
-    { label: 'Qualidade', email: 'joao@acosvital.com', role: 'Operacional' },
-    { label: 'Cliente', email: 'compras@empresax.com', role: 'Visualização' },
-  ];
-
-  const handleDemoFill = (accEmail: string) => {
-      if (isLocked) return;
-      setEmail(accEmail);
-      
-      // Set correct password based on user type (Admin has specific password in mock data)
-      if (accEmail === 'admin@acosvital.com') {
-          setPassword('Admin@123');
-      } else {
-          setPassword('123456'); 
-      }
-      
-      setError('');
   };
 
   return (
     <div className="min-h-screen flex bg-white relative">
       
-      {/* LANGUAGE SELECTOR - ENHANCED MOBILE/DESKTOP */}
+      {/* LANGUAGE SELECTOR */}
       <div className="absolute top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 p-1 rounded-full shadow-lg shadow-slate-200/50 flex items-center gap-1">
               <div className="pl-2 pr-1 text-slate-400">
@@ -129,15 +113,13 @@ const Login: React.FC = () => {
       <CookieBanner />
       <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
 
-      {/* Lado Esquerdo - Visual / Branding */}
+      {/* Lado Esquerdo - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden">
-        {/* Imagem de Fundo (Indústria/Aço) */}
         <div 
             className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
             style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1535063404120-40ceb47fe8e9?auto=format&fit=crop&q=80&w=1920")' }} 
         />
         
-        {/* Gradiente Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900/90 to-blue-900/40" />
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full text-white h-full">
@@ -175,12 +157,11 @@ const Login: React.FC = () => {
         </div>
       </div>
 
-      {/* Lado Direito - Formulário */}
+      {/* Lado Direito - Formulário Real */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 md:p-6 bg-slate-50 overflow-y-auto">
-        <div className="w-full max-w-[380px] space-y-6 my-auto">
+        <div className="w-full max-w-[400px] space-y-8 my-auto p-8 bg-white md:bg-transparent rounded-3xl md:rounded-none shadow-xl md:shadow-none">
             
-            {/* Cabeçalho Mobile */}
-            <div className="lg:hidden flex flex-col items-center mb-6 mt-8">
+            <div className="lg:hidden flex flex-col items-center mb-6">
                 <div className="flex items-center gap-2 mb-2">
                     <div className="bg-blue-600 p-1.5 rounded-lg text-white">
                         <ShieldCheck size={28} />
@@ -191,30 +172,29 @@ const Login: React.FC = () => {
             </div>
 
             <div className="text-center lg:text-left">
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t('login.welcomeBack')}</h2>
-                <p className="mt-1.5 text-sm text-slate-500">{t('login.enterCredentials')}</p>
+                <h2 className="text-3xl font-bold text-slate-900 tracking-tight">{t('login.welcomeBack')}</h2>
+                <p className="mt-2 text-sm text-slate-500">{t('login.enterCredentials')}</p>
             </div>
 
             {isLocked ? (
-                <div className="p-5 bg-red-50 border border-red-200 rounded-xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
-                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mb-2">
-                        <AlertOctagon className="text-red-600" size={20} />
+                <div className="p-6 bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                        <AlertOctagon className="text-red-600" size={24} />
                     </div>
                     <h3 className="text-base font-bold text-red-700 mb-1">Acesso Temporariamente Bloqueado</h3>
-                    <p className="text-xs text-red-600 mb-3">Muitas tentativas incorretas. Por segurança, aguarde.</p>
-                    <div className="text-2xl font-mono font-bold text-red-800">{lockTimer}s</div>
+                    <p className="text-xs text-red-600 mb-4">Muitas tentativas incorretas. Aguarde para tentar novamente.</p>
+                    <div className="text-3xl font-mono font-bold text-red-800 bg-white px-4 py-2 rounded-xl shadow-inner border border-red-100">{lockTimer}s</div>
                 </div>
             ) : (
-                <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     
-                    {/* Input Email */}
-                    <div className="space-y-1">
-                        <label htmlFor="email" className="block text-xs font-bold text-slate-700 ml-1 uppercase tracking-wide">{t('login.emailLabel')}</label>
+                    <div className="space-y-1.5">
+                        <label htmlFor="email" className="block text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">{t('login.emailLabel')}</label>
                         <div 
-                            className={`relative flex items-center border rounded-lg transition-all duration-200 bg-white
-                            ${focusedInput === 'email' ? 'border-blue-500 ring-2 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50
+                            ${focusedInput === 'email' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
                         >
-                            <div className="pl-3 text-slate-400">
+                            <div className="pl-4 text-slate-400">
                                 <Mail size={18} />
                             </div>
                             <input 
@@ -222,8 +202,8 @@ const Login: React.FC = () => {
                                 type="email" 
                                 required
                                 disabled={isLoading}
-                                className="w-full px-3 py-2.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50"
-                                placeholder="seu.nome@empresa.com"
+                                className="w-full px-4 py-3.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50 font-medium"
+                                placeholder="ex: joao@acosvital.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 onFocus={() => setFocusedInput('email')}
@@ -232,17 +212,16 @@ const Login: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Input Password */}
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                         <div className="flex justify-between ml-1">
-                            <label htmlFor="password" className="block text-xs font-bold text-slate-700 uppercase tracking-wide">{t('login.passwordLabel')}</label>
-                            <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700">{t('login.forgotPassword')}</a>
+                            <label htmlFor="password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">{t('login.passwordLabel')}</label>
+                            <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">{t('login.forgotPassword')}</a>
                         </div>
                         <div 
-                            className={`relative flex items-center border rounded-lg transition-all duration-200 bg-white
-                            ${focusedInput === 'password' ? 'border-blue-500 ring-2 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50
+                            ${focusedInput === 'password' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
                         >
-                            <div className="pl-3 text-slate-400">
+                            <div className="pl-4 text-slate-400">
                                 <Lock size={18} />
                             </div>
                             <input 
@@ -250,7 +229,7 @@ const Login: React.FC = () => {
                                 type={showPassword ? "text" : "password"}
                                 required
                                 disabled={isLoading}
-                                className="w-full pl-3 pr-10 py-2.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50"
+                                className="w-full pl-4 pr-12 py-3.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50 font-medium"
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -260,7 +239,7 @@ const Login: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                className="absolute right-4 text-slate-400 hover:text-slate-600 focus:outline-none"
                                 tabIndex={-1}
                             >
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -269,8 +248,8 @@ const Login: React.FC = () => {
                     </div>
 
                     {error && (
-                        <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 font-medium">
-                            <AlertOctagon size={14} className="shrink-0" />
+                        <div className="p-4 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 font-semibold">
+                            <AlertOctagon size={16} className="shrink-0" />
                             {error}
                         </div>
                     )}
@@ -278,44 +257,25 @@ const Login: React.FC = () => {
                     <button 
                         type="submit" 
                         disabled={isLoading}
-                        className="group relative w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm py-3 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-slate-900/10 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                        className="group relative w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm py-4 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-slate-900/10 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
                     >
                         {isLoading ? (
-                            <Loader2 size={18} className="animate-spin text-slate-400" />
+                            <Loader2 size={20} className="animate-spin text-slate-400" />
                         ) : (
                             <>
                                 <span>{t('login.accessPortal')}</span>
-                                <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                                <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </>
                         )}
                     </button>
                 </form>
             )}
 
-            {/* Demo Credentials Footer */}
-            <div className="pt-6 border-t border-slate-200">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">{t('login.demoEnv')}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    {demoAccounts.map((acc) => (
-                        <button
-                            key={acc.email}
-                            onClick={() => handleDemoFill(acc.email)}
-                            disabled={isLocked || isLoading}
-                            className="flex flex-col items-center p-2.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition-all text-center group disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <span className="text-xs font-bold text-slate-700 group-hover:text-blue-700">{acc.label}</span>
-                            <span className="text-[9px] text-slate-500 mt-0.5">{acc.role}</span>
-                        </button>
-                    ))}
-                </div>
+            <div className="text-center pt-4">
+                <p className="text-xs text-slate-400">
+                    Acesso restrito a colaboradores e clientes autorizados.
+                </p>
             </div>
-
-            {/* Mobile Footer Links */}
-            <div className="lg:hidden mt-4 text-center text-[10px] text-slate-400 flex flex-col gap-1 pb-4">
-                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-blue-600 font-medium">{t('common.privacy')}</button>
-                <span>&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
-            </div>
-
         </div>
       </div>
     </div>

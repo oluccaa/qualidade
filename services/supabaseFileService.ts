@@ -10,7 +10,6 @@ export const SupabaseFileService: IFileService = {
             .select('*', { count: 'exact' })
             .eq('parent_id', folderId || null);
 
-        // Se for cliente, o RLS já deve filtrar por owner_id, mas reforçamos a query
         if (user.role === 'CLIENT') {
             query = query.eq('owner_id', user.clientId);
         }
@@ -69,14 +68,13 @@ export const SupabaseFileService: IFileService = {
             .eq('id', fileId)
             .single();
             
-        if (fetchError || !file) throw new Error("Arquivo não encontrado no banco de dados.");
+        if (fetchError || !file) throw new Error("Documento não encontrado.");
         
-        // Caminho no bucket: {owner_id}/{filename} ou use a coluna storage_path se preenchida
         const path = file.storage_path || `${file.owner_id}/${file.name}`;
         
         const { data, error } = await supabase.storage
             .from('certificates')
-            .createSignedUrl(path, 3600); // 1 hora de validade
+            .createSignedUrl(path, 3600);
         
         if (error) throw error;
         return data.signedUrl;
@@ -90,7 +88,7 @@ export const SupabaseFileService: IFileService = {
             
         return {
             mainLabel: user.role === 'CLIENT' ? 'Conformidade' : 'Gestão',
-            subLabel: 'Total de Docs',
+            subLabel: 'Arquivos Ativos',
             mainValue: 100,
             subValue: total || 0,
             pendingValue: 0,
@@ -138,12 +136,12 @@ export const SupabaseFileService: IFileService = {
     },
 
     getAuditLogs: async (user) => {
-        const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
         return (data || []).map(l => ({
             id: l.id,
             timestamp: l.created_at,
             userId: l.user_id,
-            userName: 'User', // Precisaria de join para pegar o nome
+            userName: 'SISTEMA',
             userRole: '',
             action: l.action,
             category: l.category as any,
@@ -161,10 +159,18 @@ export const SupabaseFileService: IFileService = {
 
     getFilesByOwner: async (ownerId) => {
         const { data } = await supabase.from('files').select('*').eq('owner_id', ownerId);
-        return (data || []).map(f => ({ ...f, type: f.type as FileType }));
+        return (data || []).map(f => ({
+            id: f.id,
+            parentId: f.parent_id,
+            name: f.name,
+            type: f.type as FileType,
+            size: f.size,
+            updatedAt: new Date(f.updated_at).toLocaleDateString(),
+            ownerId: f.owner_id,
+            metadata: f.metadata
+        }));
     },
 
-    // Métodos restantes simplificados para o MVP
     getMasterLibraryFiles: async () => [],
     importFilesFromMaster: async () => {},
     createFolder: async (user, parentId, name, ownerId) => null,
