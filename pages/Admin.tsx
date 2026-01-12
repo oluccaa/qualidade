@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout.tsx';
-// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
 import { fileService, adminService, userService } from '../services/index.ts';
 import { UserRole, AuditLog, User, ClientOrganization, SupportTicket, NetworkPort } from '../types.ts';
 import { AdminStatsData } from '../services/interfaces.ts';
@@ -8,7 +8,7 @@ import { useAuth } from '../services/authContext.tsx';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
-  Building2, Search, UserPlus, X
+  Building2, Search, UserPlus, X, RefreshCw
 } from 'lucide-react';
 
 // Sub-components
@@ -24,13 +24,11 @@ const Admin: React.FC = () => {
   const activeTab = (searchParams.get('tab') as any) || 'overview';
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [ports, setPorts] = useState<NetworkPort[]>([]);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
   const [investigationData, setInvestigationData] = useState<{ targetLog: AuditLog | null; relatedLogs: AuditLog[]; riskScore: number; }>({ targetLog: null, relatedLogs: [], riskScore: 0 });
 
   const [usersList, setUsersList] = useState<User[]>([]);
   const [clientsList, setClientsList] = useState<ClientOrganization[]>([]);
-  const [ticketsList, setTicketsList] = useState<SupportTicket[]>([]);
   const [adminStats, setAdminStats] = useState<AdminStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -52,17 +50,13 @@ const Admin: React.FC = () => {
   const loadData = async () => {
       setIsLoading(true);
       try {
-          const [users, ticketData, clients, networkPorts, stats] = await Promise.all([
+          const [users, clients, stats] = await Promise.all([
               userService.getUsers(), 
-              adminService.getTickets(), 
               adminService.getClients(), 
-              adminService.getPorts(),
               adminService.getAdminStats()
           ]);
           setUsersList(users); 
-          setTicketsList(ticketData); 
           setClientsList(clients);
-          setPorts(networkPorts);
           setAdminStats(stats);
           
           if (user) {
@@ -90,18 +84,43 @@ const Admin: React.FC = () => {
   // Handlers
   const handleSaveUser = async (e: React.FormEvent) => {
       e.preventDefault();
-      let generatedPassword = !editingUser ? userService.generateRandomPassword() : undefined;
-      const userPayload: User = { id: editingUser ? editingUser.id : `u${Date.now()}`, name: formData.name, email: formData.email, role: formData.role as UserRole, clientId: formData.role === UserRole.CLIENT ? formData.clientId : undefined, status: formData.status as any, department: formData.department, lastLogin: editingUser?.lastLogin || 'Nunca' };
-      await userService.saveUser(userPayload, generatedPassword);
-      setIsUserModalOpen(false); setEditingUser(null); loadData();
-      if (generatedPassword) alert(`Usuário criado com sucesso.\n\nSenha temporária: ${generatedPassword}`);
+      try {
+        const userPayload: User = { 
+            id: editingUser ? editingUser.id : `new`, // ID is handled by Supabase for new users usually via Auth, but here we update profile
+            name: formData.name, 
+            email: formData.email, 
+            role: formData.role as UserRole, 
+            clientId: formData.role === UserRole.CLIENT ? formData.clientId : undefined, 
+            status: formData.status as any, 
+            department: formData.department 
+        };
+        
+        await userService.saveUser(userPayload);
+        setIsUserModalOpen(false); 
+        setEditingUser(null); 
+        loadData();
+      } catch (err: any) {
+          alert(err.message);
+      }
   };
 
   const handleSaveClient = async (e: React.FormEvent) => {
       e.preventDefault(); if (!user) return;
-      const clientPayload: Partial<ClientOrganization> = { id: editingClient?.id, name: clientFormData.name, cnpj: clientFormData.cnpj, contractDate: clientFormData.contractDate, status: clientFormData.status as any };
-      await adminService.saveClient(user, clientPayload);
-      setIsClientModalOpen(false); setEditingClient(null); loadData();
+      try {
+        const clientPayload: Partial<ClientOrganization> = { 
+            id: editingClient?.id, 
+            name: clientFormData.name, 
+            cnpj: clientFormData.cnpj, 
+            contractDate: clientFormData.contractDate, 
+            status: clientFormData.status as any 
+        };
+        await adminService.saveClient(user, clientPayload);
+        setIsClientModalOpen(false); 
+        setEditingClient(null); 
+        loadData();
+      } catch (err: any) {
+          alert(err.message);
+      }
   };
 
   const handleOpenInvestigation = (log: AuditLog) => {
@@ -112,29 +131,58 @@ const Admin: React.FC = () => {
   };
 
   const openUserModal = (u?: User) => {
-      if (u) { setEditingUser(u); setFormData({ name: u.name, email: u.email, role: u.role, clientId: u.clientId || '', status: u.status || 'ACTIVE', department: u.department || '' }); }
-      else { setFormData({ name: '', email: '', role: UserRole.CLIENT, clientId: '', status: 'ACTIVE', department: '' }); setEditingUser(null); }
+      if (u) { 
+          setEditingUser(u); 
+          setFormData({ name: u.name, email: u.email, role: u.role, clientId: u.clientId || '', status: u.status || 'ACTIVE', department: u.department || '' }); 
+      } else { 
+          setFormData({ name: '', email: '', role: UserRole.CLIENT, clientId: '', status: 'ACTIVE', department: '' }); 
+          setEditingUser(null); 
+      }
       setIsUserModalOpen(true);
   };
 
   const openClientModal = (c?: ClientOrganization) => {
-      if (c) { setEditingClient(c); setClientFormData({ name: c.name, cnpj: c.cnpj, contractDate: c.contractDate, status: c.status }); }
-      else { setClientFormData({ name: '', cnpj: '', contractDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' }); setEditingClient(null); }
+      if (c) { 
+          setEditingClient(c); 
+          setClientFormData({ name: c.name, cnpj: c.cnpj, contractDate: c.contractDate, status: c.status }); 
+      } else { 
+          setClientFormData({ name: '', cnpj: '', contractDate: new Date().toISOString().split('T')[0], status: 'ACTIVE' }); 
+          setEditingClient(null); 
+      }
       setIsClientModalOpen(true);
   };
 
   return (
     <Layout title={t('menu.management')}>
       <div className="flex flex-col relative w-full gap-6">
-          {activeTab !== 'overview' && activeTab !== 'settings' && activeTab !== 'firewall' && (
-             <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-xl shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-bold text-slate-800">
+                {activeTab === 'overview' ? 'Dashboard Administrativo' : 
+                 activeTab === 'users' ? 'Gestão de Acessos' : 
+                 activeTab === 'clients' ? 'Cadastro de Empresas' : 'Segurança'}
+            </h2>
+            <button onClick={loadData} className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 transition-all">
+                <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          {activeTab !== 'overview' && activeTab !== 'settings' && (
+             <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border border-slate-200 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-2xl shadow-sm">
                  <div className="relative group w-full sm:w-auto flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
                     <input type="text" placeholder={t('common.search')} className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm w-full outline-none focus:ring-2 focus:ring-blue-500/20" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                  </div>
                  <div className="flex gap-2 w-full sm:w-auto justify-end">
-                     {activeTab === 'users' && <button onClick={() => openUserModal()} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95"><UserPlus size={16} /> {t('admin.users.newAccess')}</button>}
-                     {activeTab === 'clients' && <button onClick={() => openClientModal()} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95"><Building2 size={16} /> Nova Empresa</button>}
+                     {activeTab === 'users' && (
+                        <button onClick={() => openUserModal()} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95">
+                            <UserPlus size={16} /> {t('admin.users.newAccess')}
+                        </button>
+                     )}
+                     {activeTab === 'clients' && (
+                        <button onClick={() => openClientModal()} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95">
+                            <Building2 size={16} /> Nova Empresa
+                        </button>
+                     )}
                  </div>
              </div>
           )}
@@ -149,7 +197,40 @@ const Admin: React.FC = () => {
               />
           )}
 
-          {activeTab === 'users' && <UserList users={filteredUsers} onEdit={openUserModal} />}
+          {activeTab === 'users' && (
+              <UserList users={filteredUsers} onEdit={openUserModal} />
+          )}
+
+          {activeTab === 'clients' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {clientsList.map(client => (
+                      <div key={client.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                          <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform">
+                              <Building2 size={100} />
+                          </div>
+                          <div className="flex justify-between items-start mb-4">
+                              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl shadow-sm">
+                                  <Building2 size={24}/>
+                              </div>
+                              <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${client.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                                  {client.status}
+                              </span>
+                          </div>
+                          <h3 className="font-bold text-slate-800 mb-1">{client.name}</h3>
+                          <p className="text-xs text-slate-400 font-mono tracking-wider">{client.cnpj}</p>
+                          <div className="mt-6 pt-4 border-t border-slate-50 flex justify-between items-center">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Contrato: {new Date(client.contractDate).toLocaleDateString()}</span>
+                              <button onClick={() => openClientModal(client)} className="text-blue-600 hover:text-blue-800 text-xs font-bold">Editar</button>
+                          </div>
+                      </div>
+                  ))}
+                  {clientsList.length === 0 && !isLoading && (
+                      <div className="col-span-full py-20 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400">
+                          Nenhuma empresa cadastrada.
+                      </div>
+                  )}
+              </div>
+          )}
 
           {activeTab === 'logs' && (
               <AuditLogsTable 
@@ -179,32 +260,8 @@ const Admin: React.FC = () => {
         clientFormData={clientFormData} 
         setClientFormData={setClientFormData} 
       />
-
-      {isInvestigationModalOpen && investigationData.targetLog && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
-                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                      <h3 className="font-bold text-slate-800 text-lg tracking-tight">Investigação: {investigationData.targetLog.action}</h3>
-                      <button onClick={() => setIsInvestigationModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} className="text-slate-400" /></button>
-                  </div>
-                  <div className="p-6 overflow-y-auto space-y-6">
-                      <div className="bg-slate-900 text-white p-4 rounded-xl flex justify-between shadow-inner">
-                          <div><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Score de Risco</p><div className="text-3xl font-bold">{investigationData.riskScore}/100</div></div>
-                          <div className="text-right"><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">IP Origem</p><div className="font-mono text-blue-400 text-lg">{investigationData.targetLog.ip}</div></div>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-xs overflow-x-auto shadow-sm">
-                          <pre className="text-slate-700 leading-relaxed">{JSON.stringify(investigationData.targetLog, null, 2)}</pre>
-                      </div>
-                  </div>
-                  <div className="p-4 border-t bg-slate-50 flex justify-end gap-2">
-                      <button onClick={() => setIsInvestigationModalOpen(false)} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold shadow-md hover:bg-slate-800 transition-all">Concluído</button>
-                  </div>
-              </div>
-          </div>
-      )}
     </Layout>
   );
 };
 
-// Add default export for React.lazy compatibility
 export default Admin;

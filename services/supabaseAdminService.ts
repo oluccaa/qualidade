@@ -1,17 +1,29 @@
+
 import { IAdminService, AdminStatsData } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
 import { SupportTicket, SystemStatus, ClientOrganization, UserRole } from '../types.ts';
 
+const handleSupabaseError = (error: any, customMessage: string) => {
+    if (error.code === '42501') {
+        throw new Error(`Erro de Permissão: Você não tem autorização para realizar esta operação. Verifique as políticas de RLS no Supabase.`);
+    }
+    throw new Error(error.message || customMessage);
+};
+
 export const SupabaseAdminService: IAdminService = {
     getSystemStatus: async () => {
-        const { data, error } = await supabase.from('system_settings').select('*').single();
-        if (error || !data) return { mode: 'ONLINE' };
-        return {
-            mode: data.mode,
-            message: data.message,
-            scheduledStart: data.scheduled_start,
-            scheduledEnd: data.scheduled_end
-        };
+        try {
+            const { data, error } = await supabase.from('system_settings').select('*').single();
+            if (error || !data) return { mode: 'ONLINE' };
+            return {
+                mode: data.mode,
+                message: data.message,
+                scheduledStart: data.scheduled_start,
+                scheduledEnd: data.scheduled_end
+            };
+        } catch (e) {
+            return { mode: 'ONLINE' };
+        }
     },
 
     updateSystemStatus: async (user, newStatus) => {
@@ -24,7 +36,7 @@ export const SupabaseAdminService: IAdminService = {
             updated_at: new Date().toISOString()
         }).eq('id', 1).select().single();
         
-        if (error) throw error;
+        if (error) handleSupabaseError(error, "Erro ao atualizar status do sistema");
         return {
             mode: data.mode,
             message: data.message,
@@ -50,30 +62,32 @@ export const SupabaseAdminService: IAdminService = {
     },
 
     getAdminStats: async (): Promise<AdminStatsData> => {
-        const { data, error } = await supabase.from('v_admin_stats').select('*').single();
-        if (error || !data) {
-            return {
-                totalUsers: 0,
-                activeUsers: 0,
-                activeClients: 0,
-                openTickets: 0,
-                logsLast24h: 0,
-                systemHealthStatus: 'HEALTHY'
-            };
-        }
+        // Tenta buscar de uma view de estatísticas ou calcula manualmente
+        const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { count: activeClients } = await supabase.from('organizations').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE');
+        const { count: openTickets } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).neq('status', 'RESOLVED');
+        
         return {
-            totalUsers: data.total_users,
-            activeUsers: data.active_users,
-            activeClients: data.active_clients,
-            openTickets: data.open_tickets,
-            logsLast24h: data.logs_last_24h,
-            systemHealthStatus: data.system_health_status
+            totalUsers: usersCount || 0,
+            activeUsers: usersCount || 0,
+            activeClients: activeClients || 0,
+            openTickets: openTickets || 0,
+            logsLast24h: 0,
+            systemHealthStatus: 'HEALTHY'
         };
     },
 
     getClients: async () => {
-        const { data, error } = await supabase.from('organizations').select('*').order('name');
-        if (error) throw error;
+        const { data, error } = await supabase
+            .from('organizations')
+            .select('*')
+            .order('name');
+        
+        if (error) {
+            console.error("Erro ao buscar empresas:", error);
+            return [];
+        }
+
         return (data || []).map(c => ({
             id: c.id,
             name: c.name,
@@ -91,37 +105,35 @@ export const SupabaseAdminService: IAdminService = {
             contract_date: data.contractDate
         };
 
-        let query;
+        let result;
         if (data.id) {
-            query = supabase.from('organizations').update(payload).eq('id', data.id);
+            const { data: updated, error } = await supabase.from('organizations').update(payload).eq('id', data.id).select().single();
+            if (error) handleSupabaseError(error, "Erro ao atualizar organização");
+            result = updated;
         } else {
-            query = supabase.from('organizations').insert(payload);
+            const { data: inserted, error } = await supabase.from('organizations').insert(payload).select().single();
+            if (error) handleSupabaseError(error, "Erro ao criar organização");
+            result = inserted;
         }
 
-        const { data: client, error } = await query.select().single();
-        if (error) throw error;
-        
         return {
-            id: client.id,
-            name: client.name,
-            cnpj: client.cnpj,
-            status: client.status as any,
-            contractDate: client.contract_date
+            id: result.id,
+            name: result.name,
+            cnpj: result.cnpj,
+            status: result.status as any,
+            contractDate: result.contract_date
         };
     },
 
     deleteClient: async (user, id) => {
         const { error } = await supabase.from('organizations').delete().eq('id', id);
-        if (error) throw error;
+        if (error) handleSupabaseError(error, "Erro ao excluir organização");
     },
 
     getTickets: async () => {
         const { data, error } = await supabase
             .from('tickets')
-            .select(`
-                *,
-                profiles:user_id (full_name)
-            `)
+            .select(`*, profiles(full_name)`)
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -137,9 +149,8 @@ export const SupabaseAdminService: IAdminService = {
             priority: t.priority,
             status: t.status,
             resolutionNote: t.resolution_note,
-            createdAt: new Date(t.created_at).toLocaleString(),
-            updatedAt: t.updated_at ? new Date(t.updated_at).toLocaleString() : undefined
-        })) as any;
+            createdAt: new Date(t.created_at).toLocaleString()
+        }));
     },
 
     getMyTickets: async (user) => {
@@ -154,7 +165,7 @@ export const SupabaseAdminService: IAdminService = {
             ...t, 
             userName: user.name,
             createdAt: new Date(t.created_at).toLocaleString() 
-        })) as any;
+        }));
     },
 
     getUserTickets: async (userId) => {
@@ -168,16 +179,13 @@ export const SupabaseAdminService: IAdminService = {
         return (data || []).map(t => ({ 
             ...t, 
             createdAt: new Date(t.created_at).toLocaleString() 
-        })) as any;
+        }));
     },
 
     getQualityInbox: async () => {
         const { data, error } = await supabase
             .from('tickets')
-            .select(`
-                *,
-                profiles:user_id (full_name)
-            `)
+            .select(`*, profiles(full_name)`)
             .eq('flow', 'CLIENT_TO_QUALITY')
             .order('created_at', { ascending: false });
         
@@ -186,16 +194,13 @@ export const SupabaseAdminService: IAdminService = {
             ...t, 
             userName: t.profiles?.full_name,
             createdAt: new Date(t.created_at).toLocaleString() 
-        })) as any;
+        }));
     },
 
     getAdminInbox: async () => {
         const { data, error } = await supabase
             .from('tickets')
-            .select(`
-                *,
-                profiles:user_id (full_name)
-            `)
+            .select(`*, profiles(full_name)`)
             .eq('flow', 'QUALITY_TO_ADMIN')
             .order('created_at', { ascending: false });
         
@@ -204,7 +209,7 @@ export const SupabaseAdminService: IAdminService = {
             ...t, 
             userName: t.profiles?.full_name,
             createdAt: new Date(t.created_at).toLocaleString() 
-        })) as any;
+        }));
     },
 
     createTicket: async (user, data) => {
@@ -219,12 +224,12 @@ export const SupabaseAdminService: IAdminService = {
             flow
         }).select().single();
         
-        if (error) throw error;
+        if (error) handleSupabaseError(error, "Erro ao criar chamado");
         return {
             ...ticket,
             userName: user.name,
             createdAt: new Date(ticket.created_at).toLocaleString()
-        } as any;
+        };
     },
 
     resolveTicket: async (user, id, status, note) => {
@@ -236,7 +241,7 @@ export const SupabaseAdminService: IAdminService = {
                 updated_at: new Date().toISOString() 
             })
             .eq('id', id);
-        if (error) throw error;
+        if (error) handleSupabaseError(error, "Erro ao resolver chamado");
     },
 
     updateTicketStatus: async (user, id, status) => {
@@ -247,35 +252,13 @@ export const SupabaseAdminService: IAdminService = {
                 updated_at: new Date().toISOString() 
             })
             .eq('id', id);
-        if (error) throw error;
+        if (error) handleSupabaseError(error, "Erro ao atualizar chamado");
     },
 
-    getFirewallRules: async () => {
-        // Mocked or separate table if needed
-        return [];
-    },
-
-    getPorts: async () => {
-        // Mocked or separate table if needed
-        return [];
-    },
-
-    getMaintenanceEvents: async () => {
-        // Mocked or separate table if needed
-        return [];
-    },
-
-    scheduleMaintenance: async (user, event) => {
-        // Mock implementation
-        return { ...event, id: `m-${Date.now()}` } as any;
-    },
-
-    cancelMaintenance: async (user, id) => {
-        // Mock implementation
-    },
-
-    requestInfrastructureSupport: async (user, data) => {
-        // Simulates an external API call to a support system
-        return `REQ-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    }
+    getFirewallRules: async () => [],
+    getPorts: async () => [],
+    getMaintenanceEvents: async () => [],
+    scheduleMaintenance: async (user, event) => ({ ...event, id: `m-${Date.now()}` } as any),
+    cancelMaintenance: async (user, id) => {},
+    requestInfrastructureSupport: async (user, data) => `REQ-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 };

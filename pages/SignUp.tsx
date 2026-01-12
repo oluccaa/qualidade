@@ -37,6 +37,7 @@ const SignUp: React.FC = () => {
 
   const [clients, setClients] = useState<ClientOrganization[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingClients, setIsFetchingClients] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,11 +46,15 @@ const SignUp: React.FC = () => {
 
   useEffect(() => {
     const loadClients = async () => {
+      setIsFetchingClients(true);
       try {
         const data = await adminService.getClients();
+        // A filtragem já deve vir do banco, mas mantemos por segurança
         setClients(data.filter(c => c.status === 'ACTIVE'));
       } catch (err) {
-        console.error("Erro ao carregar empresas:", err);
+        console.error("Erro ao carregar empresas no SignUp:", err);
+      } finally {
+        setIsFetchingClients(false);
       }
     };
     loadClients();
@@ -63,14 +68,8 @@ const SignUp: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    // Basic Validations
     if (!formData.fullName.trim()) {
         setError('Por favor, informe seu nome completo.');
-        return;
-    }
-
-    if (!formData.email.trim()) {
-        setError('Por favor, informe seu e-mail.');
         return;
     }
 
@@ -86,13 +85,13 @@ const SignUp: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Clean organization ID logic
+      // organizationId será nulo se for 'NEW' ou vazio
       const orgIdToSubmit = (formData.organizationId === 'NEW' || !formData.organizationId) 
         ? undefined 
         : formData.organizationId;
 
       await userService.signUp(
-        formData.email.trim().toLowerCase(), 
+        formData.email.trim(), 
         formData.password, 
         formData.fullName.trim(), 
         orgIdToSubmit, 
@@ -100,17 +99,17 @@ const SignUp: React.FC = () => {
       );
       
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 4000);
+      // Redireciona após 3 segundos para dar tempo de ler o sucesso
+      setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
       console.error("SignUp Page Error:", err);
       
-      // Detailed error breakdown
-      if (err.message?.includes('Database error') || err.message?.includes('banco de dados')) {
-         setError('Erro de integridade no banco de dados. Isso geralmente acontece se o e-mail já estiver em uso ou se houver um problema com o ID da empresa selecionada.');
-      } else if (err.message?.includes('User already registered')) {
-         setError('Este e-mail já está cadastrado em nossa base.');
+      if (err.message.includes('Database error') || err.message.includes('integridade')) {
+         setError('Erro crítico de banco de dados. O administrador deve verificar o Trigger de criação de usuários no Supabase.');
+      } else if (err.message.includes('already registered')) {
+         setError('Este e-mail já está em uso.');
       } else {
-         setError(err.message || 'Ocorreu um erro inesperado ao processar seu cadastro.');
+         setError(err.message || 'Erro inesperado ao realizar cadastro.');
       }
     } finally {
       setIsLoading(false);
@@ -200,7 +199,7 @@ const SignUp: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                         <h2 className="text-2xl font-bold text-slate-900">Solicitação Enviada!</h2>
-                        <p className="text-slate-500">Sua conta foi criada. Nossa equipe analisará seus dados e você receberá um e-mail de confirmação em breve.</p>
+                        <p className="text-slate-500">Sua conta foi criada. Você será redirecionado para o login em instantes.</p>
                     </div>
                     <div className="flex justify-center">
                         <Loader2 size={24} className="animate-spin text-emerald-600" />
@@ -255,18 +254,20 @@ const SignUp: React.FC = () => {
                                     <div className="pl-4 text-slate-400"><Building2 size={18} /></div>
                                     <select 
                                         required
-                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm appearance-none cursor-pointer"
+                                        disabled={isFetchingClients}
+                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm appearance-none cursor-pointer disabled:opacity-50"
                                         value={formData.organizationId}
                                         onFocus={() => setFocusedInput('org')}
                                         onBlur={() => setFocusedInput(null)}
                                         onChange={e => setFormData({...formData, organizationId: e.target.value})}
                                     >
-                                        <option value="">Selecione...</option>
-                                        {clients.map(c => (
+                                        <option value="">{isFetchingClients ? 'Carregando empresas...' : 'Selecione...'}</option>
+                                        {!isFetchingClients && clients.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
-                                        <option value="NEW">Minha empresa não está na lista</option>
+                                        {!isFetchingClients && <option value="NEW">Minha empresa não está na lista</option>}
                                     </select>
+                                    {isFetchingClients && <div className="absolute right-4"><Loader2 size={16} className="animate-spin text-blue-500" /></div>}
                                 </div>
                             </div>
                             <div className="space-y-1.5">
