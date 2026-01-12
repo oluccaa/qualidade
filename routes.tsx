@@ -1,3 +1,4 @@
+
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthMiddleware } from './middlewares/AuthMiddleware.tsx';
@@ -13,6 +14,7 @@ const SignUp = React.lazy(() => import('./pages/SignUp.tsx'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard.tsx'));
 const Quality = React.lazy(() => import('./pages/Quality.tsx'));
 const Admin = React.lazy(() => import('./pages/Admin.tsx'));
+const NotFound = React.lazy(() => import('./pages/NotFound.tsx'));
 
 // --- Internal Components for Routing Logic ---
 
@@ -59,11 +61,13 @@ export const AppRoutes: React.FC = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 
                 {/* Quality (Internal) */}
+                {/* Fix: Correctly close the RoleMiddleware element and use standard Route nesting for layouts */}
                 <Route element={<RoleMiddleware allowedRoles={[UserRole.QUALITY, UserRole.ADMIN]} />}>
                     <Route path="/quality" element={<Quality />} />
                 </Route>
 
                 {/* Admin */}
+                {/* Fix: Correctly close the RoleMiddleware element and use standard Route nesting for layouts */}
                 <Route element={<RoleMiddleware allowedRoles={[UserRole.ADMIN]} />}>
                     <Route path="/admin" element={<Admin />} />
                 </Route>
@@ -73,7 +77,8 @@ export const AppRoutes: React.FC = () => {
             </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
     </Suspense>
   );

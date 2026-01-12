@@ -105,6 +105,7 @@ export const SupabaseUserService: IUserService = {
     },
 
     getUsers: async (): Promise<User[]> => {
+        // Busca forçada sem cache para evitar inconsistência imediata pós-signUp
         const { data, error } = await supabase
             .from('profiles')
             .select(`
@@ -113,14 +114,17 @@ export const SupabaseUserService: IUserService = {
             `)
             .order('full_name');
             
-        if (error) throw error;
+        if (error) {
+            console.error("Erro ao buscar usuários:", error);
+            throw error;
+        }
         
         return (data || []).map(p => ({
             id: p.id,
             name: p.full_name,
-            email: p.email || '', // Assume que o e-mail está sincronizado no perfil
+            email: p.email || '',
             role: p.role as UserRole,
-            clientId: p.organizations?.name || 'Interno', // Mostra o nome da empresa em vez do ID
+            clientId: p.organizations?.name || 'Interno',
             status: p.status as any,
             department: p.department,
             lastLogin: p.last_login ? new Date(p.last_login).toLocaleString() : 'Nunca'

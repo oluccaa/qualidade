@@ -1,3 +1,4 @@
+
 import { 
   User, UserRole, FileNode, FileType, AuditLog, LibraryFilters, 
   ClientOrganization, SupportTicket, SystemStatus, NetworkPort, 
@@ -17,6 +18,10 @@ export interface AdminStatsData {
   openTickets: number;
   logsLast24h: number;
   systemHealthStatus: 'HEALTHY' | 'WARNING' | 'CRITICAL';
+  cpuUsage: number;
+  memoryUsage: number;
+  dbConnections: number;
+  dbMaxConnections: number;
 }
 
 export interface IUserService {

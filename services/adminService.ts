@@ -20,7 +20,7 @@ export const MockAdminService: IAdminService = {
         statusListeners.push(listener);
         return () => { const i = statusListeners.indexOf(listener); if (i > -1) statusListeners.splice(i, 1); };
     },
-    // Fix: Implement missing getAdminStats method required by IAdminService
+    // Fix: Added missing infrastructure metrics to satisfy AdminStatsData interface requirements
     getAdminStats: async (): Promise<AdminStatsData> => {
         return {
             totalUsers: 10,
@@ -28,7 +28,11 @@ export const MockAdminService: IAdminService = {
             activeClients: 3,
             openTickets: 2,
             logsLast24h: 15,
-            systemHealthStatus: 'HEALTHY'
+            systemHealthStatus: 'HEALTHY',
+            cpuUsage: 12,
+            memoryUsage: 42,
+            dbConnections: 8,
+            dbMaxConnections: 100
         };
     },
     getClients: async () => [...clients],

@@ -8,7 +8,7 @@ import { useAuth } from '../services/authContext.tsx';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
-  Building2, Search, UserPlus, X, Edit2, Trash2, Mail, ExternalLink, MessageSquare, Clock, CheckCircle2, AlertCircle
+  Building2, Search, UserPlus, X, Edit2, Trash2, Mail, ExternalLink, MessageSquare, Clock, CheckCircle2, AlertCircle, Loader2
 } from 'lucide-react';
 
 // Sub-components
@@ -33,6 +33,7 @@ const Admin: React.FC = () => {
   const [ticketsList, setTicketsList] = useState<SupportTicket[]>([]);
   const [adminStats, setAdminStats] = useState<AdminStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'ALL'>('ALL');
@@ -44,7 +45,7 @@ const Admin: React.FC = () => {
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
-    password: '', // Novo campo para senha manual
+    password: '', 
     role: UserRole.CLIENT, 
     clientId: '', 
     status: 'ACTIVE', 
@@ -67,7 +68,9 @@ const Admin: React.FC = () => {
               adminService.getPorts(),
               adminService.getAdminStats()
           ]);
-          setUsersList(users); 
+          
+          // Garantir que o estado receba a lista completa
+          setUsersList([...users]); 
           setTicketsList(ticketData); 
           setClientsList(clients);
           setPorts(networkPorts);
@@ -82,12 +85,17 @@ const Admin: React.FC = () => {
       } finally { setIsLoading(false); }
   };
 
-  const filteredUsers = useMemo(() => usersList.filter(u => {
-      const matchesSearch = (u.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || (u.email || "").toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
-      const matchesStatus = statusFilter === 'ALL' || u.status === statusFilter;
-      return matchesSearch && matchesRole && matchesStatus;
-  }), [usersList, searchTerm, roleFilter, statusFilter]);
+  const filteredUsers = useMemo(() => {
+      // Se não houver usuários carregados, retorna vazio para evitar flash de tela
+      if (!usersList) return [];
+      
+      return usersList.filter(u => {
+          const matchesSearch = (u.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || (u.email || "").toLowerCase().includes(searchTerm.toLowerCase());
+          const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+          const matchesStatus = statusFilter === 'ALL' || u.status === statusFilter;
+          return matchesSearch && matchesRole && matchesStatus;
+      });
+  }, [usersList, searchTerm, roleFilter, statusFilter]);
 
   const filteredClients = useMemo(() => clientsList.filter(c => {
       const term = searchTerm.toLowerCase();
@@ -105,45 +113,52 @@ const Admin: React.FC = () => {
       return matchesSearch && matchesSeverity;
   }), [logs, searchTerm, severityFilter]);
 
-  // Handlers
   const handleSaveUser = async (e: React.FormEvent) => {
       e.preventDefault();
+      setIsSaving(true);
       try {
           if (!editingUser) {
-              // NOVO USUÁRIO: Usar senha definida pelo administrador
               await userService.signUp(
                   formData.email,
-                  formData.password, // Senha manual agora vinda do formData
+                  formData.password,
                   formData.name,
                   formData.clientId || undefined,
                   formData.department
               );
-              alert(`Usuário ${formData.name} criado com sucesso.`);
           } else {
-              // ATUALIZAÇÃO: Upsert no perfil existente
               const userPayload: User = { 
                   id: editingUser.id, 
                   name: formData.name, 
                   email: formData.email, 
                   role: formData.role as UserRole, 
-                  clientId: formData.role === UserRole.CLIENT ? (formData.clientId || undefined) : undefined, 
+                  clientId: (formData.role === UserRole.CLIENT && formData.clientId && formData.clientId !== 'Interno') ? formData.clientId : undefined, 
                   status: formData.status as any, 
                   department: formData.department, 
                   lastLogin: editingUser?.lastLogin || 'Nunca' 
               };
               await userService.saveUser(userPayload);
           }
+          
           setIsUserModalOpen(false); 
-          setEditingUser(null); 
-          loadData();
+          setEditingUser(null);
+          setSearchTerm(''); // Limpa busca para ver o novo usuário na lista completa
+          
+          // Aguarda um curto intervalo para o trigger do Supabase processar (evita lista vazia pós-signUp)
+          setTimeout(() => {
+              loadData();
+              setIsSaving(false);
+          }, 800);
+
       } catch (err: any) {
           console.error("Erro ao salvar usuário:", err);
           alert(`Erro ao salvar usuário: ${err.message || 'Verifique se os dados estão corretos.'}`);
+          setIsSaving(false);
       }
   };
 
   const handleSaveClient = async (e: React.FormEvent) => {
       e.preventDefault(); if (!user) return;
+      setIsSaving(true);
       try {
         const clientPayload: Partial<ClientOrganization> = { 
             id: editingClient?.id, 
@@ -153,9 +168,11 @@ const Admin: React.FC = () => {
             status: clientFormData.status as any 
         };
         await adminService.saveClient(user, clientPayload);
-        setIsClientModalOpen(false); setEditingClient(null); loadData();
+        setIsClientModalOpen(false); setEditingClient(null); 
+        setTimeout(() => { loadData(); setIsSaving(false); }, 500);
       } catch (err: any) {
         alert(`Erro ao salvar empresa: ${err.message}`);
+        setIsSaving(false);
       }
   };
 
@@ -172,7 +189,7 @@ const Admin: React.FC = () => {
         setFormData({ 
             name: u.name, 
             email: u.email, 
-            password: '', // Senha não é editada aqui por segurança
+            password: '', 
             role: u.role, 
             clientId: u.clientId || '', 
             status: u.status || 'ACTIVE', 
@@ -183,7 +200,7 @@ const Admin: React.FC = () => {
         setFormData({ 
             name: '', 
             email: '', 
-            password: '', // Resetar senha para nova criação
+            password: '', 
             role: UserRole.CLIENT, 
             clientId: '', 
             status: 'ACTIVE', 
@@ -203,9 +220,15 @@ const Admin: React.FC = () => {
   return (
     <Layout title={t('menu.management')}>
       <div className="flex flex-col relative w-full gap-6">
+          {(isSaving || isLoading) && activeTab !== 'overview' && (
+              <div className="fixed top-4 right-1/2 translate-x-1/2 z-[110] bg-slate-900 text-white px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 text-xs font-bold animate-bounce">
+                  <Loader2 size={14} className="animate-spin" /> Atualizando base de dados...
+              </div>
+          )}
+
           {activeTab !== 'overview' && activeTab !== 'settings' && (
              <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-xl shadow-sm">
-                 <div className="relative group w-full sm:w-auto flex-1 max-w-md">
+                 <div className="relative group w-full sm:w-auto flex-1 max-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
                     <input type="text" placeholder={t('common.search')} className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm w-full outline-none focus:ring-2 focus:ring-blue-500/20" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                  </div>
@@ -223,10 +246,18 @@ const Admin: React.FC = () => {
                   clientsCount={adminStats.activeClients}
                   ticketsCount={adminStats.openTickets}
                   logsCount={adminStats.logsLast24h}
+                  infraHealth={{
+                      cpu: adminStats.cpuUsage,
+                      memory: adminStats.memoryUsage,
+                      db: adminStats.dbConnections,
+                      dbMax: adminStats.dbMaxConnections
+                  }}
               />
           )}
 
-          {activeTab === 'users' && <UserList users={filteredUsers} onEdit={openUserModal} />}
+          {activeTab === 'users' && (
+              <UserList users={filteredUsers} onEdit={openUserModal} />
+          )}
 
           {activeTab === 'clients' && (
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col animate-in fade-in duration-300">

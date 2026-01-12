@@ -20,9 +20,9 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  clientId?: string; // If CLIENT, restricts access to this Organization ID
+  clientId?: string;
   status?: 'ACTIVE' | 'BLOCKED';
-  department?: string; // New field
+  department?: string;
   lastLogin?: string;
 }
 
@@ -38,6 +38,9 @@ export interface FileMetadata {
   productName?: string; // Ex: Aço SAE 1045
   invoiceNumber?: string; // Nota Fiscal
   status?: 'APPROVED' | 'PENDING' | 'REJECTED';
+  rejectionReason?: string; // Por que o documento foi recusado
+  inspectedAt?: string;
+  inspectedBy?: string;
 }
 
 export interface FileNode {
@@ -47,10 +50,10 @@ export interface FileNode {
   type: FileType;
   size?: string;
   updatedAt: string;
-  ownerId?: string; // Which client does this belong to? (null = public/internal)
-  tags?: string[]; // Metadata: e.g., "Lote 123", "SAE 1020"
-  metadata?: FileMetadata; // Detailed industrial metadata
-  isFavorite?: boolean; // UI State: Is this file favorited by the current user?
+  ownerId?: string;
+  tags?: string[];
+  metadata?: FileMetadata;
+  isFavorite?: boolean;
 }
 
 export interface BreadcrumbItem {
@@ -73,41 +76,41 @@ export interface AuditLog {
   location: string;
   userAgent: string;
   device: string;
-  metadata: Record<string, any>; // JSON stringifiable data for deep inspection
+  metadata: Record<string, any>;
   requestId: string;
 }
 
 export interface LibraryFilters {
   startDate: string;
   endDate: string;
-  status: 'ALL' | 'APPROVED' | 'PENDING';
+  status: 'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED';
   search: string;
 }
 
 export interface AppNotification {
   id: string;
-  userId: string; // Target user (or 'ALL')
+  userId: string;
   title: string;
   message: string;
   type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT';
   isRead: boolean;
   timestamp: string;
-  link?: string; // Optional navigation link
+  link?: string;
 }
 
 export type TicketFlow = 'CLIENT_TO_QUALITY' | 'QUALITY_TO_ADMIN' | 'ADMIN_TO_DEV';
 
 export interface SupportTicket {
   id: string;
-  flow: TicketFlow; // Define quem atende quem
-  userId: string; // Quem abriu
+  flow: TicketFlow;
+  userId: string;
   userName: string; 
-  clientId?: string; // Contexto da organização (se aplicável)
+  clientId?: string;
   subject: string;
-  description: string; // O problema relatado
+  description: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
-  resolutionNote?: string; // Texto preenchido por quem resolveu
+  resolutionNote?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -122,7 +125,6 @@ export interface MaintenanceEvent {
   createdBy: string;
 }
 
-// NEW: Global System Status for Maintenance Mode
 export interface SystemStatus {
     mode: 'ONLINE' | 'MAINTENANCE' | 'SCHEDULED';
     message?: string;
@@ -131,10 +133,9 @@ export interface SystemStatus {
     updatedBy?: string;
 }
 
-// NEW: Network Security Types
 export interface NetworkPort {
   port: number;
-  service: string; // e.g., SSH, HTTP, POSTGRES
+  service: string;
   protocol: 'TCP' | 'UDP';
   status: 'OPEN' | 'CLOSED' | 'FILTERED';
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -146,8 +147,8 @@ export interface FirewallRule {
   name: string;
   type: 'INBOUND' | 'OUTBOUND';
   protocol: 'TCP' | 'UDP' | 'ANY';
-  port: string; // "80", "443", "ANY"
-  source: string; // IP or CIDR
+  port: string;
+  source: string;
   action: 'ALLOW' | 'DENY';
   active: boolean;
   priority: number;

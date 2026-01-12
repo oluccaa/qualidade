@@ -117,12 +117,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       }
   }, [user]);
 
-  // Keep polling as backup for time-based triggers (e.g. maintenance auto-start)
-  useEffect(() => {
-      const interval = setInterval(checkSystemStatus, 30000);
-      return () => clearInterval(interval);
-  }, []);
-
   const checkSystemStatus = async () => {
       const status = await adminService.getSystemStatus();
       setSystemStatus(status);
