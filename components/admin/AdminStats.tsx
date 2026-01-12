@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, Building2, LifeBuoy, Activity, CheckCircle2, Cpu } from 'lucide-react';
+import { Users, Building2, LifeBuoy, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface StatCardProps {
@@ -50,47 +50,17 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, subtext, icon: Icon, 
     );
 };
 
-const ProgressBar: React.FC<{ percentage: number, color?: 'emerald' | 'blue' | 'purple' | 'red' }> = ({ percentage, color = "blue" }) => {
-    const getColorClass = () => {
-        if (percentage > 85) return 'bg-red-500';
-        if (percentage > 65) return 'bg-orange-500';
-        switch(color) {
-            case 'emerald': return 'bg-emerald-500';
-            case 'purple': return 'bg-purple-500';
-            case 'red': return 'bg-red-500';
-            default: return 'bg-blue-500';
-        }
-    };
-
-    return (
-        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-            <div 
-                className={`h-full rounded-full transition-all duration-700 ${getColorClass()}`} 
-                style={{ width: `${percentage}%` }}
-            />
-        </div>
-    );
-};
-
 interface AdminStatsProps {
     usersCount: number;
     activeUsersCount: number;
     clientsCount: number;
     ticketsCount: number;
     logsCount: number;
-    infraHealth: {
-        cpu: number;
-        memory: number;
-        db: number;
-        dbMax: number;
-    };
 }
 
-export const AdminStats: React.FC<AdminStatsProps> = ({ usersCount, activeUsersCount, clientsCount, ticketsCount, logsCount, infraHealth }) => {
+export const AdminStats: React.FC<AdminStatsProps> = ({ usersCount, activeUsersCount, clientsCount, ticketsCount, logsCount }) => {
     const { t } = useTranslation();
     
-    const dbPercentage = Math.round((infraHealth.db / infraHealth.dbMax) * 100);
-
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -118,47 +88,6 @@ export const AdminStats: React.FC<AdminStatsProps> = ({ usersCount, activeUsersC
                     subtext="Logs nas últimas 24h"
                     icon={Activity} color="orange" 
                 />
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        <Cpu size={20} className="text-emerald-500" /> 
-                        {t('admin.stats.systemHealth')}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tempo Real</span>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                            <span>{t('admin.stats.cpuLoad')}</span>
-                            <span className={infraHealth.cpu > 80 ? 'text-red-500' : 'text-slate-900'}>{infraHealth.cpu}%</span>
-                        </div>
-                        <ProgressBar percentage={infraHealth.cpu} color="emerald" />
-                    </div>
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                            <span>{t('admin.stats.memoryUsage')}</span>
-                            <span className={infraHealth.memory > 80 ? 'text-red-500' : 'text-slate-900'}>{infraHealth.memory}%</span>
-                        </div>
-                        <ProgressBar percentage={infraHealth.memory} color="blue" />
-                    </div>
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                            <span>{t('admin.stats.dbConnections')}</span>
-                            <span className={dbPercentage > 80 ? 'text-red-500' : 'text-slate-900'}>{infraHealth.db}/{infraHealth.dbMax}</span>
-                        </div>
-                        <ProgressBar percentage={dbPercentage} color="purple" />
-                    </div>
-                </div>
-                
-                <div className="mt-6 p-4 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-xl border border-emerald-100 flex items-center gap-3">
-                    <CheckCircle2 size={18} /> {t('admin.stats.allOperational')}
-                </div>
             </div>
         </div>
     );

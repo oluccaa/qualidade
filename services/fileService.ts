@@ -126,7 +126,8 @@ export const MockFileService: IFileService = {
         return paginate(filtered, page, pageSize);
     },
 
-    getBreadcrumbs: (folderId: string | null) => {
+    // Updated getBreadcrumbs to be async to match IFileService
+    getBreadcrumbs: async (folderId: string | null) => {
         if (!folderId) return [{ id: 'root', name: 'Início' }];
         const crumbs = [];
         let curr: string | null = folderId;

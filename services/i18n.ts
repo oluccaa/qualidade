@@ -99,7 +99,6 @@ const resources = {
         accountStatus: "Status da Conta",
         verified: "VERIFICADO",
         statusDesc: "Sua conta está ativa e em conformidade documental.",
-        // Fix: Renamed duplicate properties to *Header to avoid naming collision with *Title keys used in Dashboard routing
         libraryHeader: "Repositório de Documentos",
         favoritesHeader: "Acesso Rápido",
         historyHeader: "Histórico",
@@ -163,10 +162,6 @@ const resources = {
           activities: "Atividades 24h",
           b2bContracts: "Contratos B2B",
           loggedActions: "Ações Registradas",
-          systemHealth: "Saúde da Infraestrutura",
-          cpuLoad: "Carga de CPU",
-          memoryUsage: "Uso de Memória",
-          dbConnections: "Conexões DB",
           allOperational: "Todos os sistemas operacionais",
           headers: {
             timestamp: "Horário",
@@ -342,7 +337,6 @@ const resources = {
         accountStatus: "Account Status",
         verified: "VERIFIED",
         statusDesc: "Your account is active and document compliant.",
-        // Fix: Renamed duplicate properties to *Header to avoid naming collision with *Title keys used in Dashboard routing
         libraryHeader: "Document Repository",
         favoritesHeader: "Quick Access",
         historyHeader: "History",
@@ -406,10 +400,6 @@ const resources = {
           activities: "24h Activities",
           b2bContracts: "B2B Contracts",
           loggedActions: "Logged Actions",
-          systemHealth: "Infrastructure Health",
-          cpuLoad: "CPU Load",
-          memoryUsage: "Memory Usage",
-          dbConnections: "DB Connections",
           allOperational: "All systems operational",
           headers: {
             timestamp: "Timestamp",
@@ -424,7 +414,7 @@ const resources = {
           title: "L3 Support - Infrastructure",
           subtitle: "Direct request to external technical team",
           component: "Affected Component",
-          impact: "Business Impact",
+          impact: "Impact on the Business",
           context: "Context",
           module: "Module",
           steps: "Steps to Reproduce",
@@ -521,7 +511,7 @@ const resources = {
         all: "Todos",
         filter: "Filtrar",
         description: "Descripción",
-        priority: "Prioridad"
+        priority: "Prioridade"
       },
       files: {
         name: "Nombre del Archivo",
@@ -585,12 +575,11 @@ const resources = {
         accountStatus: "Estado de la Cuenta",
         verified: "VERIFICADO",
         statusDesc: "Su cuenta está activa y en cumplimiento documental.",
-        // Fix: Renamed duplicate properties to *Header to avoid naming collision with *Title keys used in Dashboard routing
         libraryHeader: "Repositorio de Documentos",
         favoritesHeader: "Acceso Rápido",
         historyHeader: "Historial",
         ticketsHeader: "Centro de Soporte",
-        filters: "Filtros Avanzados",
+        filters: "Filtros Avançados",
         period: "Período",
         clear: "Limpar Filtros",
         openTicket: "Abrir Nuevo Ticket",
@@ -649,10 +638,6 @@ const resources = {
           activities: "Actividades 24h",
           b2bContracts: "Contratos B2B",
           loggedActions: "Acciones Registradas",
-          systemHealth: "Salud de Infraestructura",
-          cpuLoad: "Carga CPU",
-          memoryUsage: "Uso de Memoria",
-          dbConnections: "Conexiones DB",
           allOperational: "Sistemas operando normalmente",
           headers: {
             timestamp: "Horario",

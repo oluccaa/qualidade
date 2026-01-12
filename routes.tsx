@@ -16,16 +16,21 @@ const Quality = React.lazy(() => import('./pages/Quality.tsx'));
 const Admin = React.lazy(() => import('./pages/Admin.tsx'));
 const NotFound = React.lazy(() => import('./pages/NotFound.tsx'));
 
+const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
+
 // --- Internal Components for Routing Logic ---
 
 const LoadingScreen = ({ message = "Carregando Portal" }: { message?: string }) => (
-  <div className="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-      <div className="relative">
-        <div className="absolute inset-0 bg-blue-500 blur-xl opacity-20 animate-pulse"></div>
-        <ShieldCheck size={64} className="text-blue-500 relative z-10 mb-6" />
+  <div className="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white relative">
+      {/* Texture for Premium Loading */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 animate-pulse"></div>
+        <img src={LOGO_URL} alt="Loading Logo" className="h-32 relative z-10 drop-shadow-2xl" />
       </div>
-      <Loader2 size={32} className="animate-spin text-blue-400" />
-      <p className="mt-4 text-sm font-medium text-slate-400 tracking-wider uppercase animate-pulse">{message}</p>
+      <Loader2 size={32} className="animate-spin text-blue-400 mb-4" />
+      <p className="text-[10px] font-black text-slate-500 tracking-[4px] uppercase animate-pulse">{message}</p>
   </div>
 );
 
@@ -61,13 +66,11 @@ export const AppRoutes: React.FC = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 
                 {/* Quality (Internal) */}
-                {/* Fix: Correctly close the RoleMiddleware element and use standard Route nesting for layouts */}
                 <Route element={<RoleMiddleware allowedRoles={[UserRole.QUALITY, UserRole.ADMIN]} />}>
                     <Route path="/quality" element={<Quality />} />
                 </Route>
 
                 {/* Admin */}
-                {/* Fix: Correctly close the RoleMiddleware element and use standard Route nesting for layouts */}
                 <Route element={<RoleMiddleware allowedRoles={[UserRole.ADMIN]} />}>
                     <Route path="/admin" element={<Admin />} />
                 </Route>

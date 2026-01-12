@@ -51,7 +51,8 @@ export interface IFileService {
   updateFile: (user: User, fileId: string, updates: Partial<FileNode>) => Promise<void>;
   deleteFile: (user: User, fileId: string) => Promise<void>;
   searchFiles: (user: User, query: string, page?: number, pageSize?: number) => Promise<PaginatedResponse<FileNode>>;
-  getBreadcrumbs: (folderId: string | null) => { id: string; name: string }[];
+  // Updated getBreadcrumbs to return a Promise to match async implementations
+  getBreadcrumbs: (folderId: string | null) => Promise<{ id: string; name: string }[]>;
   toggleFavorite: (user: User, fileId: string) => Promise<boolean>;
   getFavorites: (user: User) => Promise<FileNode[]>;
   getFileSignedUrl: (user: User, fileId: string) => Promise<string>;

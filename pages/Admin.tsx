@@ -246,12 +246,6 @@ const Admin: React.FC = () => {
                   clientsCount={adminStats.activeClients}
                   ticketsCount={adminStats.openTickets}
                   logsCount={adminStats.logsLast24h}
-                  infraHealth={{
-                      cpu: adminStats.cpuUsage,
-                      memory: adminStats.memoryUsage,
-                      db: adminStats.dbConnections,
-                      dbMax: adminStats.dbMaxConnections
-                  }}
               />
           )}
 

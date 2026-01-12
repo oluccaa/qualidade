@@ -12,7 +12,6 @@ export const SupabaseFileService: IFileService = {
             .from('files')
             .select('*', { count: 'exact' });
 
-        // Correção 1: Uso correto de .is() para nulos em UUID
         if (folderId) {
             query = query.eq('parent_id', folderId);
         } else {
@@ -21,7 +20,6 @@ export const SupabaseFileService: IFileService = {
 
         if (user.role === 'CLIENT') {
             if (!user.clientId) throw new Error("Usuário cliente sem organização vinculada.");
-            // Correção 2: Uso de ->> para extrair texto do JSONB
             query = query.eq('owner_id', user.clientId).eq('metadata->>status', 'APPROVED');
         }
 
@@ -58,7 +56,6 @@ export const SupabaseFileService: IFileService = {
             
         if (user.role === 'CLIENT') {
             if (!user.clientId) return [];
-            // Correção: ->> para status
             query = query.eq('owner_id', user.clientId).eq('metadata->>status', 'APPROVED');
         }
         
@@ -110,10 +107,9 @@ export const SupabaseFileService: IFileService = {
         let queryPending = supabase
             .from('files')
             .select('*', { count: 'exact', head: true })
-            .eq('metadata->>status', 'PENDING'); // Correção: ->>
+            .eq('metadata->>status', 'PENDING');
 
         if (user.role === 'CLIENT') {
-            // Correção: Só aplica filtro se o clientId existir, evitando enviar "none" ou null literal
             if (user.clientId) {
                 queryTotal = queryTotal.eq('owner_id', user.clientId).eq('metadata->>status', 'APPROVED');
                 queryPending = queryPending.eq('owner_id', user.clientId);
@@ -142,11 +138,11 @@ export const SupabaseFileService: IFileService = {
         
         if (user.role === 'CLIENT') {
             if (user.clientId) query = query.eq('owner_id', user.clientId);
-            query = query.eq('metadata->>status', 'APPROVED'); // Correção: ->>
+            query = query.eq('metadata->>status', 'APPROVED');
         }
         
         if (filters.search) query = query.ilike('name', `%${filters.search}%`);
-        if (filters.status && filters.status !== 'ALL') query = query.eq('metadata->>status', filters.status); // Correção: ->>
+        if (filters.status && filters.status !== 'ALL') query = query.eq('metadata->>status', filters.status);
         
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
@@ -265,7 +261,33 @@ export const SupabaseFileService: IFileService = {
         };
     },
 
-    getBreadcrumbs: (folderId: string | null): BreadcrumbItem[] => [{ id: 'root', name: 'Início' }],
+    getBreadcrumbs: async (folderId: string | null): Promise<BreadcrumbItem[]> => {
+        if (!folderId) return [{ id: 'root', name: 'Início' }];
+        
+        try {
+            const crumbs: BreadcrumbItem[] = [];
+            let currentId: string | null = folderId;
+            
+            // Loop para buscar a hierarquia (limite de 10 níveis para segurança)
+            for (let i = 0; i < 10 && currentId; i++) {
+                const { data, error } = await supabase
+                    .from('files')
+                    .select('id, name, parent_id')
+                    .eq('id', currentId)
+                    .single();
+                
+                if (error || !data) break;
+                
+                crumbs.unshift({ id: data.id, name: data.name });
+                currentId = data.parent_id;
+            }
+            
+            crumbs.unshift({ id: 'root', name: 'Início' });
+            return crumbs;
+        } catch (e) {
+            return [{ id: 'root', name: 'Início' }];
+        }
+    },
 
     toggleFavorite: async (user: User, fileId: string): Promise<boolean> => {
         if (_localFavorites.has(fileId)) {

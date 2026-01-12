@@ -3,12 +3,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer, FileExplorerHandle } from '../components/FileExplorer.tsx';
 import { FilePreviewModal } from '../components/FilePreviewModal.tsx';
-import { MASTER_ORG_ID, FileNode, ClientOrganization, FileType, SupportTicket, FileMetadata } from '../types.ts';
+import { MASTER_ORG_ID, FileNode, ClientOrganization, FileType, SupportTicket, FileMetadata, BreadcrumbItem } from '../types.ts';
 import { useAuth } from '../services/authContext.tsx';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { 
-    X, FileUp, ArrowLeft, Download, ShieldAlert, Loader2, CheckCircle, XCircle, AlertTriangle, Info, Tag, FileText
+    X, FileUp, ArrowLeft, Download, ShieldAlert, Loader2, CheckCircle, XCircle, AlertTriangle, Info, Tag, FileText, ChevronRight, MessageSquare
 } from 'lucide-react';
 import { fileService, adminService, notificationService } from '../services/index.ts';
 
@@ -31,9 +31,14 @@ const Quality: React.FC = () => {
 
   const [clientSearch, setClientSearch] = useState('');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
   const [inspectorFile, setInspectorFile] = useState<FileNode | null>(null);
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
   const fileExplorerRef = useRef<FileExplorerHandle>(null);
+
+  // Inspection Sidebar State
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Upload State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -45,7 +50,11 @@ const Quality: React.FC = () => {
   });
   const [selectedFileBlob, setSelectedFileBlob] = useState<File | null>(null);
 
-  useEffect(() => { setSelectedClient(null); setInspectorFile(null); }, [activeView]);
+  useEffect(() => { 
+      setSelectedClient(null); 
+      setInspectorFile(null); 
+      setBreadcrumbs([{id: 'root', name: 'Início'}]);
+  }, [activeView]);
 
   useEffect(() => {
       const loadData = async () => {
@@ -70,36 +79,48 @@ const Quality: React.FC = () => {
       loadData();
   }, [user, refreshTrigger]);
 
-  const handleInspectAction = async (action: 'APPROVE' | 'REJECT', reason?: string) => {
+  // Atualizar Breadcrumbs ao navegar
+  useEffect(() => {
+    const updateCrumbs = async () => {
+        const crumbs = await fileService.getBreadcrumbs(currentFolderId);
+        setBreadcrumbs(crumbs);
+    };
+    updateCrumbs();
+  }, [currentFolderId]);
+
+  const handleInspectAction = async (action: 'APPROVE' | 'REJECT') => {
       if (!inspectorFile || !user) return;
+      if (action === 'REJECT' && !rejectionReason.trim()) {
+          alert("Por favor, informe o motivo da rejeição.");
+          return;
+      }
       
       setIsProcessing(true);
       try {
-          // Fix: Explicitly type updatedMetadata as FileMetadata and cast status to satisfy the enum-like type requirement.
           const updatedMetadata: FileMetadata = {
               ...inspectorFile.metadata,
               status: (action === 'APPROVE' ? 'APPROVED' : 'REJECTED') as 'APPROVED' | 'REJECTED',
-              rejectionReason: reason || undefined,
+              rejectionReason: action === 'REJECT' ? rejectionReason : undefined,
               inspectedAt: new Date().toISOString(),
               inspectedBy: user.name
           };
 
           await fileService.updateFile(user, inspectorFile.id, { metadata: updatedMetadata });
           
-          // Notificar Cliente
           if (inspectorFile.ownerId) {
               await notificationService.addNotification(
                   inspectorFile.ownerId, 
-                  action === 'APPROVE' ? "Documento Aprovado" : "Documento Recusado",
-                  `O arquivo ${inspectorFile.name} foi analisado pelo depto. de qualidade.`,
+                  action === 'APPROVE' ? "Certificado Aprovado" : "Certificado Recusado",
+                  `O documento ${inspectorFile.name} (Lote: ${inspectorFile.metadata?.batchNumber}) foi analisado.`,
                   action === 'APPROVE' ? 'SUCCESS' : 'ALERT',
                   '/dashboard?view=files'
               );
           }
 
           setInspectorFile({ ...inspectorFile, metadata: updatedMetadata });
+          setRejectionReason('');
+          setIsRejecting(false);
           setRefreshTrigger(prev => prev + 1);
-          alert(`Documento ${action === 'APPROVE' ? 'aprovado' : 'rejeitado'} com sucesso.`);
       } catch (err) {
           alert("Erro ao processar inspeção.");
       } finally {
@@ -113,7 +134,6 @@ const Quality: React.FC = () => {
 
       setIsProcessing(true);
       try {
-          // Fix: Cast the fileData object to any because the interface is missing the fileBlob property required by the Supabase implementation.
           await fileService.uploadFile(user, {
               name: selectedFileBlob.name,
               parentId: currentFolderId,
@@ -125,7 +145,6 @@ const Quality: React.FC = () => {
           setSelectedFileBlob(null);
           setUploadData({ status: 'PENDING', productName: '', batchNumber: '', invoiceNumber: '' });
           setRefreshTrigger(prev => prev + 1);
-          alert("Certificado enviado com sucesso.");
       } catch (err) {
           alert("Erro no upload do arquivo.");
       } finally {
@@ -157,7 +176,6 @@ const Quality: React.FC = () => {
     <Layout title={t('menu.documents')}>
         <FilePreviewModal file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)} />
         
-        {/* Modal de Upload de Qualidade */}
         {isUploadModalOpen && (
             <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 flex flex-col">
@@ -241,14 +259,33 @@ const Quality: React.FC = () => {
         <div className="h-[calc(100vh-190px)] relative">
             {selectedClient ? (
                 <div className="absolute inset-0 z-40 bg-slate-50 flex flex-col animate-in slide-in-from-right-4 duration-400">
-                    <div className="flex items-center gap-4 mb-4 pb-4 border-b border-slate-200 shrink-0">
-                        <button onClick={() => setSelectedClient(null)} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:text-blue-600 shadow-sm transition-all"><ArrowLeft size={20} /></button>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800 leading-none">{selectedClient.name}</h2>
-                            <p className="text-[10px] text-slate-400 font-mono mt-1 tracking-widest">{selectedClient.cnpj}</p>
+                    <div className="flex flex-col mb-4 pb-4 border-b border-slate-200 shrink-0 gap-4">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setSelectedClient(null)} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:text-blue-600 shadow-sm transition-all"><ArrowLeft size={20} /></button>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 leading-none">{selectedClient.name}</h2>
+                                <p className="text-[10px] text-slate-400 font-mono mt-1 tracking-widest uppercase">{selectedClient.cnpj}</p>
+                            </div>
+                            <div className="flex gap-2 ml-auto">
+                                <button onClick={() => setIsUploadModalOpen(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95 transition-all"><FileUp size={16} /> Enviar Certificado</button>
+                            </div>
                         </div>
-                        <div className="flex gap-2 ml-auto">
-                            <button onClick={() => setIsUploadModalOpen(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95 transition-all"><FileUp size={16} /> Enviar Certificado</button>
+                        
+                        {/* Breadcrumbs Dinâmicos */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-1">
+                            {breadcrumbs.map((crumb, idx) => (
+                                <React.Fragment key={crumb.id}>
+                                    <button 
+                                        onClick={() => setCurrentFolderId(crumb.id === 'root' ? null : crumb.id)}
+                                        className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap px-2 py-1 rounded-md transition-all ${
+                                            idx === breadcrumbs.length - 1 ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                                        }`}
+                                    >
+                                        {crumb.name}
+                                    </button>
+                                    {idx < breadcrumbs.length - 1 && <ChevronRight size={10} className="text-slate-300 shrink-0" />}
+                                </React.Fragment>
+                            ))}
                         </div>
                     </div>
                     
@@ -275,84 +312,112 @@ const Quality: React.FC = () => {
                                 </div>
                                 
                                 <div className="p-4 flex-1 space-y-6 overflow-y-auto custom-scrollbar">
-                                    {/* Status Section */}
-                                    <div className="space-y-3">
+                                    <div className="space-y-4">
                                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Status da Inspeção</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Estado Atual</span>
                                             <div className="flex items-center gap-2">
-                                                <span className={`font-bold text-xs px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
+                                                <span className={`font-bold text-[10px] px-2.5 py-1 rounded-full border flex items-center gap-1.5 uppercase tracking-wider ${
                                                     inspectorFile.metadata?.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                                                     inspectorFile.metadata?.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : 
                                                     'bg-orange-50 text-orange-600 border-orange-100'
                                                 }`}>
-                                                    {inspectorFile.metadata?.status === 'APPROVED' ? <CheckCircle size={14}/> : 
-                                                     inspectorFile.metadata?.status === 'REJECTED' ? <XCircle size={14}/> : <AlertTriangle size={14}/>}
+                                                    {inspectorFile.metadata?.status === 'APPROVED' ? <CheckCircle size={12}/> : 
+                                                     inspectorFile.metadata?.status === 'REJECTED' ? <XCircle size={12}/> : <AlertTriangle size={12}/>}
                                                     {inspectorFile.metadata?.status || 'PENDENTE'}
                                                 </span>
                                             </div>
-                                            {inspectorFile.metadata?.rejectionReason && (
-                                                <p className="mt-3 text-[11px] text-red-500 italic bg-red-50/50 p-2 rounded border border-red-100">
-                                                    Motivo: {inspectorFile.metadata.rejectionReason}
-                                                </p>
-                                            )}
                                         </div>
 
-                                        {/* INSPECTION ACTIONS (THE CORE ROBUSTNESS FEATURE) */}
-                                        <div className="grid grid-cols-2 gap-2 pt-2">
-                                            <button 
-                                                disabled={isProcessing || inspectorFile.metadata?.status === 'APPROVED'}
-                                                onClick={() => handleInspectAction('APPROVE')}
-                                                className="flex flex-col items-center justify-center p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all disabled:opacity-30"
-                                            >
-                                                <CheckCircle size={20} className="mb-1" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Aprovar</span>
-                                            </button>
-                                            <button 
-                                                disabled={isProcessing || inspectorFile.metadata?.status === 'REJECTED'}
-                                                onClick={() => {
-                                                    const reason = prompt("Motivo da rejeição:");
-                                                    if (reason) handleInspectAction('REJECT', reason);
-                                                }}
-                                                className="flex flex-col items-center justify-center p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all disabled:opacity-30"
-                                            >
-                                                <XCircle size={20} className="mb-1" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Rejeitar</span>
-                                            </button>
+                                        <div className="space-y-3">
+                                            {!isRejecting ? (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button 
+                                                        disabled={isProcessing || inspectorFile.metadata?.status === 'APPROVED'}
+                                                        onClick={() => handleInspectAction('APPROVE')}
+                                                        className="flex flex-col items-center justify-center p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all disabled:opacity-30 shadow-sm"
+                                                    >
+                                                        <CheckCircle size={18} className="mb-1" />
+                                                        <span className="text-[10px] font-bold uppercase">Aprovar</span>
+                                                    </button>
+                                                    <button 
+                                                        disabled={isProcessing || inspectorFile.metadata?.status === 'REJECTED'}
+                                                        onClick={() => setIsRejecting(true)}
+                                                        className="flex flex-col items-center justify-center p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all disabled:opacity-30 shadow-sm"
+                                                    >
+                                                        <XCircle size={18} className="mb-1" />
+                                                        <span className="text-[10px] font-bold uppercase">Recusar</span>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3 p-3 bg-red-50 rounded-xl border border-red-100 animate-in slide-in-from-top-2">
+                                                    <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase mb-1">
+                                                        <MessageSquare size={14}/> Justificativa
+                                                    </div>
+                                                    <textarea 
+                                                        className="w-full p-3 bg-white border border-red-200 rounded-lg text-xs h-24 resize-none focus:ring-2 focus:ring-red-500 outline-none"
+                                                        placeholder="Descreva o motivo da não conformidade..."
+                                                        value={rejectionReason}
+                                                        onChange={e => setRejectionReason(e.target.value)}
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            onClick={() => setIsRejecting(false)} 
+                                                            className="flex-1 py-2 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleInspectAction('REJECT')}
+                                                            className="flex-1 py-2 text-[10px] font-bold text-white bg-red-600 rounded-lg hover:bg-red-700"
+                                                        >
+                                                            Confirmar Recusa
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Metadata Section */}
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2 text-slate-400">
                                             <Tag size={14} />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest">Informações do Material</span>
+                                            <span className="text-[10px] font-black uppercase tracking-[2px]">Dados do Lote</span>
                                         </div>
                                         <div className="grid grid-cols-1 gap-3">
-                                            <div className="p-3 border border-slate-100 rounded-xl bg-white shadow-sm hover:border-blue-200 transition-colors">
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Produto</p>
-                                                <p className="text-xs font-semibold text-slate-800">{inspectorFile.metadata?.productName || 'Não informado'}</p>
+                                            <div className="p-3 border border-slate-100 rounded-xl bg-white shadow-sm">
+                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Produto</p>
+                                                <p className="text-xs font-bold text-slate-800">{inspectorFile.metadata?.productName || 'N/A'}</p>
                                             </div>
-                                            <div className="p-3 border border-slate-100 rounded-xl bg-white shadow-sm hover:border-blue-200 transition-colors">
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Nº Corrida (Lote)</p>
-                                                <p className="text-xs font-mono font-bold text-blue-600">{inspectorFile.metadata?.batchNumber || 'N/A'}</p>
+                                            <div className="p-3 border border-slate-100 rounded-xl bg-white shadow-sm">
+                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Nº Corrida</p>
+                                                <p className="text-xs font-mono font-black text-blue-600">{inspectorFile.metadata?.batchNumber || '-'}</p>
                                             </div>
-                                            <div className="p-3 border border-slate-100 rounded-xl bg-white shadow-sm hover:border-blue-200 transition-colors">
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Nota Fiscal</p>
-                                                <p className="text-xs font-semibold text-slate-800">{inspectorFile.metadata?.invoiceNumber || '-'}</p>
+                                            <div className="p-3 border border-slate-100 rounded-xl bg-white shadow-sm">
+                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Nota Fiscal</p>
+                                                <p className="text-xs font-bold text-slate-800">{inspectorFile.metadata?.invoiceNumber || '-'}</p>
                                             </div>
                                         </div>
                                     </div>
                                     
                                     {inspectorFile.metadata?.inspectedAt && (
-                                        <div className="pt-4 flex items-center gap-2 text-[9px] text-slate-400 italic">
-                                            <Info size={12}/> Analisado por {inspectorFile.metadata.inspectedBy} em {new Date(inspectorFile.metadata.inspectedAt).toLocaleString()}
+                                        <div className="pt-4 flex flex-col gap-1 border-t border-slate-50">
+                                            <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Última Análise</p>
+                                            <p className="text-[10px] text-slate-500 italic flex items-center gap-1.5">
+                                                <Info size={12} className="text-blue-500"/>
+                                                {inspectorFile.metadata.inspectedBy} • {new Date(inspectorFile.metadata.inspectedAt).toLocaleString()}
+                                            </p>
+                                            {inspectorFile.metadata.rejectionReason && (
+                                                <p className="mt-2 text-[10px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 font-medium">
+                                                    " {inspectorFile.metadata.rejectionReason} "
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex gap-2">
-                                    <button onClick={() => setPreviewFile(inspectorFile)} className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md hover:bg-slate-800 active:scale-95 transition-all">Visualizar PDF</button>
-                                    <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 transition-all"><Download size={18}/></button>
+                                    <button onClick={() => setPreviewFile(inspectorFile)} className="flex-1 py-3 bg-slate-950 text-white rounded-xl text-xs font-bold shadow-lg hover:bg-slate-800 active:scale-95 transition-all uppercase tracking-widest">Visualizar PDF</button>
+                                    <button className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 transition-all shadow-sm"><Download size={18}/></button>
                                 </div>
                             </div>
                         )}

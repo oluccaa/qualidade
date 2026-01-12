@@ -142,7 +142,11 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>(({
                 if (!hideToolbar) setBreadcrumbs([{ id: 'search', name: `"${searchQuery}"` }]);
             } else {
                 response = await fileService.getFiles(user, activeFolderId, 1, PAGE_SIZE);
-                if (!hideToolbar) setBreadcrumbs(fileService.getBreadcrumbs(activeFolderId));
+                // Await getBreadcrumbs as it is now an asynchronous operation
+                if (!hideToolbar) {
+                    const crumbs = await fileService.getBreadcrumbs(activeFolderId);
+                    setBreadcrumbs(crumbs);
+                }
             }
             setFiles(response.items);
             setHasMore(response.hasMore);

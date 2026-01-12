@@ -63,6 +63,8 @@ type MenuSection = {
   items: MenuItem[];
 };
 
+const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
+
 export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -453,17 +455,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {isCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
         </button>
 
-        {/* LOGO AREA - MORE COMPACT */}
-        <div className={`h-20 flex items-center border-b border-slate-800/60 bg-[#0f172a]/50 backdrop-blur-sm shrink-0 transition-all duration-500 relative z-10 ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
-          <div className="flex items-center gap-3">
-            <div className={`bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg shadow-blue-900/30 shrink-0 transition-transform duration-500 ${isCollapsed ? 'scale-110' : 'scale-100'}`}>
-              <ShieldCheck size={24} className="text-white" strokeWidth={2.5} />
-            </div>
-            
-            <div className={`flex flex-col overflow-hidden transition-all duration-500 ${isCollapsed ? 'w-0 opacity-0 absolute' : 'w-auto opacity-100'}`}>
-              <span className="font-bold text-lg text-white tracking-tight leading-none whitespace-nowrap">{t('menu.brand')}</span>
-              <span className="text-[9px] uppercase tracking-[0.2em] text-blue-400 font-bold mt-1 whitespace-nowrap">{t('menu.portalName')}</span>
-            </div>
+        {/* LOGO AREA - REPLACED WITH IMAGE - SIZE INCREASED FOR PREMIUM FEEL */}
+        <div className={`h-28 flex items-center border-b border-slate-800/60 bg-[#0f172a]/50 backdrop-blur-sm shrink-0 transition-all duration-500 relative z-10 ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+          <div className="flex items-center w-full">
+            <img 
+              src={LOGO_URL} 
+              alt="Logo" 
+              className={`transition-all duration-500 object-contain drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] ${isCollapsed ? 'h-12 w-12' : 'h-16'}`} 
+            />
           </div>
         </div>
 
@@ -582,16 +581,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         {/* GLOBAL SYSTEM BANNER (Now inside the right column, above Header) */}
         <MaintenanceBanner status={systemStatus} isAdmin={user?.role === UserRole.ADMIN} />
 
-        {/* MOBILE HEADER (Minimalist) */}
-        <header className="md:hidden h-16 bg-slate-900 text-white flex items-center justify-between px-4 shadow-md z-20 shrink-0">
+        {/* MOBILE HEADER - REPLACED WITH IMAGE - SIZE INCREASED */}
+        <header className="md:hidden h-20 bg-slate-900 text-white flex items-center justify-between px-4 shadow-md z-20 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-500 p-1.5 rounded-lg shadow-sm">
-                <ShieldCheck size={20} className="text-white" />
-            </div>
-            <div className="flex flex-col">
-                 <span className="font-bold text-sm leading-tight">{t('menu.brand')}</span>
-                 <span className="text-[10px] text-slate-400 uppercase tracking-widest">{t('dashboard.regular')}</span>
-            </div>
+            <img src={LOGO_URL} alt="Logo" className="h-12 object-contain" />
           </div>
           <NotificationButton mobile={true} />
         </header>
