@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -62,6 +63,17 @@ const SignUp: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    // Basic Validations
+    if (!formData.fullName.trim()) {
+        setError('Por favor, informe seu nome completo.');
+        return;
+    }
+
+    if (!formData.email.trim()) {
+        setError('Por favor, informe seu e-mail.');
+        return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem.');
       return;
@@ -74,17 +86,32 @@ const SignUp: React.FC = () => {
 
     setIsLoading(true);
     try {
+      // Clean organization ID logic
+      const orgIdToSubmit = (formData.organizationId === 'NEW' || !formData.organizationId) 
+        ? undefined 
+        : formData.organizationId;
+
       await userService.signUp(
-        formData.email, 
+        formData.email.trim().toLowerCase(), 
         formData.password, 
-        formData.fullName, 
-        formData.organizationId, 
-        formData.department
+        formData.fullName.trim(), 
+        orgIdToSubmit, 
+        formData.department.trim()
       );
+      
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => navigate('/login'), 4000);
     } catch (err: any) {
-      setError(err.message || 'Erro ao criar conta. Verifique os dados.');
+      console.error("SignUp Page Error:", err);
+      
+      // Detailed error breakdown
+      if (err.message?.includes('Database error') || err.message?.includes('banco de dados')) {
+         setError('Erro de integridade no banco de dados. Isso geralmente acontece se o e-mail já estiver em uso ou se houver um problema com o ID da empresa selecionada.');
+      } else if (err.message?.includes('User already registered')) {
+         setError('Este e-mail já está cadastrado em nossa base.');
+      } else {
+         setError(err.message || 'Ocorreu um erro inesperado ao processar seu cadastro.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +126,6 @@ const SignUp: React.FC = () => {
       <CookieBanner />
       <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
 
-      {/* LANGUAGE SELECTOR */}
       <div className="absolute top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="bg-white/90 backdrop-blur-xl border border-slate-200/60 p-1 rounded-full shadow-lg flex items-center gap-1">
               <div className="pl-2 pr-1 text-slate-400">
@@ -122,7 +148,6 @@ const SignUp: React.FC = () => {
           </div>
       </div>
 
-      {/* Lado Esquerdo - Ilustração/Branding */}
       <div className="hidden lg:flex lg:w-1/3 relative bg-slate-900 overflow-hidden">
         <div 
             className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay"
@@ -165,7 +190,6 @@ const SignUp: React.FC = () => {
         </div>
       </div>
 
-      {/* Lado Direito - Formulário */}
       <div className="w-full lg:w-2/3 flex items-center justify-center p-6 md:p-12 bg-slate-50 overflow-y-auto">
         <div className="w-full max-w-[550px] space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
             
@@ -175,8 +199,8 @@ const SignUp: React.FC = () => {
                         <CheckCircle2 size={48} />
                     </div>
                     <div className="space-y-2">
-                        <h2 className="text-2xl font-bold text-slate-900">Conta Criada com Sucesso!</h2>
-                        <p className="text-slate-500">Sua solicitação de acesso foi enviada. Você será redirecionado para o login em instantes.</p>
+                        <h2 className="text-2xl font-bold text-slate-900">Solicitação Enviada!</h2>
+                        <p className="text-slate-500">Sua conta foi criada. Nossa equipe analisará seus dados e você receberá um e-mail de confirmação em breve.</p>
                     </div>
                     <div className="flex justify-center">
                         <Loader2 size={24} className="animate-spin text-emerald-600" />
@@ -184,7 +208,7 @@ const SignUp: React.FC = () => {
                 </div>
             ) : (
                 <div className="bg-white md:bg-transparent p-8 md:p-0 rounded-3xl shadow-xl md:shadow-none">
-                    <div className="mb-8">
+                    <div className="mb-8 text-center lg:text-left">
                         <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Criar Nova Conta</h2>
                         <p className="mt-2 text-sm text-slate-500">Preencha os dados abaixo para solicitar seu acesso ao portal.</p>
                     </div>
@@ -200,9 +224,9 @@ const SignUp: React.FC = () => {
                                         className="w-full px-4 py-3 bg-transparent outline-none text-sm"
                                         placeholder="Ex: João Silva"
                                         value={formData.fullName}
-                                        onChange={e => setFocusedInput('name')}
+                                        onFocus={() => setFocusedInput('name')}
                                         onBlur={() => setFocusedInput(null)}
-                                        onInput={e => setFormData({...formData, fullName: (e.target as HTMLInputElement).value})}
+                                        onChange={e => setFormData({...formData, fullName: e.target.value})}
                                     />
                                 </div>
                             </div>
@@ -214,7 +238,7 @@ const SignUp: React.FC = () => {
                                         type="email"
                                         required
                                         className="w-full px-4 py-3 bg-transparent outline-none text-sm"
-                                        placeholder="joao@empresa.com"
+                                        placeholder="usuario@empresa.com"
                                         value={formData.email}
                                         onFocus={() => setFocusedInput('email')}
                                         onBlur={() => setFocusedInput(null)}
@@ -226,7 +250,7 @@ const SignUp: React.FC = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Vincular Empresa</label>
+                                <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Sua Empresa</label>
                                 <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'org' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <div className="pl-4 text-slate-400"><Building2 size={18} /></div>
                                     <select 
@@ -237,7 +261,7 @@ const SignUp: React.FC = () => {
                                         onBlur={() => setFocusedInput(null)}
                                         onChange={e => setFormData({...formData, organizationId: e.target.value})}
                                     >
-                                        <option value="">Selecione sua empresa...</option>
+                                        <option value="">Selecione...</option>
                                         {clients.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
@@ -250,7 +274,7 @@ const SignUp: React.FC = () => {
                                 <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'dep' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <input 
                                         className="w-full px-5 py-3 bg-transparent outline-none text-sm"
-                                        placeholder="Ex: Qualidade, Compras..."
+                                        placeholder="Ex: Qualidade, TI..."
                                         value={formData.department}
                                         onFocus={() => setFocusedInput('dep')}
                                         onBlur={() => setFocusedInput(null)}
@@ -299,9 +323,12 @@ const SignUp: React.FC = () => {
                         </div>
 
                         {error && (
-                            <div className="p-4 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100 flex items-center gap-3 animate-shake">
-                                <AlertOctagon size={16} className="shrink-0" />
-                                {error}
+                            <div className="p-4 bg-red-50 text-red-600 text-[11px] font-semibold rounded-xl border border-red-100 flex items-start gap-3 animate-shake">
+                                <AlertOctagon size={16} className="shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-bold">Falha no registro</p>
+                                    <p className="mt-1 font-normal opacity-90">{error}</p>
+                                </div>
                             </div>
                         )}
 

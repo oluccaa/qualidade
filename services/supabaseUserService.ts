@@ -1,3 +1,4 @@
+
 import { User, UserRole } from '../types.ts';
 import { IUserService } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
@@ -10,33 +11,41 @@ export const SupabaseUserService: IUserService = {
     },
 
     signUp: async (email, password, fullName, organizationId, department): Promise<void> => {
+        // Clean and validate metadata before sending to Supabase Auth
+        // This prevents the common 'Database error saving new user' which happens
+        // when the Postgres trigger fails to cast invalid strings to UUID.
+        
+        const metadata: Record<string, any> = {
+            full_name: fullName.trim(),
+            department: department?.trim() || 'Geral'
+        };
+
+        // Ensure organization_id is either a valid UUID string or null.
+        // Never send empty strings or 'NEW' to the auth metadata if the trigger expects a UUID.
+        if (organizationId && organizationId.trim() !== '' && organizationId !== 'NEW') {
+            metadata.organization_id = organizationId.trim();
+        } else {
+            metadata.organization_id = null;
+        }
+
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: {
-                    full_name: fullName,
-                }
+                data: metadata
             }
         });
 
-        if (error) throw error;
-        if (!data.user) throw new Error("Erro ao criar usuário.");
-
-        // O trigger no DB geralmente cria o profile, mas para garantir via código caso o trigger não exista:
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-                id: data.user.id,
-                full_name: fullName,
-                role: UserRole.CLIENT, // Padrão para auto-cadastro
-                organization_id: organizationId || null,
-                department: department || 'Geral',
-                status: 'ACTIVE',
-                updated_at: new Date().toISOString()
-            });
-
-        if (profileError) throw profileError;
+        if (error) {
+            console.error("Supabase Auth SignUp Error:", error.message, error.status);
+            // If the error is 'Database error', it's the trigger failing.
+            if (error.message.includes('Database error')) {
+                throw new Error("Erro no banco de dados ao salvar perfil. Verifique se os dados da empresa são válidos ou se o usuário já existe.");
+            }
+            throw error;
+        }
+        
+        if (!data.user) throw new Error("Não foi possível criar a conta no momento.");
     },
 
     getCurrentUser: async (): Promise<User | null> => {
@@ -56,7 +65,10 @@ export const SupabaseUserService: IUserService = {
             .eq('id', authUser.id)
             .single();
 
-        if (error || !profile) return null;
+        if (error || !profile) {
+            console.warn("Perfil não encontrado para o usuário logado.");
+            return null;
+        }
 
         return {
             id: authUser.id,
@@ -87,7 +99,7 @@ export const SupabaseUserService: IUserService = {
         }));
     },
 
-    saveUser: async (user, initialPassword): Promise<void> => {
+    saveUser: async (user, initialPassword) => {
         const { error } = await supabase.from('profiles').upsert({
             id: user.id,
             full_name: user.name,
