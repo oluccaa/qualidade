@@ -5,6 +5,8 @@ export enum UserRole {
   CLIENT = 'CLIENT'
 }
 
+export const MASTER_ORG_ID = 'org-master-library';
+
 export interface ClientOrganization {
   id: string;
   name: string;

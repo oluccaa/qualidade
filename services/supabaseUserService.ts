@@ -3,38 +3,27 @@ import { User, UserRole } from '../types.ts';
 import { IUserService } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
 
-const handleSupabaseError = (error: any, customMessage: string) => {
-    // Erro 42501 é o código padrão do Postgres para "Insufficient Privilege" (RLS bloqueando)
-    if (error.code === '42501') {
-        throw new Error(`Erro de Permissão (RLS): O banco de dados bloqueou a leitura do seu perfil. Verifique se as Policies de SELECT estão configuradas na tabela 'profiles'.`);
-    }
-    if (error.message?.includes('JSON object requested, multiple (or no) rows returned')) {
-        throw new Error(`Perfil não encontrado: Sua conta existe no Auth, mas não há um registro correspondente na tabela 'public.profiles'. O Trigger de criação automática pode ter falhado.`);
-    }
-    throw new Error(error.message || customMessage);
-};
-
 export const SupabaseUserService: IUserService = {
     authenticate: async (email, password): Promise<boolean> => {
-        // Limpa qualquer resquício de sessão anterior
+        console.log("Iniciando autenticação para:", email);
+        
+        // Passo 1: Limpeza preventiva de sessões zumbis
         await supabase.auth.signOut();
 
+        // Passo 2: Login no Auth
         const { data, error } = await supabase.auth.signInWithPassword({ 
             email: email.trim().toLowerCase(), 
             password 
         });
         
         if (error) {
-            if (error.message.includes('Invalid login credentials')) {
-                throw new Error("E-mail ou senha incorretos.");
-            }
+            console.error("Erro no Auth Supabase:", error.message);
             throw error;
         }
 
-        if (!data.user) throw new Error("Falha na autenticação: Usuário não retornado.");
-
+        console.log("Autenticação Auth OK. Validando perfil...");
+        
         try {
-            // Tenta buscar o perfil na tabela pública
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('id, role')
@@ -42,18 +31,23 @@ export const SupabaseUserService: IUserService = {
                 .single();
 
             if (profileError) {
-                handleSupabaseError(profileError, "Erro ao carregar dados do perfil.");
+                console.error("Erro Crítico de RLS no Perfil:", profileError.message);
+                
+                if (profileError.message.includes('infinite recursion')) {
+                    throw new Error("Falha Crítica de Banco de Dados: Recursão infinita detectada. O SQL de correção de políticas de JWT precisa ser executado no console do Supabase.");
+                }
+                
+                throw new Error("Erro ao acessar dados de perfil. O administrador precisa revisar as políticas de segurança.");
             }
 
             if (!profile) {
                 await supabase.auth.signOut();
-                throw new Error("Perfil não encontrado: Entre em contato com o suporte para vincular seu acesso.");
+                throw new Error("Usuário autenticado no sistema de segurança, mas perfil não encontrado no banco de dados.");
             }
 
             return true;
         } catch (err: any) {
-            // Se falhar ao buscar o perfil, desloga o usuário do Auth para não ficar em estado inconsistente
-            await supabase.auth.signOut();
+            console.error("Falha na validação de login:", err.message);
             throw err;
         }
     },
@@ -67,7 +61,7 @@ export const SupabaseUserService: IUserService = {
             organization_id: (organizationId && organizationId !== 'NEW') ? organizationId : null
         };
 
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email: normalizedEmail,
             password,
             options: {
@@ -75,7 +69,10 @@ export const SupabaseUserService: IUserService = {
             }
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error("Erro no SignUp Supabase:", error.message);
+            throw error;
+        }
     },
 
     getCurrentUser: async (): Promise<User | null> => {
@@ -88,7 +85,9 @@ export const SupabaseUserService: IUserService = {
             .eq('id', authUser.id)
             .maybeSingle();
 
-        if (error || !profile) return null;
+        if (error || !profile) {
+            return null;
+        }
 
         return {
             id: authUser.id,
@@ -106,16 +105,25 @@ export const SupabaseUserService: IUserService = {
     },
 
     getUsers: async (): Promise<User[]> => {
-        const { data, error } = await supabase.from('profiles').select('*');
-        if (error) return [];
+        const { data, error } = await supabase
+            .from('profiles')
+            .select(`
+                *,
+                organizations (name)
+            `)
+            .order('full_name');
+            
+        if (error) throw error;
+        
         return (data || []).map(p => ({
             id: p.id,
             name: p.full_name,
-            email: '', 
+            email: p.email || '', // Assume que o e-mail está sincronizado no perfil
             role: p.role as UserRole,
-            clientId: p.organization_id,
+            clientId: p.organizations?.name || 'Interno', // Mostra o nome da empresa em vez do ID
             status: p.status as any,
-            department: p.department
+            department: p.department,
+            lastLogin: p.last_login ? new Date(p.last_login).toLocaleString() : 'Nunca'
         }));
     },
 
@@ -124,13 +132,12 @@ export const SupabaseUserService: IUserService = {
             id: user.id,
             full_name: user.name,
             role: user.role,
-            organization_id: user.clientId || null,
-            status: user.status || 'ACTIVE',
-            department: user.department || 'Geral',
+            organization_id: (user.clientId && user.clientId !== 'Interno') ? user.clientId : null,
+            status: user.status,
+            department: user.department,
             updated_at: new Date().toISOString()
         });
-        
-        if (error) handleSupabaseError(error, "Erro ao salvar perfil do usuário");
+        if (error) throw error;
     },
 
     changePassword: async (userId, current, newPass): Promise<boolean> => {
@@ -141,12 +148,12 @@ export const SupabaseUserService: IUserService = {
 
     deleteUser: async (userId): Promise<void> => {
         const { error } = await supabase.from('profiles').delete().eq('id', userId);
-        if (error) handleSupabaseError(error, "Erro ao excluir usuário");
+        if (error) throw error;
     },
 
     blockUserById: async (adminUser, targetUserId, reason): Promise<void> => {
         const { error } = await supabase.from('profiles').update({ status: 'BLOCKED' }).eq('id', targetUserId);
-        if (error) handleSupabaseError(error, "Erro ao bloquear usuário");
+        if (error) throw error;
     },
 
     getUserStats: async () => {

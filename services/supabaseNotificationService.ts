@@ -6,7 +6,7 @@ import { supabase } from './supabaseClient.ts';
 export const SupabaseNotificationService: INotificationService = {
     subscribeToNotifications: (listener) => {
         const channel = supabase
-            .channel('notifications_realtime')
+            .channel('public:notifications')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => {
                 listener();
             })
@@ -15,7 +15,6 @@ export const SupabaseNotificationService: INotificationService = {
     },
 
     getNotifications: async (user) => {
-        // Busca notificações específicas do usuário OU globais (onde user_id é nulo)
         const { data, error } = await supabase
             .from('notifications')
             .select('*')

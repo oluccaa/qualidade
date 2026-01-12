@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../services/authContext.tsx';
 import { CookieBanner } from '../components/CookieBanner.tsx';
@@ -191,8 +192,8 @@ const Login: React.FC = () => {
                     <div className="space-y-1.5">
                         <label htmlFor="email" className="block text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">{t('login.emailLabel')}</label>
                         <div 
-                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50
-                            ${focusedInput === 'email' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
+                            ${focusedInput === 'email' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
                         >
                             <div className="pl-4 text-slate-400">
                                 <Mail size={18} />
@@ -202,7 +203,7 @@ const Login: React.FC = () => {
                                 type="email" 
                                 required
                                 disabled={isLoading}
-                                className="w-full px-4 py-3.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50 font-medium"
+                                className="w-full px-4 py-3.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50 font-semibold"
                                 placeholder="ex: joao@acosvital.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -218,8 +219,8 @@ const Login: React.FC = () => {
                             <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">{t('login.forgotPassword')}</a>
                         </div>
                         <div 
-                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50
-                            ${focusedInput === 'password' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                            className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white
+                            ${focusedInput === 'password' ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
                         >
                             <div className="pl-4 text-slate-400">
                                 <Lock size={18} />
@@ -229,7 +230,7 @@ const Login: React.FC = () => {
                                 type={showPassword ? "text" : "password"}
                                 required
                                 disabled={isLoading}
-                                className="w-full pl-4 pr-12 py-3.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50 font-medium"
+                                className="w-full pl-4 pr-12 py-3.5 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 disabled:opacity-50 font-semibold"
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

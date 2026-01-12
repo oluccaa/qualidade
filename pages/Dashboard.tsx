@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout.tsx';
@@ -64,21 +65,25 @@ const Dashboard: React.FC = () => {
 
           if (currentView === 'home') {
               const tickets = await adminService.getMyTickets(user);
-              setClientTickets(tickets.slice(0, 3));
+              setClientTickets((tickets || []).slice(0, 3));
           } else if (currentView === 'files') {
               const results = await fileService.getLibraryFiles(user, filters);
-              setViewFiles(results.items);
+              setViewFiles(results.items || []);
           } else if (currentView === 'favorites') {
               const results = await fileService.getFavorites(user);
-              setViewFiles(results);
+              setViewFiles(results || []);
           } else if (currentView === 'recent') {
               const results = await fileService.getRecentFiles(user, 50); 
-              setViewFiles(results);
+              setViewFiles(results || []);
           } else if (currentView === 'tickets') {
               const results = await adminService.getMyTickets(user);
-              results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-              setClientTickets(results);
+              if (results) {
+                results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                setClientTickets(results);
+              }
           }
+      } catch (err) {
+          console.error("Erro ao carregar dados do dashboard:", err);
       } finally {
           setIsLoading(false);
       }
@@ -100,24 +105,37 @@ const Dashboard: React.FC = () => {
       return 'Boa noite';
   };
 
-  const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick }: any) => (
-      <div 
-        onClick={onClick}
-        className="relative overflow-hidden bg-white p-5 rounded-2xl border border-slate-100 shadow-sm cursor-pointer group transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-      >
-          <div className={`absolute top-0 right-0 p-4 opacity-[0.05] group-hover:opacity-10 text-${color}-600 transform scale-150 -translate-y-2 translate-x-2`}>
-              <Icon size={100} />
-          </div>
-          <div className="relative z-10">
-              <div className={`w-12 h-12 rounded-xl bg-${color}-50 text-${color}-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
-                  <Icon size={24} />
+  // Helper para cores estáticas seguras
+  const getKpiColors = (color: string) => {
+      switch(color) {
+          case 'blue': return { bg: 'bg-blue-50', text: 'text-blue-600', icon: 'text-blue-600/10' };
+          case 'orange': return { bg: 'bg-orange-50', text: 'text-orange-600', icon: 'text-orange-600/10' };
+          case 'indigo': return { bg: 'bg-indigo-50', text: 'text-indigo-600', icon: 'text-indigo-600/10' };
+          default: return { bg: 'bg-slate-50', text: 'text-slate-600', icon: 'text-slate-600/10' };
+      }
+  };
+
+  const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick }: any) => {
+      const colors = getKpiColors(color);
+      return (
+          <div 
+            onClick={onClick}
+            className="relative overflow-hidden bg-white p-5 rounded-2xl border border-slate-100 shadow-sm cursor-pointer group transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+          >
+              <div className={`absolute top-0 right-0 p-4 transform scale-150 -translate-y-2 translate-x-2 ${colors.icon}`}>
+                  <Icon size={100} />
               </div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-              <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{value}</h3>
-              {subtext && <p className={`text-xs font-medium mt-2 text-${color}-600 bg-${color}-50 inline-block px-2 py-0.5 rounded-full`}>{subtext}</p>}
+              <div className="relative z-10">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm ${colors.bg} ${colors.text}`}>
+                      <Icon size={24} />
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+                  <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{value}</h3>
+                  {subtext && <p className={`text-[10px] font-bold mt-2 inline-block px-2 py-0.5 rounded-full uppercase ${colors.bg} ${colors.text}`}>{subtext}</p>}
+              </div>
           </div>
-      </div>
-  );
+      );
+  };
 
   if (currentView === 'home') {
       const openTicketCount = clientTickets.filter(t => t.status !== 'RESOLVED').length;
@@ -141,7 +159,7 @@ const Dashboard: React.FC = () => {
                                 </span>
                             </div>
                             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-2">
-                                {getGreeting()}, {user?.name.split(' ')[0]}.
+                                {getGreeting()}, {user?.name.split(' ')[0] || 'Usuário'}.
                             </h1>
                             <p className="text-slate-500 text-sm md:text-base max-w-lg mb-8">
                                 Centralize seus certificados de qualidade e garanta a rastreabilidade total de seus materiais.

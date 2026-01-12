@@ -1,19 +1,17 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer, FileExplorerHandle } from '../components/FileExplorer.tsx';
 import { FilePreviewModal } from '../components/FilePreviewModal.tsx';
-import { MASTER_ORG_ID } from '../services/mockData.ts';
-import { FileNode, ClientOrganization, FileType, SupportTicket } from '../types.ts';
+import { MASTER_ORG_ID, FileNode, ClientOrganization, FileType, SupportTicket } from '../types.ts';
 import { useAuth } from '../services/authContext.tsx';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { 
-    X, FileUp, ArrowLeft, Download, ShieldAlert
+    X, FileUp, ArrowLeft, Download, ShieldAlert, Loader2
 } from 'lucide-react';
-// Fix: Import from services/index.ts to use the correctly typed and initialized service instances
 import { fileService, adminService } from '../services/index.ts';
 
-// Components
 import { QualityOverviewCards } from '../components/quality/QualityOverviewCards.tsx';
 import { ClientHub } from '../components/quality/ClientHub.tsx';
 
@@ -26,7 +24,9 @@ const Quality: React.FC = () => {
   const [clients, setClients] = useState<ClientOrganization[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientOrganization | null>(null);
   const [inboxTickets, setInboxTickets] = useState<SupportTicket[]>([]);
+  const [stats, setStats] = useState({ pendingDocs: 0 });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [clientSearch, setClientSearch] = useState('');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -42,12 +42,21 @@ const Quality: React.FC = () => {
   useEffect(() => {
       const loadData = async () => {
           if (user) {
-              const [inbox, clientList] = await Promise.all([
-                  adminService.getQualityInbox(),
-                  adminService.getClients()
-              ]);
-              setInboxTickets(inbox);
-              setClients(clientList);
+              setIsLoading(true);
+              try {
+                  const [inbox, clientList, globalStats] = await Promise.all([
+                      adminService.getQualityInbox(),
+                      adminService.getClients(),
+                      fileService.getDashboardStats(user)
+                  ]);
+                  setInboxTickets(inbox);
+                  setClients(clientList);
+                  setStats({ pendingDocs: globalStats.pendingValue || 0 });
+              } catch (err) {
+                  console.error("Erro ao carregar dados de qualidade:", err);
+              } finally {
+                  setIsLoading(false);
+              }
           }
       };
       loadData();
@@ -71,12 +80,21 @@ const Quality: React.FC = () => {
   }, [selectedClient, activeView, user]);
 
   const clientGroups = useMemo(() => {
-      const filtered = clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.cnpj.includes(clientSearch));
+      const filtered = clients.filter(c => {
+          const name = (c.name || "").toLowerCase();
+          const cnpj = (c.cnpj || "");
+          const search = clientSearch.toLowerCase();
+          return name.includes(search) || cnpj.includes(search);
+      });
+
       if (clientSearch) return { 'Resultados': filtered };
+
       const groups: Record<string, ClientOrganization[]> = {};
       filtered.forEach(c => {
-          const letter = c.name.charAt(0).toUpperCase();
-          if (!groups[letter]) groups[letter] = []; groups[letter].push(c);
+          const name = c.name || "Sem Nome";
+          const letter = name.charAt(0).toUpperCase();
+          if (!groups[letter]) groups[letter] = [];
+          groups[letter].push(c);
       });
       return groups;
   }, [clients, clientSearch]);
@@ -95,6 +113,15 @@ const Quality: React.FC = () => {
         </div>
 
         <div className="h-[calc(100vh-190px)] relative">
+            {isLoading && !selectedClient && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-50/50 backdrop-blur-[2px]">
+                    <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="animate-spin text-blue-600" size={32} />
+                        <span className="text-sm font-medium text-slate-500">Sincronizando banco de dados...</span>
+                    </div>
+                </div>
+            )}
+
             {selectedClient ? (
                 <div className="absolute inset-0 z-40 bg-slate-50 flex flex-col animate-in slide-in-from-right-4 duration-400">
                     <div className="flex items-center gap-4 mb-4 pb-4 border-b border-slate-200 shrink-0">
@@ -154,7 +181,15 @@ const Quality: React.FC = () => {
                 </div>
             ) : (
                 <div className="h-full flex flex-col">
-                    {activeView === 'overview' && <QualityOverviewCards totalClients={clients.length} totalPendingDocs={4} totalOpenTickets={inboxTickets.length} totalInbox={inboxTickets.length} onChangeView={(v) => setSearchParams({view: v})} />}
+                    {activeView === 'overview' && (
+                        <QualityOverviewCards 
+                            totalClients={clients.length} 
+                            totalPendingDocs={stats.pendingDocs} 
+                            totalOpenTickets={inboxTickets.length} 
+                            totalInbox={inboxTickets.length} 
+                            onChangeView={(v) => setSearchParams({view: v})} 
+                        />
+                    )}
                     {activeView === 'clients' && <ClientHub clientGroups={clientGroups} clientSearch={clientSearch} setClientSearch={setClientSearch} onSelectClient={setSelectedClient} />}
                 </div>
             )}
@@ -163,5 +198,4 @@ const Quality: React.FC = () => {
   );
 };
 
-// Add default export for React.lazy compatibility
 export default Quality;

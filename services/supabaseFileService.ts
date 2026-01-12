@@ -1,4 +1,5 @@
-import { FileNode, User, FileType, LibraryFilters, AuditLog, BreadcrumbItem } from '../types.ts';
+
+import { FileNode, User, FileType, LibraryFilters, AuditLog, BreadcrumbItem, MASTER_ORG_ID } from '../types.ts';
 import { IFileService, PaginatedResponse } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
 
@@ -9,7 +10,9 @@ export const SupabaseFileService: IFileService = {
             .select('*', { count: 'exact' })
             .eq('parent_id', folderId || null);
 
+        // ISOLAMENTO ESTRITO: Clientes só veem seus próprios arquivos
         if (user.role === 'CLIENT') {
+            if (!user.clientId) throw new Error("Usuário cliente sem organização vinculada.");
             query = query.eq('owner_id', user.clientId);
         }
 
@@ -41,9 +44,12 @@ export const SupabaseFileService: IFileService = {
             .select('*')
             .neq('type', 'FOLDER')
             .limit(limit)
-            .order('updated_at', { ascending: false });
+                .order('updated_at', { ascending: false });
             
-        if (user.role === 'CLIENT') query = query.eq('owner_id', user.clientId);
+        if (user.role === 'CLIENT') {
+            if (!user.clientId) return [];
+            query = query.eq('owner_id', user.clientId);
+        }
         
         const { data, error } = await query;
         if (error) throw error;
@@ -69,34 +75,42 @@ export const SupabaseFileService: IFileService = {
             
         if (fetchError || !file) throw new Error("Documento não encontrado.");
         
-        // Verifica permissão básica de cliente
+        // VALIDAÇÃO DE POSSE: Impede que um cliente tente baixar arquivo de outro via ID no URL
         if (user.role === 'CLIENT' && file.owner_id !== user.clientId) {
-            throw new Error("Acesso negado a este documento.");
+            throw new Error("Acesso negado: Este documento pertence a outra organização.");
         }
 
         const path = file.storage_path || `${file.owner_id}/${file.name}`;
         
         const { data, error } = await supabase.storage
             .from('certificates')
-            .createSignedUrl(path, 3600); // 1 hora de validade
+            .createSignedUrl(path, 3600);
         
         if (error) throw error;
         return data.signedUrl;
     },
 
     getDashboardStats: async (user: User) => {
-        const { count: total } = await supabase
+        let queryTotal = supabase
             .from('files')
             .select('*', { count: 'exact', head: true })
-            .eq('owner_id', user.clientId || '')
             .neq('type', 'FOLDER');
 
-        const { count: pending } = await supabase
+        let queryPending = supabase
             .from('files')
             .select('*', { count: 'exact', head: true })
-            .eq('owner_id', user.clientId || '')
             .eq('metadata->status', 'PENDING');
+
+        if (user.role === 'CLIENT') {
+            queryTotal = queryTotal.eq('owner_id', user.clientId || 'none');
+            queryPending = queryPending.eq('owner_id', user.clientId || 'none');
+        }
             
+        const [{ count: total }, { count: pending }] = await Promise.all([
+            queryTotal,
+            queryPending
+        ]);
+
         return {
             mainLabel: user.role === 'CLIENT' ? 'Conformidade' : 'Gestão',
             subLabel: 'Arquivos Ativos',
@@ -137,11 +151,14 @@ export const SupabaseFileService: IFileService = {
     },
 
     createFolder: async (user: User, parentId: string | null, name: string, ownerId?: string): Promise<FileNode | null> => {
+        // Analistas de Qualidade podem criar pastas para qualquer cliente, Clientes apenas para si
+        const targetOwnerId = user.role === 'CLIENT' ? user.clientId : ownerId;
+
         const { data, error } = await supabase.from('files').insert({
             parent_id: parentId,
             name,
             type: 'FOLDER',
-            owner_id: ownerId || user.clientId,
+            owner_id: targetOwnerId,
             updated_at: new Date().toISOString()
         }).select().single();
 
@@ -163,7 +180,6 @@ export const SupabaseFileService: IFileService = {
 
         const storagePath = `${ownerId}/${fileData.name}`;
 
-        // 1. Upload para o Storage
         const { error: storageError } = await supabase.storage
             .from('certificates')
             .upload(storagePath, fileData.fileBlob, {
@@ -173,14 +189,14 @@ export const SupabaseFileService: IFileService = {
 
         if (storageError) throw storageError;
 
-        // 2. Persistência no Banco de Dados
         const { data, error: dbError } = await supabase.from('files').insert({
             parent_id: fileData.parentId || null,
             name: fileData.name,
-            type: FileType.PDF, // Assume-se PDF para certificados da Vital
+            type: FileType.PDF,
             size: `${(fileData.fileBlob.size / (1024 * 1024)).toFixed(2)} MB`,
             owner_id: ownerId,
             storage_path: storagePath,
+            uploaded_by: user.id,
             metadata: {
                 ...fileData.metadata,
                 status: fileData.metadata?.status || 'PENDING',
@@ -204,21 +220,23 @@ export const SupabaseFileService: IFileService = {
     },
 
     deleteFile: async (user: User, fileId: string): Promise<void> => {
-        // 1. Busca dados para deletar do Storage se necessário
         const { data: file, error: fetchError } = await supabase
             .from('files')
-            .select('type, storage_path')
+            .select('type, storage_path, owner_id')
             .eq('id', fileId)
             .single();
 
         if (fetchError || !file) return;
 
-        // 2. Deleta do Storage se não for pasta
+        // Impedir que usuários de Qualidade deletem arquivos de Admin (ou vice-versa sem permissão)
+        if (user.role === 'CLIENT' && file.owner_id !== user.clientId) {
+            throw new Error("Não permitido excluir arquivos de terceiros.");
+        }
+
         if (file.type !== 'FOLDER' && file.storage_path) {
             await supabase.storage.from('certificates').remove([file.storage_path]);
         }
 
-        // 3. Deleta do Banco de Dados (cascade deve tratar filhos se implementado no DB)
         const { error } = await supabase.from('files').delete().eq('id', fileId);
         if (error) throw error;
     },
@@ -267,13 +285,10 @@ export const SupabaseFileService: IFileService = {
     },
 
     getBreadcrumbs: (folderId: string | null): BreadcrumbItem[] => {
-        // Implementação síncrona de recuperação de breadcrumbs baseada em cache local ou 
-        // requereria fetch recursivo. Para o MVP, retornamos a raiz.
         return [{ id: 'root', name: 'Início' }];
     },
 
     toggleFavorite: async (user: User, fileId: string): Promise<boolean> => {
-        // Implementar tabela de favoritos no futuro se necessário
         return false;
     },
 
@@ -308,13 +323,24 @@ export const SupabaseFileService: IFileService = {
     },
 
     getAuditLogs: async (user: User): Promise<AuditLog[]> => {
-        const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+        // Apenas ADMIN pode puxar logs completos
+        if (user.role !== 'ADMIN') throw new Error("Acesso negado aos logs de auditoria.");
+
+        const { data } = await supabase
+            .from('audit_logs')
+            .select(`
+                *,
+                profiles (full_name, role)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
         return (data || []).map(l => ({
             id: l.id,
             timestamp: l.created_at,
             userId: l.user_id,
-            userName: 'Usuário Vital',
-            userRole: '',
+            userName: l.profiles?.full_name || 'Sistema',
+            userRole: l.profiles?.role || 'SYSTEM',
             action: l.action,
             category: l.category as any,
             target: l.target,
@@ -329,7 +355,25 @@ export const SupabaseFileService: IFileService = {
         }));
     },
 
-    getMasterLibraryFiles: async () => [],
+    getMasterLibraryFiles: async () => {
+        const { data, error } = await supabase
+            .from('files')
+            .select('*')
+            .eq('owner_id', MASTER_ORG_ID)
+            .neq('type', 'FOLDER');
+        
+        if (error) throw error;
+        return (data || []).map(f => ({
+            id: f.id,
+            parentId: f.parent_id,
+            name: f.name,
+            type: f.type as FileType,
+            size: f.size,
+            updatedAt: new Date(f.updated_at).toLocaleDateString(),
+            ownerId: f.owner_id,
+            metadata: f.metadata || {}
+        }));
+    },
 
     importFilesFromMaster: async (user: User, fileIds: string[], targetFolderId: string, targetOwnerId: string): Promise<void> => {
         const { data: masterFiles, error: fetchError } = await supabase

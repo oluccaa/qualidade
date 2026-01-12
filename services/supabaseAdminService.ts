@@ -3,13 +3,6 @@ import { IAdminService, AdminStatsData } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
 import { SupportTicket, SystemStatus, ClientOrganization, UserRole } from '../types.ts';
 
-const handleSupabaseError = (error: any, customMessage: string) => {
-    if (error.code === '42501') {
-        throw new Error(`Erro de Permissão: Você não tem autorização para realizar esta operação. Verifique as políticas de RLS no Supabase.`);
-    }
-    throw new Error(error.message || customMessage);
-};
-
 export const SupabaseAdminService: IAdminService = {
     getSystemStatus: async () => {
         try {
@@ -27,6 +20,8 @@ export const SupabaseAdminService: IAdminService = {
     },
 
     updateSystemStatus: async (user, newStatus) => {
+        if (user.role !== UserRole.ADMIN) throw new Error("Apenas administradores podem alterar o status do sistema.");
+
         const { data, error } = await supabase.from('system_settings').update({
             mode: newStatus.mode,
             message: newStatus.message,
@@ -36,7 +31,7 @@ export const SupabaseAdminService: IAdminService = {
             updated_at: new Date().toISOString()
         }).eq('id', 1).select().single();
         
-        if (error) handleSupabaseError(error, "Erro ao atualizar status do sistema");
+        if (error) throw error;
         return {
             mode: data.mode,
             message: data.message,
@@ -62,18 +57,24 @@ export const SupabaseAdminService: IAdminService = {
     },
 
     getAdminStats: async (): Promise<AdminStatsData> => {
-        // Tenta buscar de uma view de estatísticas ou calcula manualmente
-        const { count: usersCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-        const { count: activeClients } = await supabase.from('organizations').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE');
-        const { count: openTickets } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).neq('status', 'RESOLVED');
-        
+        const { data, error } = await supabase.from('v_admin_stats').select('*').maybeSingle();
+        if (error || !data) {
+            return {
+                totalUsers: 0,
+                activeUsers: 0,
+                activeClients: 0,
+                openTickets: 0,
+                logsLast24h: 0,
+                systemHealthStatus: 'HEALTHY'
+            };
+        }
         return {
-            totalUsers: usersCount || 0,
-            activeUsers: usersCount || 0,
-            activeClients: activeClients || 0,
-            openTickets: openTickets || 0,
-            logsLast24h: 0,
-            systemHealthStatus: 'HEALTHY'
+            totalUsers: data.total_users,
+            activeUsers: data.active_users,
+            activeClients: data.active_clients,
+            openTickets: data.open_tickets,
+            logsLast24h: data.logs_last_24_h,
+            systemHealthStatus: data.system_health_status as any
         };
     },
 
@@ -84,20 +85,22 @@ export const SupabaseAdminService: IAdminService = {
             .order('name');
         
         if (error) {
-            console.error("Erro ao buscar empresas:", error);
-            return [];
+            console.error("Erro Supabase getClients:", error);
+            throw new Error(`Falha ao carregar organizações: ${error.message}`);
         }
 
         return (data || []).map(c => ({
             id: c.id,
-            name: c.name,
-            cnpj: c.cnpj,
-            status: c.status as any,
-            contractDate: c.contract_date
+            name: c.name || 'Empresa sem Nome',
+            cnpj: c.cnpj || '00.000.000/0000-00',
+            status: (c.status || 'ACTIVE') as any,
+            contractDate: c.contract_date || new Date().toISOString().split('T')[0]
         }));
     },
 
     saveClient: async (user, data) => {
+        if (user.role !== UserRole.ADMIN) throw new Error("Permissão negada para gerenciar organizações.");
+
         const payload = {
             name: data.name,
             cnpj: data.cnpj,
@@ -105,35 +108,38 @@ export const SupabaseAdminService: IAdminService = {
             contract_date: data.contractDate
         };
 
-        let result;
+        let query;
         if (data.id) {
-            const { data: updated, error } = await supabase.from('organizations').update(payload).eq('id', data.id).select().single();
-            if (error) handleSupabaseError(error, "Erro ao atualizar organização");
-            result = updated;
+            query = supabase.from('organizations').update(payload).eq('id', data.id);
         } else {
-            const { data: inserted, error } = await supabase.from('organizations').insert(payload).select().single();
-            if (error) handleSupabaseError(error, "Erro ao criar organização");
-            result = inserted;
+            query = supabase.from('organizations').insert(payload);
         }
 
+        const { data: client, error } = await query.select().single();
+        if (error) throw error;
+        
         return {
-            id: result.id,
-            name: result.name,
-            cnpj: result.cnpj,
-            status: result.status as any,
-            contractDate: result.contract_date
+            id: client.id,
+            name: client.name,
+            cnpj: client.cnpj,
+            status: client.status as any,
+            contractDate: client.contract_date
         };
     },
 
     deleteClient: async (user, id) => {
+        if (user.role !== UserRole.ADMIN) throw new Error("Apenas administradores podem excluir organizações.");
         const { error } = await supabase.from('organizations').delete().eq('id', id);
-        if (error) handleSupabaseError(error, "Erro ao excluir organização");
+        if (error) throw error;
     },
 
     getTickets: async () => {
         const { data, error } = await supabase
             .from('tickets')
-            .select(`*, profiles(full_name)`)
+            .select(`
+                *,
+                profiles (full_name)
+            `)
             .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -149,8 +155,9 @@ export const SupabaseAdminService: IAdminService = {
             priority: t.priority,
             status: t.status,
             resolutionNote: t.resolution_note,
-            createdAt: new Date(t.created_at).toLocaleString()
-        }));
+            createdAt: new Date(t.created_at).toLocaleString(),
+            updatedAt: t.updated_at ? new Date(t.updated_at).toLocaleString() : undefined
+        })) as any;
     },
 
     getMyTickets: async (user) => {
@@ -165,7 +172,7 @@ export const SupabaseAdminService: IAdminService = {
             ...t, 
             userName: user.name,
             createdAt: new Date(t.created_at).toLocaleString() 
-        }));
+        })) as any;
     },
 
     getUserTickets: async (userId) => {
@@ -179,13 +186,16 @@ export const SupabaseAdminService: IAdminService = {
         return (data || []).map(t => ({ 
             ...t, 
             createdAt: new Date(t.created_at).toLocaleString() 
-        }));
+        })) as any;
     },
 
     getQualityInbox: async () => {
         const { data, error } = await supabase
             .from('tickets')
-            .select(`*, profiles(full_name)`)
+            .select(`
+                *,
+                profiles (full_name)
+            `)
             .eq('flow', 'CLIENT_TO_QUALITY')
             .order('created_at', { ascending: false });
         
@@ -194,13 +204,16 @@ export const SupabaseAdminService: IAdminService = {
             ...t, 
             userName: t.profiles?.full_name,
             createdAt: new Date(t.created_at).toLocaleString() 
-        }));
+        })) as any;
     },
 
     getAdminInbox: async () => {
         const { data, error } = await supabase
             .from('tickets')
-            .select(`*, profiles(full_name)`)
+            .select(`
+                *,
+                profiles (full_name)
+            `)
             .eq('flow', 'QUALITY_TO_ADMIN')
             .order('created_at', { ascending: false });
         
@@ -209,11 +222,13 @@ export const SupabaseAdminService: IAdminService = {
             ...t, 
             userName: t.profiles?.full_name,
             createdAt: new Date(t.created_at).toLocaleString() 
-        }));
+        })) as any;
     },
 
     createTicket: async (user, data) => {
+        // Define o fluxo automaticamente baseado no papel do criador
         const flow = user.role === UserRole.QUALITY ? 'QUALITY_TO_ADMIN' : 'CLIENT_TO_QUALITY';
+        
         const { data: ticket, error } = await supabase.from('tickets').insert({
             user_id: user.id,
             organization_id: user.clientId,
@@ -224,12 +239,12 @@ export const SupabaseAdminService: IAdminService = {
             flow
         }).select().single();
         
-        if (error) handleSupabaseError(error, "Erro ao criar chamado");
+        if (error) throw error;
         return {
             ...ticket,
             userName: user.name,
             createdAt: new Date(ticket.created_at).toLocaleString()
-        };
+        } as any;
     },
 
     resolveTicket: async (user, id, status, note) => {
@@ -241,7 +256,7 @@ export const SupabaseAdminService: IAdminService = {
                 updated_at: new Date().toISOString() 
             })
             .eq('id', id);
-        if (error) handleSupabaseError(error, "Erro ao resolver chamado");
+        if (error) throw error;
     },
 
     updateTicketStatus: async (user, id, status) => {
@@ -252,13 +267,48 @@ export const SupabaseAdminService: IAdminService = {
                 updated_at: new Date().toISOString() 
             })
             .eq('id', id);
-        if (error) handleSupabaseError(error, "Erro ao atualizar chamado");
+        if (error) throw error;
     },
 
-    getFirewallRules: async () => [],
-    getPorts: async () => [],
-    getMaintenanceEvents: async () => [],
-    scheduleMaintenance: async (user, event) => ({ ...event, id: `m-${Date.now()}` } as any),
-    cancelMaintenance: async (user, id) => {},
-    requestInfrastructureSupport: async (user, data) => `REQ-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    getFirewallRules: async () => {
+        const { data } = await supabase.from('firewall_rules').select('*').order('priority');
+        return (data || []);
+    },
+
+    getPorts: async () => {
+        const { data } = await supabase.from('network_ports').select('*');
+        return (data || []);
+    },
+
+    getMaintenanceEvents: async () => {
+        const { data } = await supabase.from('maintenance_events').select('*').order('scheduled_date', { ascending: false });
+        return (data || []);
+    },
+
+    scheduleMaintenance: async (user, event) => {
+        if (user.role !== UserRole.ADMIN) throw new Error("Ação exclusiva para administradores.");
+
+        const { data, error } = await supabase.from('maintenance_events').insert({
+            ...event,
+            created_by: user.id
+        }).select().single();
+        if (error) throw error;
+        return data as any;
+    },
+
+    cancelMaintenance: async (user, id) => {
+        await supabase.from('maintenance_events').update({ status: 'CANCELLED' }).eq('id', id);
+    },
+
+    requestInfrastructureSupport: async (user, data) => {
+        // Envia requisição para tabela de suporte externo real
+        const { data: req, error } = await supabase.from('external_support_requests').insert({
+            user_id: user.id,
+            payload: data,
+            status: 'PENDING'
+        }).select().single();
+        
+        if (error) throw error;
+        return req.id;
+    }
 };

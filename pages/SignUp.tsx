@@ -49,7 +49,6 @@ const SignUp: React.FC = () => {
       setIsFetchingClients(true);
       try {
         const data = await adminService.getClients();
-        // A filtragem já deve vir do banco, mas mantemos por segurança
         setClients(data.filter(c => c.status === 'ACTIVE'));
       } catch (err) {
         console.error("Erro ao carregar empresas no SignUp:", err);
@@ -85,7 +84,6 @@ const SignUp: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // organizationId será nulo se for 'NEW' ou vazio
       const orgIdToSubmit = (formData.organizationId === 'NEW' || !formData.organizationId) 
         ? undefined 
         : formData.organizationId;
@@ -99,18 +97,9 @@ const SignUp: React.FC = () => {
       );
       
       setSuccess(true);
-      // Redireciona após 3 segundos para dar tempo de ler o sucesso
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      console.error("SignUp Page Error:", err);
-      
-      if (err.message.includes('Database error') || err.message.includes('integridade')) {
-         setError('Erro crítico de banco de dados. O administrador deve verificar o Trigger de criação de usuários no Supabase.');
-      } else if (err.message.includes('already registered')) {
-         setError('Este e-mail já está em uso.');
-      } else {
-         setError(err.message || 'Erro inesperado ao realizar cadastro.');
-      }
+      setError(err.message || 'Erro inesperado ao realizar cadastro.');
     } finally {
       setIsLoading(false);
     }
@@ -216,11 +205,11 @@ const SignUp: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Nome Completo</label>
-                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'name' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
+                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white ${focusedInput === 'name' ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <div className="pl-4 text-slate-400"><UserIcon size={18} /></div>
                                     <input 
                                         required
-                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm"
+                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm font-semibold"
                                         placeholder="Ex: João Silva"
                                         value={formData.fullName}
                                         onFocus={() => setFocusedInput('name')}
@@ -231,12 +220,12 @@ const SignUp: React.FC = () => {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">E-mail Profissional</label>
-                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'email' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
+                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white ${focusedInput === 'email' ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <div className="pl-4 text-slate-400"><Mail size={18} /></div>
                                     <input 
                                         type="email"
                                         required
-                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm"
+                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm font-semibold"
                                         placeholder="usuario@empresa.com"
                                         value={formData.email}
                                         onFocus={() => setFocusedInput('email')}
@@ -250,12 +239,12 @@ const SignUp: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Sua Empresa</label>
-                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'org' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
+                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white ${focusedInput === 'org' ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <div className="pl-4 text-slate-400"><Building2 size={18} /></div>
                                     <select 
                                         required
                                         disabled={isFetchingClients}
-                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm appearance-none cursor-pointer disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm appearance-none cursor-pointer disabled:opacity-50 font-semibold"
                                         value={formData.organizationId}
                                         onFocus={() => setFocusedInput('org')}
                                         onBlur={() => setFocusedInput(null)}
@@ -272,9 +261,9 @@ const SignUp: React.FC = () => {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Departamento</label>
-                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'dep' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
+                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white ${focusedInput === 'dep' ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <input 
-                                        className="w-full px-5 py-3 bg-transparent outline-none text-sm"
+                                        className="w-full px-5 py-3 bg-transparent outline-none text-sm font-semibold"
                                         placeholder="Ex: Qualidade, TI..."
                                         value={formData.department}
                                         onFocus={() => setFocusedInput('dep')}
@@ -288,12 +277,12 @@ const SignUp: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Senha</label>
-                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'pass' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
+                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white ${focusedInput === 'pass' ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <div className="pl-4 text-slate-400"><Lock size={18} /></div>
                                     <input 
                                         type={showPassword ? "text" : "password"}
                                         required
-                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm"
+                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm font-semibold"
                                         placeholder="••••••••"
                                         value={formData.password}
                                         onFocus={() => setFocusedInput('pass')}
@@ -307,12 +296,12 @@ const SignUp: React.FC = () => {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-slate-700 ml-1 uppercase tracking-wider">Confirmar Senha</label>
-                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-slate-50/50 ${focusedInput === 'confirm' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
+                                <div className={`relative flex items-center border rounded-xl transition-all duration-200 bg-white ${focusedInput === 'confirm' ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200'}`}>
                                     <div className="pl-4 text-slate-400"><Lock size={18} /></div>
                                     <input 
                                         type={showPassword ? "text" : "password"}
                                         required
-                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm"
+                                        className="w-full px-4 py-3 bg-transparent outline-none text-sm font-semibold"
                                         placeholder="••••••••"
                                         value={formData.confirmPassword}
                                         onFocus={() => setFocusedInput('confirm')}
