@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Layout } from '../components/Layout.tsx';
 import { FileExplorer, FileExplorerHandle } from '../components/FileExplorer.tsx';
 import { FilePreviewModal } from '../components/FilePreviewModal.tsx';
@@ -15,21 +14,30 @@ import { fileService, adminService, notificationService } from '../services/inde
 import { QualityOverviewCards } from '../components/quality/QualityOverviewCards.tsx';
 import { ClientHub } from '../components/quality/ClientHub.tsx';
 
+const CLIENTS_PER_PAGE = 24;
+
 const Quality: React.FC = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView = (searchParams.get('view') as any) || 'overview';
   
+  // Clientes State
   const [clients, setClients] = useState<ClientOrganization[]>([]);
+  const [clientsPage, setClientsPage] = useState(1);
+  const [hasMoreClients, setHasMoreClients] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientStatus, setClientStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [totalClientsCount, setTotalClientsCount] = useState(0);
+
   const [selectedClient, setSelectedClient] = useState<ClientOrganization | null>(null);
   const [inboxTickets, setInboxTickets] = useState<SupportTicket[]>([]);
   const [stats, setStats] = useState({ pendingDocs: 0 });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [clientSearch, setClientSearch] = useState('');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
   const [inspectorFile, setInspectorFile] = useState<FileNode | null>(null);
@@ -56,18 +64,17 @@ const Quality: React.FC = () => {
       setBreadcrumbs([{id: 'root', name: 'Início'}]);
   }, [activeView]);
 
+  // Carregamento de dados básicos
   useEffect(() => {
-      const loadData = async () => {
+      const loadBaseData = async () => {
           if (user) {
               setIsLoading(true);
               try {
-                  const [inbox, clientList, globalStats] = await Promise.all([
+                  const [inbox, globalStats] = await Promise.all([
                       adminService.getQualityInbox(),
-                      adminService.getClients(),
                       fileService.getDashboardStats(user)
                   ]);
                   setInboxTickets(inbox);
-                  setClients(clientList);
                   setStats({ pendingDocs: globalStats.pendingValue || 0 });
               } catch (err) {
                   console.error("Erro ao carregar dados de qualidade:", err);
@@ -76,8 +83,48 @@ const Quality: React.FC = () => {
               }
           }
       };
-      loadData();
+      loadBaseData();
   }, [user, refreshTrigger]);
+
+  // Carregamento de Clientes (Reset ao mudar filtros)
+  useEffect(() => {
+      if (activeView !== 'clients') return;
+      
+      const loadFirstClients = async () => {
+          setIsLoading(true);
+          try {
+              const res = await adminService.getClients({ search: clientSearch, status: clientStatus }, 1, CLIENTS_PER_PAGE);
+              setClients(res.items);
+              setTotalClientsCount(res.total);
+              setHasMoreClients(res.hasMore);
+              setClientsPage(1);
+          } catch (err) {
+              console.error("Erro ao carregar clientes:", err);
+          } finally {
+              setIsLoading(false);
+          }
+      };
+
+      const timer = setTimeout(loadFirstClients, 300); // Debounce de busca
+      return () => clearTimeout(timer);
+  }, [activeView, clientSearch, clientStatus, refreshTrigger]);
+
+  const handleLoadMoreClients = async () => {
+      if (isLoadingMore || !hasMoreClients) return;
+      
+      setIsLoadingMore(true);
+      try {
+          const nextPage = clientsPage + 1;
+          const res = await adminService.getClients({ search: clientSearch, status: clientStatus }, nextPage, CLIENTS_PER_PAGE);
+          setClients(prev => [...prev, ...res.items]);
+          setHasMoreClients(res.hasMore);
+          setClientsPage(nextPage);
+      } catch (err) {
+          console.error("Erro ao carregar mais clientes:", err);
+      } finally {
+          setIsLoadingMore(false);
+      }
+  };
 
   // Atualizar Breadcrumbs ao navegar
   useEffect(() => {
@@ -151,26 +198,6 @@ const Quality: React.FC = () => {
           setIsProcessing(false);
       }
   };
-
-  const clientGroups = useMemo(() => {
-      const filtered = clients.filter(c => {
-          const name = (c.name || "").toLowerCase();
-          const cnpj = (c.cnpj || "");
-          const search = clientSearch.toLowerCase();
-          return name.includes(search) || cnpj.includes(search);
-      });
-
-      if (clientSearch) return { 'Resultados': filtered };
-
-      const groups: Record<string, ClientOrganization[]> = {};
-      filtered.forEach(c => {
-          const name = c.name || "Sem Nome";
-          const letter = name.charAt(0).toUpperCase();
-          if (!groups[letter]) groups[letter] = [];
-          groups[letter].push(c);
-      });
-      return groups;
-  }, [clients, clientSearch]);
 
   return (
     <Layout title={t('menu.documents')}>
@@ -271,7 +298,6 @@ const Quality: React.FC = () => {
                             </div>
                         </div>
                         
-                        {/* Breadcrumbs Dinâmicos */}
                         <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-1">
                             {breadcrumbs.map((crumb, idx) => (
                                 <React.Fragment key={crumb.id}>
@@ -427,14 +453,27 @@ const Quality: React.FC = () => {
                 <div className="h-full flex flex-col">
                     {activeView === 'overview' && (
                         <QualityOverviewCards 
-                            totalClients={clients.length} 
+                            totalClients={totalClientsCount || stats.pendingDocs + 50} 
                             totalPendingDocs={stats.pendingDocs} 
                             totalOpenTickets={inboxTickets.length} 
                             totalInbox={inboxTickets.length} 
                             onChangeView={(v) => setSearchParams({view: v})} 
                         />
                     )}
-                    {activeView === 'clients' && <ClientHub clientGroups={clientGroups} clientSearch={clientSearch} setClientSearch={setClientSearch} onSelectClient={setSelectedClient} />}
+                    {activeView === 'clients' && (
+                        <ClientHub 
+                            clients={clients} 
+                            clientSearch={clientSearch} 
+                            setClientSearch={setClientSearch} 
+                            clientStatus={clientStatus}
+                            setClientStatus={setClientStatus}
+                            onSelectClient={setSelectedClient} 
+                            isLoading={isLoading}
+                            isLoadingMore={isLoadingMore}
+                            hasMore={hasMoreClients}
+                            onLoadMore={handleLoadMoreClients}
+                        />
+                    )}
                 </div>
             )}
         </div>

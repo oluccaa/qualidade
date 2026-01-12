@@ -72,7 +72,8 @@ const Admin: React.FC = () => {
           // Garantir que o estado receba a lista completa
           setUsersList([...users]); 
           setTicketsList(ticketData); 
-          setClientsList(clients);
+          // Access .items because getClients now returns a PaginatedResponse
+          setClientsList(clients.items);
           setPorts(networkPorts);
           setAdminStats(stats);
           

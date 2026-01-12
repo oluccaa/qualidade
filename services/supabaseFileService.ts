@@ -1,10 +1,19 @@
-
 import { FileNode, User, FileType, LibraryFilters, AuditLog, BreadcrumbItem, MASTER_ORG_ID } from '../types.ts';
 import { IFileService, PaginatedResponse } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
 
-// In-memory fallback for favorites in this demo context
-const _localFavorites = new Set<string>();
+// Helper interno para buscar quais IDs da lista atual são favoritos do usuário
+const _fetchUserFavorites = async (userId: string, fileIds: string[]): Promise<Set<string>> => {
+    if (fileIds.length === 0) return new Set();
+    
+    const { data } = await supabase
+        .from('file_favorites')
+        .select('file_id')
+        .eq('user_id', userId)
+        .in('file_id', fileIds);
+        
+    return new Set((data || []).map(f => f.file_id));
+};
 
 export const SupabaseFileService: IFileService = {
     getFiles: async (user: User, folderId: string | null, page = 1, pageSize = 20): Promise<PaginatedResponse<FileNode>> => {
@@ -28,9 +37,13 @@ export const SupabaseFileService: IFileService = {
 
         const { data, count, error } = await query.range(from, to).order('type', { ascending: false }).order('name');
         if (error) throw error;
+        
+        const files = data || [];
+        // Busca quais desses arquivos são favoritos
+        const favSet = await _fetchUserFavorites(user.id, files.map(f => f.id));
 
         return {
-            items: (data || []).map(f => ({
+            items: files.map(f => ({
                 id: f.id,
                 parentId: f.parent_id,
                 name: f.name,
@@ -39,7 +52,7 @@ export const SupabaseFileService: IFileService = {
                 updatedAt: new Date(f.updated_at).toLocaleDateString(),
                 ownerId: f.owner_id,
                 metadata: f.metadata || {},
-                isFavorite: _localFavorites.has(f.id)
+                isFavorite: favSet.has(f.id)
             })),
             total: count || 0,
             hasMore: (count || 0) > to + 1
@@ -62,16 +75,19 @@ export const SupabaseFileService: IFileService = {
         const { data, error } = await query;
         if (error) throw error;
         
-        return (data || []).map(f => ({
+        const files = data || [];
+        const favSet = await _fetchUserFavorites(user.id, files.map(f => f.id));
+        
+        return files.map(f => ({
             id: f.id,
-                parentId: f.parent_id,
-                name: f.name,
-                type: f.type as FileType,
-                size: f.size,
-                updatedAt: new Date(f.updated_at).toLocaleDateString(),
-                ownerId: f.owner_id,
-                metadata: f.metadata || {},
-                isFavorite: _localFavorites.has(f.id)
+            parentId: f.parent_id,
+            name: f.name,
+            type: f.type as FileType,
+            size: f.size,
+            updatedAt: new Date(f.updated_at).toLocaleDateString(),
+            ownerId: f.owner_id,
+            metadata: f.metadata || {},
+            isFavorite: favSet.has(f.id)
         }));
     },
 
@@ -150,8 +166,11 @@ export const SupabaseFileService: IFileService = {
         const { data, count, error } = await query.range(from, to).order('updated_at', { ascending: false });
         if (error) throw error;
 
+        const files = data || [];
+        const favSet = await _fetchUserFavorites(user.id, files.map(f => f.id));
+
         return {
-            items: (data || []).map(f => ({
+            items: files.map(f => ({
                 id: f.id,
                 parentId: f.parent_id,
                 name: f.name,
@@ -160,7 +179,7 @@ export const SupabaseFileService: IFileService = {
                 updatedAt: new Date(f.updated_at).toLocaleDateString(),
                 ownerId: f.owner_id,
                 metadata: f.metadata || {},
-                isFavorite: _localFavorites.has(f.id)
+                isFavorite: favSet.has(f.id)
             })),
             total: count || 0,
             hasMore: (count || 0) > to + 1
@@ -214,7 +233,7 @@ export const SupabaseFileService: IFileService = {
             updatedAt: new Date(data.updated_at).toLocaleDateString(),
             ownerId: data.owner_id,
             metadata: data.metadata,
-            isFavorite: _localFavorites.has(data.id)
+            isFavorite: false
         };
     },
 
@@ -244,8 +263,12 @@ export const SupabaseFileService: IFileService = {
         const to = from + pageSize - 1;
         const { data, count, error } = await q.range(from, to).order('updated_at', { ascending: false });
         if (error) throw error;
+        
+        const files = data || [];
+        const favSet = await _fetchUserFavorites(user.id, files.map(f => f.id));
+
         return {
-            items: (data || []).map(f => ({
+            items: files.map(f => ({
                 id: f.id,
                 parentId: f.parent_id,
                 name: f.name,
@@ -254,7 +277,7 @@ export const SupabaseFileService: IFileService = {
                 updatedAt: new Date(f.updated_at).toLocaleDateString(),
                 ownerId: f.owner_id,
                 metadata: f.metadata || {},
-                isFavorite: _localFavorites.has(f.id)
+                isFavorite: favSet.has(f.id)
             })),
             total: count || 0,
             hasMore: (count || 0) > to + 1
@@ -268,7 +291,6 @@ export const SupabaseFileService: IFileService = {
             const crumbs: BreadcrumbItem[] = [];
             let currentId: string | null = folderId;
             
-            // Loop para buscar a hierarquia (limite de 10 níveis para segurança)
             for (let i = 0; i < 10 && currentId; i++) {
                 const { data, error } = await supabase
                     .from('files')
@@ -290,40 +312,63 @@ export const SupabaseFileService: IFileService = {
     },
 
     toggleFavorite: async (user: User, fileId: string): Promise<boolean> => {
-        if (_localFavorites.has(fileId)) {
-            _localFavorites.delete(fileId);
+        // Verifica se já existe
+        const { data } = await supabase
+            .from('file_favorites')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('file_id', fileId)
+            .single();
+
+        if (data) {
+            // Se existe, remove (toggle OFF)
+            await supabase.from('file_favorites').delete().eq('id', data.id);
             return false;
         } else {
-            _localFavorites.add(fileId);
+            // Se não existe, cria (toggle ON)
+            await supabase.from('file_favorites').insert({
+                user_id: user.id,
+                file_id: fileId
+            });
             return true;
         }
     },
 
     getFavorites: async (user: User): Promise<FileNode[]> => {
-        if (_localFavorites.size === 0) return [];
+        // Busca os favoritos do usuário com JOIN na tabela de arquivos
         const { data, error } = await supabase
-            .from('files')
-            .select('*')
-            .in('id', Array.from(_localFavorites));
+            .from('file_favorites')
+            .select(`
+                file_id,
+                files:file_id (*)
+            `)
+            .eq('user_id', user.id);
         
         if (error) throw error;
-        return (data || []).map(f => ({
-            id: f.id,
-            parentId: f.parent_id,
-            name: f.name,
-            type: f.type as FileType,
-            size: f.size,
-            updatedAt: new Date(f.updated_at).toLocaleDateString(),
-            ownerId: f.owner_id,
-            metadata: f.metadata || {},
-            isFavorite: true
-        }));
+        
+        // Mapeia o resultado do JOIN para o formato FileNode
+        return (data || [])
+            .map((item: any) => item.files) // Extrai o objeto file
+            .filter((f: any) => f !== null) // Remove nulos (caso arquivo tenha sido deletado)
+            .map((f: any) => ({
+                id: f.id,
+                parentId: f.parent_id,
+                name: f.name,
+                type: f.type as FileType,
+                size: f.size,
+                updatedAt: new Date(f.updated_at).toLocaleDateString(),
+                ownerId: f.owner_id,
+                metadata: f.metadata || {},
+                isFavorite: true // Já sabemos que é favorito pois veio desta query
+            }));
     },
 
     getFilesByOwner: async (ownerId: string): Promise<FileNode[]> => {
         if (!ownerId) return [];
         const { data, error } = await supabase.from('files').select('*').eq('owner_id', ownerId);
         if (error) throw error;
+        // Nota: Neste método específico, não estamos injetando isFavorite para manter performance,
+        // mas pode ser adicionado se necessário no contexto de Admin.
         return (data || []).map(f => ({
             id: f.id,
             parentId: f.parent_id,
@@ -333,7 +378,7 @@ export const SupabaseFileService: IFileService = {
             updatedAt: new Date(f.updated_at).toLocaleDateString(),
             ownerId: f.owner_id,
             metadata: f.metadata || {},
-            isFavorite: _localFavorites.has(f.id)
+            isFavorite: false
         }));
     },
 
@@ -355,7 +400,7 @@ export const SupabaseFileService: IFileService = {
         const { data, error } = await supabase.from('files').select('*').eq('owner_id', MASTER_ORG_ID).neq('type', 'FOLDER');
         if (error) throw error;
         return (data || []).map(f => ({
-            id: f.id, parentId: f.parent_id, name: f.name, type: f.type as FileType, size: f.size, updatedAt: new Date(f.updated_at).toLocaleDateString(), ownerId: f.owner_id, metadata: f.metadata || {}, isFavorite: _localFavorites.has(f.id)
+            id: f.id, parentId: f.parent_id, name: f.name, type: f.type as FileType, size: f.size, updatedAt: new Date(f.updated_at).toLocaleDateString(), ownerId: f.owner_id, metadata: f.metadata || {}, isFavorite: false
         }));
     },
 

@@ -14,10 +14,12 @@ import {
   Globe,
   Eye,
   EyeOff,
-  AlertOctagon
+  AlertOctagon,
+  ShieldCheck
 } from 'lucide-react';
 
 const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
+const BACKGROUND_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/header_login.webp";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -65,14 +67,13 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 relative selection:bg-blue-100">
+    <div className="min-h-screen flex bg-white relative selection:bg-orange-100 overflow-hidden font-['Inter',_sans-serif]">
       
-      {/* TEXTURA DE RUÍDO GLOBAL (Overlay sutil para aspecto premium) */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[100] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+      <div className="fixed inset-0 pointer-events-none opacity-[0.012] z-[100] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
-      <div className="absolute top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-1 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center gap-1">
-              <div className="pl-3 pr-1 text-slate-400">
+      <div className="absolute top-6 right-6 z-[110] animate-in fade-in slide-in-from-top-4 duration-1000">
+          <div className="bg-white/60 backdrop-blur-xl border border-slate-200/50 p-1 rounded-xl shadow-sm flex items-center gap-1">
+              <div className="pl-2.5 pr-1.5 text-slate-400">
                   <Globe size={14} />
               </div>
               {['pt', 'en', 'es'].map((lang) => (
@@ -80,10 +81,10 @@ const Login: React.FC = () => {
                       key={lang}
                       onClick={() => changeLanguage(lang)}
                       className={`
-                          px-3 py-1.5 text-[10px] font-bold uppercase rounded-full transition-all duration-500
+                          px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-all duration-300
                           ${i18n.language === lang 
-                              ? 'bg-slate-900 text-white shadow-lg scale-105' 
-                              : 'text-slate-500 hover:bg-slate-100'}
+                              ? 'bg-[#081437] text-white shadow-sm' 
+                              : 'text-slate-500 hover:bg-slate-100 hover:text-[#081437]'}
                       `}
                   >
                       {lang}
@@ -95,81 +96,89 @@ const Login: React.FC = () => {
       <CookieBanner />
       <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
 
-      {/* Lado Esquerdo - Branding Industrial Premium */}
-      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden">
+      {/* LADO ESQUERDO: BRANDING INDUSTRIAL MAGNIFICADO */}
+      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden shrink-0 border-r border-slate-100">
         <div 
             className="absolute inset-0 bg-cover bg-center scale-105 animate-slow-zoom"
-            style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&q=80&w=1920")' }} 
+            style={{ backgroundImage: `url("${BACKGROUND_URL}")` }} 
         />
+        <div className="absolute inset-0 bg-[#081437]/70 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-[#081437] via-[#081437]/80 to-transparent" />
         
-        {/* Gradiente Dinâmico */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/90 to-blue-900/30" />
-        
-        {/* Textura de Malha Metálica Sutil */}
-        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-
-        <div className="relative z-10 flex flex-col justify-between p-16 w-full text-white h-full">
-            <div className="animate-in fade-in slide-in-from-left-8 duration-1000">
-                <img src={LOGO_URL} alt="Logo" className="h-24 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]" />
+        <div className="relative z-30 flex flex-col justify-between p-20 w-full h-full text-white">
+            <div className="animate-in fade-in slide-in-from-left-6 duration-1000">
+                {/* Logo aumentada para impacto premium */}
+                <img src={LOGO_URL} alt="Aços Vital" className="h-20 object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)]" />
             </div>
 
-            <div className="space-y-6 max-w-xl mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-                <h1 className="text-5xl font-black leading-tight tracking-tight">
-                   Aço de confiança,<br/><span className="text-blue-400">Qualidade certificada.</span>
-                </h1>
-                <p className="text-lg text-slate-300 font-light leading-relaxed">
-                    Acesse o repositório central de documentos técnicos e certificados de qualidade da Aços Vital. Precisão industrial em cada dado.
+            <div className="space-y-10 max-w-2xl animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300">
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <div className="h-[2px] w-12 bg-[#B23C0E]"></div>
+                        <span className="text-[#B23C0E] text-xs font-black uppercase tracking-[6px]">Liderança Técnica</span>
+                    </div>
+                    {/* Título aumentado de text-5xl para text-6xl */}
+                    <h1 className="text-6xl font-black leading-tight tracking-tighter text-white">
+                       Aço de confiança,<br/>
+                       <span className="text-[#62A5FA] block mt-2">Qualidade certificada.</span>
+                    </h1>
+                </div>
+                
+                <p className="text-lg text-slate-300/90 font-medium leading-relaxed max-w-md">
+                    Repositório central de documentos técnicos e certificados. Precisão industrial em cada dado.
                 </p>
                 
                 <div className="flex flex-wrap gap-4 pt-4">
-                     <div className="flex items-center gap-3 text-xs font-bold text-white bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-xl">
-                        <CheckCircle2 size={18} className="text-blue-400" /> ISO 9001:2015
+                     <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-white bg-white/5 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 shadow-xl">
+                        <CheckCircle2 size={16} className="text-[#B23C0E]" /> Certificação ISO 9001
                      </div>
-                     <div className="flex items-center gap-3 text-xs font-bold text-white bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-xl">
-                        <Lock size={18} className="text-blue-400" /> AES-256 Encrypted
+                     <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-white bg-white/5 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 shadow-xl">
+                        <ShieldCheck size={16} className="text-[#B23C0E]" /> Dados Seguros
                      </div>
                 </div>
             </div>
 
-            <div className="text-xs text-slate-400 font-medium flex items-center gap-8">
-                <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Sistemas Operacionais
-                </span>
-                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-white transition-colors underline underline-offset-4 decoration-slate-700">Políticas de Segurança</button>
-                <span>&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
+            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-10 uppercase tracking-[4px]">
+                <div className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.7)]"></span>
+                    Sistemas Monitorados
+                </div>
+                <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-white transition-colors">Privacidade</button>
+                <span className="opacity-40">&copy; {new Date().getFullYear()} Aços Vital S.A.</span>
             </div>
         </div>
       </div>
 
-      {/* Lado Direito - Formulário Minimalista & Premium */}
-      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 bg-white relative">
-        <div className="w-full max-w-[420px] space-y-10 animate-in fade-in slide-in-from-right-8 duration-1000">
+      {/* LADO DIREITO: FORMULÁRIO REMASTERIZADO */}
+      <div className="w-full lg:flex-1 flex items-center justify-center p-8 md:p-16 bg-white relative z-30">
+        <div className="w-full max-w-[400px] space-y-12 animate-in fade-in slide-in-from-right-6 duration-1000">
             
-            <div className="lg:hidden flex flex-col items-center mb-4">
-                <img src={LOGO_URL} alt="Logo" className="h-20 object-contain mb-4" />
-                <div className="h-1 w-12 bg-blue-600 rounded-full"></div>
+            <div className="lg:hidden flex flex-col items-center mb-10">
+                <img src={LOGO_URL} alt="Logo" className="h-14 object-contain mb-6" />
+                <div className="h-[2px] w-12 bg-[#B23C0E]"></div>
             </div>
 
-            <div className="text-center lg:text-left space-y-2">
-                <h2 className="text-4xl font-black text-slate-900 tracking-tight">Portal Vital</h2>
-                <p className="text-slate-500 font-medium">Insira suas credenciais corporativas.</p>
+            <div className="space-y-3 text-center lg:text-left">
+                {/* Título do formulário aumentado de text-3xl para text-4xl */}
+                <h2 className="text-4xl font-black text-[#081437] tracking-tighter">Portal da Qualidade</h2>
+                <p className="text-slate-500 text-base font-medium">Acesse com suas credenciais corporativas.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[2px] ml-1">E-mail Corporativo</label>
+            <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Campo E-mail */}
+                <div className="space-y-3">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
                     <div 
-                        className={`group relative flex items-center border-2 rounded-2xl transition-all duration-300 bg-slate-50
-                        ${focusedInput === 'email' ? 'border-slate-900 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.06)]' : 'border-transparent hover:border-slate-200'}`}
+                        className={`group relative flex items-center border-[1.5px] rounded-2xl overflow-hidden transition-all duration-300
+                        ${focusedInput === 'email' ? 'border-[#081437] bg-white ring-[6px] ring-[#081437]/5 shadow-sm' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
                     >
-                        <div className={`pl-4 transition-colors ${focusedInput === 'email' ? 'text-slate-900' : 'text-slate-400'}`}>
-                            <Mail size={20} />
+                        <div className={`w-14 h-14 shrink-0 flex items-center justify-center border-r transition-colors duration-300 ${focusedInput === 'email' ? 'text-[#081437] border-[#081437]/10' : 'text-slate-400 border-slate-200/50'}`}>
+                            <Mail size={20} strokeWidth={2.5} />
                         </div>
                         <input 
                             type="email" 
                             required
-                            className="w-full px-4 py-4 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-300 font-bold"
+                            className="flex-1 px-5 py-4 bg-transparent outline-none text-base text-[#081437] placeholder-slate-300 font-bold"
                             placeholder="exemplo@acosvital.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -179,22 +188,23 @@ const Login: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <div className="flex justify-between items-end ml-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[2px]">Senha de Acesso</label>
-                        <a href="#" className="text-[10px] font-black text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wider">Esqueceu a senha?</a>
+                {/* Campo Senha */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-end px-1">
+                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Senha de Acesso</label>
+                        <a href="#" className="text-[11px] font-bold text-[#B23C0E] hover:text-[#081437] transition-colors uppercase tracking-wider">Esqueceu?</a>
                     </div>
                     <div 
-                        className={`group relative flex items-center border-2 rounded-2xl transition-all duration-300 bg-slate-50
-                        ${focusedInput === 'password' ? 'border-slate-900 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.06)]' : 'border-transparent hover:border-slate-200'}`}
+                        className={`group relative flex items-center border-[1.5px] rounded-2xl overflow-hidden transition-all duration-300
+                        ${focusedInput === 'password' ? 'border-[#081437] bg-white ring-[6px] ring-[#081437]/5 shadow-sm' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
                     >
-                        <div className={`pl-4 transition-colors ${focusedInput === 'password' ? 'text-slate-900' : 'text-slate-400'}`}>
-                            <Lock size={20} />
+                        <div className={`w-14 h-14 shrink-0 flex items-center justify-center border-r transition-colors duration-300 ${focusedInput === 'password' ? 'text-[#081437] border-[#081437]/10' : 'text-slate-400 border-slate-200/50'}`}>
+                            <Lock size={20} strokeWidth={2.5} />
                         </div>
                         <input 
                             type={showPassword ? "text" : "password"}
                             required
-                            className="w-full pl-4 pr-12 py-4 bg-transparent outline-none text-sm text-slate-900 placeholder-slate-300 font-bold"
+                            className="flex-1 px-5 py-4 bg-transparent outline-none text-base text-[#081437] placeholder-slate-300 font-bold"
                             placeholder="••••••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -204,50 +214,61 @@ const Login: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 text-slate-400 hover:text-slate-900 transition-colors"
+                            className="w-14 h-14 flex items-center justify-center text-slate-400 hover:text-[#081437] transition-colors"
                         >
-                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            {/* Lógica corrigida: EyeOff para estado oculto, Eye para estado visível */}
+                            {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                         </button>
                     </div>
                 </div>
 
                 {error && (
-                    <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-2xl border border-red-100 flex items-center gap-3 animate-in fade-in zoom-in-95">
-                        <AlertOctagon size={18} className="shrink-0" />
+                    <div className="p-5 bg-red-50 text-red-700 text-xs font-bold rounded-2xl border border-red-100 flex items-center gap-4 animate-in fade-in zoom-in-95">
+                        <AlertOctagon size={20} className="shrink-0 text-[#B23C0E]" />
                         {error}
                     </div>
                 )}
                 
-                <button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="group relative w-full bg-slate-950 hover:bg-slate-800 text-white font-black text-sm py-5 rounded-2xl transition-all duration-500 flex items-center justify-center shadow-2xl shadow-slate-900/20 active:scale-[0.97] disabled:opacity-70"
-                >
-                    {isLoading ? (
-                        <Loader2 size={24} className="animate-spin" />
-                    ) : (
-                        <>
-                            <span className="tracking-widest uppercase">Autenticar Acesso</span>
-                            <ArrowRight size={20} className="ml-3 group-hover:translate-x-2 transition-transform" />
-                        </>
-                    )}
-                    {/* Brilho interno do botão */}
-                    <div className="absolute inset-x-0 top-0 h-px bg-white/20 rounded-t-2xl"></div>
-                </button>
+                <div className="pt-4">
+                    <button 
+                        type="submit" 
+                        disabled={isLoading}
+                        className="group relative w-full bg-[#081437] hover:bg-[#0c1d4d] text-white font-black py-5 rounded-2xl transition-all duration-300 flex items-center justify-center shadow-2xl active:scale-[0.98] disabled:opacity-70 h-14"
+                    >
+                        {isLoading ? (
+                            <Loader2 size={24} className="animate-spin" />
+                        ) : (
+                            <>
+                                <span className="tracking-[4px] uppercase text-xs">Autenticar Acesso</span>
+                                <ArrowRight size={20} className="ml-4 group-hover:translate-x-2 transition-transform duration-300 text-[#B23C0E]" />
+                            </>
+                        )}
+                    </button>
+                </div>
             </form>
 
-            <div className="text-center space-y-6">
-                <div className="flex items-center gap-4 text-slate-200">
-                    <div className="h-px flex-1 bg-slate-100"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ou</span>
-                    <div className="h-px flex-1 bg-slate-100"></div>
+            <div className="text-center space-y-10 pt-6">
+                <div className="flex items-center gap-5">
+                    <div className="h-[1px] flex-1 bg-slate-100"></div>
+                    <span className="text-[10px] font-black uppercase tracking-[5px] text-slate-300 whitespace-nowrap">Novo Usuário</span>
+                    <div className="h-[1px] flex-1 bg-slate-100"></div>
                 </div>
-                <p className="text-sm text-slate-600 font-medium">
-                  Novo por aqui? <Link to="/signup" className="text-blue-600 font-black hover:underline underline-offset-4">Solicite uma Conta</Link>
+                <p className="text-sm text-slate-500 font-medium">
+                  Não possui conta? <Link to="/signup" className="text-[#B23C0E] font-black hover:underline underline-offset-8 decoration-2 transition-all ml-1">Solicitar Registro</Link>
                 </p>
             </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes slow-zoom {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        .animate-slow-zoom {
+            animation: slow-zoom 45s infinite alternate ease-in-out;
+        }
+      `}</style>
     </div>
   );
 };

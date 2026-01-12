@@ -1,5 +1,4 @@
-
-import { IAdminService, AdminStatsData } from './interfaces.ts';
+import { IAdminService, AdminStatsData, PaginatedResponse } from './interfaces.ts';
 import { supabase } from './supabaseClient.ts';
 import { SupportTicket, SystemStatus, ClientOrganization, UserRole } from '../types.ts';
 
@@ -59,11 +58,9 @@ export const SupabaseAdminService: IAdminService = {
     getAdminStats: async (): Promise<AdminStatsData> => {
         const { data, error } = await supabase.from('v_admin_stats').select('*').maybeSingle();
         
-        // Simulating realistic infrastructure health data
-        // In a full implementation, these would come from an external monitoring API or Supabase Edge Functions
         const simulatedInfra = {
-            cpuUsage: 15 + Math.floor(Math.random() * 20), // 15% - 35%
-            memoryUsage: 45 + Math.floor(Math.random() * 15), // 45% - 60%
+            cpuUsage: 15 + Math.floor(Math.random() * 20),
+            memoryUsage: 45 + Math.floor(Math.random() * 15),
             dbConnections: 5 + Math.floor(Math.random() * 10),
             dbMaxConnections: 100
         };
@@ -91,10 +88,24 @@ export const SupabaseAdminService: IAdminService = {
         };
     },
 
-    getClients: async () => {
-        const { data, error } = await supabase
+    getClients: async (filters, page = 1, pageSize = 20): Promise<PaginatedResponse<ClientOrganization>> => {
+        let query = supabase
             .from('organizations')
-            .select('*')
+            .select('*', { count: 'exact' });
+        
+        if (filters?.search) {
+            query = query.or(`name.ilike.%${filters.search}%,cnpj.ilike.%${filters.search}%`);
+        }
+        
+        if (filters?.status && filters.status !== 'ALL') {
+            query = query.eq('status', filters.status);
+        }
+
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, count, error } = await query
+            .range(from, to)
             .order('name');
         
         if (error) {
@@ -102,13 +113,19 @@ export const SupabaseAdminService: IAdminService = {
             throw new Error(`Falha ao carregar organizações: ${error.message}`);
         }
 
-        return (data || []).map(c => ({
+        const items = (data || []).map(c => ({
             id: c.id,
             name: c.name || 'Empresa sem Nome',
             cnpj: c.cnpj || '00.000.000/0000-00',
             status: (c.status || 'ACTIVE') as any,
             contractDate: c.contract_date || new Date().toISOString().split('T')[0]
         }));
+
+        return {
+            items,
+            total: count || 0,
+            hasMore: (count || 0) > to + 1
+        };
     },
 
     saveClient: async (user, data) => {
@@ -239,7 +256,6 @@ export const SupabaseAdminService: IAdminService = {
     },
 
     createTicket: async (user, data) => {
-        // Define o fluxo automaticamente baseado no papel do criador
         const flow = user.role === UserRole.QUALITY ? 'QUALITY_TO_ADMIN' : 'CLIENT_TO_QUALITY';
         
         const { data: ticket, error } = await supabase.from('tickets').insert({
@@ -314,7 +330,6 @@ export const SupabaseAdminService: IAdminService = {
     },
 
     requestInfrastructureSupport: async (user, data) => {
-        // Envia requisição para tabela de suporte externo real
         const { data: req, error } = await supabase.from('external_support_requests').insert({
             user_id: user.id,
             payload: data,

@@ -1,27 +1,48 @@
-
-import React, { useState, useMemo } from 'react';
-import { Search, Users, Building2, Filter, ChevronRight } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Search, Users, Building2, ChevronRight, Loader2, ArrowDownCircle } from 'lucide-react';
 import { ClientOrganization } from '../../types.ts';
 
 interface ClientHubProps {
-    clientGroups: Record<string, ClientOrganization[]>;
+    clients: ClientOrganization[];
     clientSearch: string;
     setClientSearch: (val: string) => void;
+    clientStatus: 'ALL' | 'ACTIVE' | 'INACTIVE';
+    setClientStatus: (status: 'ALL' | 'ACTIVE' | 'INACTIVE') => void;
     onSelectClient: (client: ClientOrganization) => void;
+    isLoading: boolean;
+    isLoadingMore: boolean;
+    hasMore: boolean;
+    onLoadMore: () => void;
 }
 
-export const ClientHub: React.FC<ClientHubProps> = ({ clientGroups, clientSearch, setClientSearch, onSelectClient }) => {
-    const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
-
-    const filteredEntries = useMemo(() => {
-        return Object.entries(clientGroups).map(([key, clients]) => {
-            const filtered = clients.filter(c => statusFilter === 'ALL' || c.status === statusFilter);
-            return [key, filtered] as [string, ClientOrganization[]];
-        }).filter(([_, clients]) => clients.length > 0);
-    }, [clientGroups, statusFilter]);
+export const ClientHub: React.FC<ClientHubProps> = ({ 
+    clients, 
+    clientSearch, 
+    setClientSearch, 
+    clientStatus,
+    setClientStatus,
+    onSelectClient,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    onLoadMore
+}) => {
+    
+    // Agrupa dinamicamente apenas o que já está carregado
+    const clientGroups = useMemo(() => {
+        const groups: Record<string, ClientOrganization[]> = {};
+        clients.forEach(c => {
+            const name = c.name || "Sem Nome";
+            const letter = name.charAt(0).toUpperCase();
+            if (!groups[letter]) groups[letter] = [];
+            groups[letter].push(c);
+        });
+        return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    }, [clients]);
 
     return (
         <div className="flex flex-col h-full gap-4 animate-in fade-in duration-300">
+            {/* Barra de Busca e Filtros */}
             <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="relative w-full max-w-lg">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -39,9 +60,9 @@ export const ClientHub: React.FC<ClientHubProps> = ({ clientGroups, clientSearch
                         {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map(status => (
                             <button
                                 key={status}
-                                onClick={() => setStatusFilter(status)}
+                                onClick={() => setClientStatus(status)}
                                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                                    statusFilter === status 
+                                    clientStatus === status 
                                     ? 'bg-white text-slate-900 shadow-sm' 
                                     : 'text-slate-500 hover:text-slate-700'
                                 }`}
@@ -53,24 +74,30 @@ export const ClientHub: React.FC<ClientHubProps> = ({ clientGroups, clientSearch
                 </div>
             </div>
             
+            {/* Lista com Infinite Scroll/Paginação */}
             <div className="flex-1 overflow-y-auto pb-10 custom-scrollbar">
-                {filteredEntries.length === 0 ? (
+                {isLoading && clients.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64">
+                        <Loader2 size={40} className="animate-spin text-blue-500" />
+                        <p className="mt-4 text-sm font-bold text-slate-400 uppercase tracking-widest">Acessando carteira...</p>
+                    </div>
+                ) : clients.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
                         <Users size={48} className="mb-4 opacity-20" />
                         <p className="font-medium">Nenhum cliente encontrado para os filtros atuais.</p>
                     </div>
                 ) : (
-                    <div className="space-y-8">
-                        {filteredEntries.map(([key, clients]) => (
-                            <div key={key} className="space-y-4">
+                    <div className="space-y-10">
+                        {clientGroups.map(([letter, groupClients]) => (
+                            <div key={letter} className="space-y-4">
                                 <div className="flex items-center gap-3 px-2">
                                     <div className="h-px flex-1 bg-slate-200"></div>
-                                    <span className="text-xs font-black text-slate-400 uppercase tracking-[4px]">{key}</span>
+                                    <span className="text-xs font-black text-slate-400 uppercase tracking-[4px]">{letter}</span>
                                     <div className="h-px flex-1 bg-slate-200"></div>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {clients.map(c => (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {groupClients.map(c => (
                                         <div 
                                             key={c.id} 
                                             onClick={() => onSelectClient(c)} 
@@ -109,6 +136,30 @@ export const ClientHub: React.FC<ClientHubProps> = ({ clientGroups, clientSearch
                                 </div>
                             </div>
                         ))}
+
+                        {/* Botão Carregar Mais */}
+                        {hasMore && (
+                            <div className="pt-8 flex justify-center pb-4">
+                                <button 
+                                    onClick={onLoadMore}
+                                    disabled={isLoadingMore}
+                                    className="flex items-center gap-3 bg-white border border-slate-200 px-8 py-3 rounded-2xl text-slate-600 font-bold hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group active:scale-95 disabled:opacity-50"
+                                >
+                                    {isLoadingMore ? (
+                                        <Loader2 size={18} className="animate-spin" />
+                                    ) : (
+                                        <ArrowDownCircle size={18} className="group-hover:translate-y-1 transition-transform" />
+                                    )}
+                                    {isLoadingMore ? 'Carregando Chunks...' : 'Carregar mais clientes'}
+                                </button>
+                            </div>
+                        )}
+                        
+                        {!hasMore && clients.length > 0 && (
+                            <div className="pt-8 text-center pb-4">
+                                <p className="text-xs font-black text-slate-300 uppercase tracking-[4px]">Fim da Carteira • {clients.length} Empresas</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

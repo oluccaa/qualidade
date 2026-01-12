@@ -2,7 +2,7 @@
 import { SupportTicket, MaintenanceEvent, User, UserRole, ClientOrganization, SystemStatus, FirewallRule, NetworkPort } from '../types.ts';
 import { MOCK_TICKETS, MOCK_MAINTENANCE, MOCK_CLIENTS, MOCK_FIREWALL_RULES, MOCK_PORTS } from './mockData.ts';
 // Fix: Import AdminStatsData to correctly type the missing method
-import { IAdminService, AdminStatsData } from './interfaces.ts';
+import { IAdminService, AdminStatsData, PaginatedResponse } from './interfaces.ts';
 
 let tickets = [...MOCK_TICKETS];
 let clients = [...MOCK_CLIENTS];
@@ -35,7 +35,27 @@ export const MockAdminService: IAdminService = {
             dbMaxConnections: 100
         };
     },
-    getClients: async () => [...clients],
+    // Fix: MockAdminService.getClients must return PaginatedResponse to match interface
+    getClients: async (filters, page = 1, pageSize = 20): Promise<PaginatedResponse<ClientOrganization>> => {
+        let filtered = [...clients];
+        if (filters?.search) {
+            const term = filters.search.toLowerCase();
+            filtered = filtered.filter(c => c.name.toLowerCase().includes(term) || c.cnpj.includes(term));
+        }
+        if (filters?.status && filters.status !== 'ALL') {
+            filtered = filtered.filter(c => c.status === filters.status);
+        }
+        
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const items = filtered.slice(start, end);
+        
+        return {
+            items,
+            total: filtered.length,
+            hasMore: end < filtered.length
+        };
+    },
     saveClient: async (user, data) => {
         if (data.id) {
             const i = clients.findIndex(c => c.id === data.id);

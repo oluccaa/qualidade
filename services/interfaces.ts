@@ -1,4 +1,3 @@
-
 import { 
   User, UserRole, FileNode, FileType, AuditLog, LibraryFilters, 
   ClientOrganization, SupportTicket, SystemStatus, NetworkPort, 
@@ -51,7 +50,6 @@ export interface IFileService {
   updateFile: (user: User, fileId: string, updates: Partial<FileNode>) => Promise<void>;
   deleteFile: (user: User, fileId: string) => Promise<void>;
   searchFiles: (user: User, query: string, page?: number, pageSize?: number) => Promise<PaginatedResponse<FileNode>>;
-  // Updated getBreadcrumbs to return a Promise to match async implementations
   getBreadcrumbs: (folderId: string | null) => Promise<{ id: string; name: string }[]>;
   toggleFavorite: (user: User, fileId: string) => Promise<boolean>;
   getFavorites: (user: User) => Promise<FileNode[]>;
@@ -65,7 +63,7 @@ export interface IAdminService {
   updateSystemStatus: (user: User, newStatus: Partial<SystemStatus>) => Promise<SystemStatus>;
   subscribeToSystemStatus: (listener: (status: SystemStatus) => void) => () => void;
   getAdminStats: () => Promise<AdminStatsData>;
-  getClients: () => Promise<ClientOrganization[]>;
+  getClients: (filters?: { search?: string; status?: string }, page?: number, pageSize?: number) => Promise<PaginatedResponse<ClientOrganization>>;
   saveClient: (user: User, clientData: Partial<ClientOrganization>) => Promise<ClientOrganization>;
   deleteClient: (user: User, clientId: string) => Promise<void>;
   getTickets: () => Promise<SupportTicket[]>;
