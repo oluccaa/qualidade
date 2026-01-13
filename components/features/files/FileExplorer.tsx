@@ -1,4 +1,3 @@
-
 import React, { useState, forwardRef, useImperativeHandle } from 'react'; 
 import { 
   Folder, FileText, ChevronRight, Download, Star,
@@ -18,6 +17,10 @@ interface FileExplorerProps {
   onFileSelect?: (file: FileNode | null) => void; 
   currentFolderId?: string | null;
   refreshKey?: number;
+  // Propriedades adicionais adicionadas para compatibilidade com os chamadores e hooks internos
+  hideToolbar?: boolean;
+  flatMode?: boolean;
+  initialFolderId?: string | null;
 }
 
 export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>((props, ref) => {

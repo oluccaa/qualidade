@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface State {
@@ -14,12 +14,15 @@ interface State {
 /**
  * Componente de fronteira de erro para capturar exceções no ciclo de vida do React.
  */
-// Use React.Component explicitly to ensure TypeScript correctly identifies inherited members like setState and props
-export class ErrorBoundary extends React.Component<Props, State> {
-  // Fix: Explicitly initializing state to ensure instance properties are correctly recognized by the TypeScript compiler via inheritance.
-  public state: State = {
-    hasError: false
-  };
+// Use direct imports of Component and explicitly type the class to fix inherited property visibility issues.
+export class ErrorBoundary extends Component<Props, State> {
+  // Fix: Explicitly initializing state in the constructor ensures that 'this' is correctly context-bound for inherited methods like setState.
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false
+    };
+  }
 
   /**
    * Método estático para atualizar o estado quando ocorre um erro.
@@ -28,12 +31,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  public render() {
-    // Access state directly as it's now properly inherited and typed
+  public render(): ReactNode {
+    // Access state directly as it's now properly inherited and typed from React's Component base class
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -48,7 +51,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="space-y-3">
               <button
                 onClick={() => {
-                  // Standard setState call now correctly identified by the compiler
+                  // Standard setState call now correctly identified by the compiler after fixing class inheritance
                   this.setState({ hasError: false });
                   window.location.reload();
                 }}
@@ -68,7 +71,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Access props directly as it's now properly inherited and typed from React.Component
+    // Access props directly as it's now properly inherited and typed from Component base class
     return this.props.children;
   }
 }

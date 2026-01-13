@@ -1,17 +1,13 @@
+
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-// Fix: Removed unused import `useSearchParams`
-import { AuditLog } from '../../../types/index';
 import { AuditLogsTable } from '../../admin/components/AuditLogsTable.tsx';
-// Fix: Added Search and X icons from lucide-react
 import { X, Eye, Activity, Loader2, Search } from 'lucide-react';
-
-// Hooks
 import { useQualityAuditLogs } from '../hooks/useQualityAuditLogs.ts';
 
 export const QualityAuditLog: React.FC = () => {
   const { t } = useTranslation();
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger a refresh for the hook
+  const [refreshTrigger] = useState(0);
 
   const {
     qualityAuditLogs,
@@ -24,7 +20,7 @@ export const QualityAuditLog: React.FC = () => {
     setIsAuditLogInvestigationModalOpen,
     auditLogInvestigationData,
     handleOpenQualityAuditLogInvestigation,
-  } = useQualityAuditLogs(refreshTrigger); // Pass refreshTrigger to the hook
+  } = useQualityAuditLogs(refreshTrigger);
 
   return (
     <>

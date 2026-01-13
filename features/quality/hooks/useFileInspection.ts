@@ -1,9 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/authContext.tsx';
 import { useToast } from '../../../context/notificationContext.tsx';
-import { FileNode } from '../../../types/index.ts';
+// Adicionado FileMetadata ao import para tipagem correta do objeto de metadados
+import { FileNode, FileMetadata } from '../../../types/index.ts';
 import { fileService, notificationService } from '../../../lib/services/index.ts';
 
 export const useFileInspection = () => {
@@ -48,8 +48,10 @@ export const useFileInspection = () => {
     if (!inspectorFile || !user) return;
     setIsProcessing(true);
     try {
-      const status = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
-      const updatedMetadata = {
+      // Garantindo que o status seja do tipo literal correto esperado pelo FileMetadata
+      const status: 'APPROVED' | 'REJECTED' = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+      
+      const updatedMetadata: FileMetadata = {
         ...inspectorFile.metadata,
         status,
         rejectionReason: reason,
@@ -91,7 +93,7 @@ export const useFileInspection = () => {
     if (!user) return;
     setIsProcessing(true);
     try {
-      const updatedMetadata = {
+      const updatedMetadata: FileMetadata = {
         ...file.metadata,
         status: 'PENDING' as const,
         rejectionReason: undefined

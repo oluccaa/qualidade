@@ -1,11 +1,10 @@
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-// Fix: Added Search and X icons from lucide-react
-import { Search, Filter, Eye, Loader2, X } from 'lucide-react';
+import { Search, Eye, Loader2, X } from 'lucide-react';
 import { AuditLogsTable } from '../components/AuditLogsTable.tsx';
 import { useAdminAuditLogs } from '../hooks/useAdminAuditLogs.ts';
-// Fix: Corrected import path for `AuditLog`
-import { AuditLog } from '../../../types/index'; // Import AuditLog for type safety in modal data
+import { AuditLog } from '../../../types/index.ts';
 
 export const AdminLogs: React.FC = () => {
   const { t } = useTranslation();

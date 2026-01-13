@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, UserPlus, Loader2, Filter } from 'lucide-react';
-import { UserList } from '../../../components/features/admin/UserList.tsx';
-import { UserModal } from '../../../components/features/admin/modals/AdminModals.tsx';
+import { Search, UserPlus, Loader2 } from 'lucide-react';
+import { UserList } from '../components/UserList.tsx';
+import { UserModal } from '../components/AdminModals.tsx';
 import { useAdminUserManagement } from '../hooks/useAdminUserManagement.ts';
 import { UserRole } from '../../../types/index.ts';
 

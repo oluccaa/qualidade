@@ -2,17 +2,15 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
-  Server, 
-  ShieldCheck, 
-  Settings as SettingsIcon, 
-  CalendarClock, 
   AlertTriangle,
   History,
   Lock,
-  Globe
+  Globe,
+  ShieldCheck,
+  CalendarClock
 } from 'lucide-react';
-import { SystemStatus } from '../../../types/index';
-import { ScheduleMaintenanceModal } from '../modals/AdminModals.tsx';
+import { SystemStatus } from '../../../types/index.ts';
+import { ScheduleMaintenanceModal } from '../components/AdminModals.tsx';
 import { useAdminSystemManagement } from '../hooks/useAdminSystemManagement.ts';
 
 interface AdminSettingsProps {
@@ -117,7 +115,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ systemStatus, setS
           </div>
       </div>
 
-      {/* Histórico de Atividades (Placeholders para futura implementação) */}
+      {/* Histórico de Atividades */}
       <div className="space-y-4">
         <h4 className="text-xs font-black uppercase tracking-[4px] text-slate-400 flex items-center gap-2 ml-1">
           <History size={14} /> Histórico de Configurações

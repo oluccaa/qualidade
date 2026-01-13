@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -16,17 +17,15 @@ export const QualityOverview: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [stats, setStats] = useState<QualityOverviewStats>({ pendingDocs: 0, totalActiveClients: 0 });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [refreshTrigger] = useState(0);
 
   useEffect(() => {
     const loadBaseData = async () => {
       if (user) {
-        setIsLoading(true);
         try {
           const [globalStats, activeClientsRes] = await Promise.all([
             fileService.getDashboardStats(user),
-            adminService.getClients({ status: 'ACTIVE' }, 1, 1), // Only need total count
+            adminService.getClients({ status: 'ACTIVE' }, 1, 1), 
           ]);
           setStats({
             pendingDocs: globalStats.pendingValue || 0,
@@ -35,8 +34,6 @@ export const QualityOverview: React.FC = () => {
         } catch (err) {
           console.error("Erro ao carregar dados de qualidade:", err);
           showToast(t('quality.errorLoadingQualityData'), 'error');
-        } finally {
-          setIsLoading(false);
         }
       }
     };

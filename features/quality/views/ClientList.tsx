@@ -1,11 +1,10 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
 import { Search, UserPlus, Building2, LayoutGrid, List, Loader2 } from 'lucide-react';
 
 import { ClientHub } from '../components/ClientHub.tsx';
-import { UserModal, ClientModal } from '../../../components/features/admin/modals/AdminModals.tsx';
+import { UserModal, ClientModal } from '../../admin/components/AdminModals.tsx';
 import { useQualityClientManagement } from '../hooks/useQualityClientManagement.ts';
 import { ClientOrganization } from '../../../types/index.ts';
 
@@ -15,7 +14,7 @@ interface ClientListProps {
 
 export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
   const { t } = useTranslation();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [refreshTrigger] = useState(0);
 
   const {
     sortedClients,

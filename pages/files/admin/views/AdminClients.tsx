@@ -2,7 +2,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Building2, Edit2, UserCheck, Loader2 } from 'lucide-react';
-import { ClientModal } from '../../../components/features/admin/modals/AdminModals.tsx';
+import { ClientModal } from '../components/AdminModals.tsx';
 import { useAdminClientManagement } from '../hooks/useAdminClientManagement.ts';
 import { User } from '../../../types/index.ts';
 
