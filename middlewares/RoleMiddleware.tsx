@@ -1,25 +1,30 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../services/authContext.tsx';
-import { UserRole } from '../types.ts';
+import { useAuth } from '../context/authContext.tsx';
+import { UserRole, normalizeRole } from '../types/index.ts';
 
 interface RoleMiddlewareProps {
   allowedRoles: UserRole[];
 }
 
 export const RoleMiddleware: React.FC<RoleMiddlewareProps> = ({ allowedRoles }) => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  
+  // Se ainda estiver carregando o perfil, não decide nada
+  if (isLoading) return null;
 
-  if (!user || !allowedRoles.includes(user.role)) {
-    // Smart Redirect Strategy based on Role
-    if (user?.role === UserRole.CLIENT) {
-        return <Navigate to="/dashboard" replace />;
-    }
-    if (user?.role === UserRole.QUALITY) {
-        return <Navigate to="/quality" replace />;
-    }
-    // Fallback for unauthorized access attempts
-    return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const userRole = normalizeRole(user.role);
+  const isAllowed = allowedRoles.includes(userRole);
+
+  if (!isAllowed) {
+    console.warn(`[Security] Acesso negado para role: ${userRole}. Redirecionando para área segura.`);
+    
+    // Fallback inteligente baseado na role real
+    if (userRole === UserRole.ADMIN) return <Navigate to="/admin/dashboard" replace />;
+    if (userRole === UserRole.QUALITY) return <Navigate to="/quality/dashboard" replace />;
+    return <Navigate to="/client/dashboard" replace />;
   }
 
   return <Outlet />;

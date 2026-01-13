@@ -1,17 +1,16 @@
-
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import './services/i18n.ts'; // Initialize i18n
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+// Prevenção rigorosa de dupla inicialização no ambiente ESM
+const container = document.getElementById('root');
+
+if (container && !container.hasAttribute('data-react-initialized')) {
+  container.setAttribute('data-react-initialized', 'true');
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
