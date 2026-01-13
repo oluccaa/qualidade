@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, UserPlus, Loader2, Filter, ShieldCheck, Mail, Building2 } from 'lucide-react';
-import { UserList } from '../components/UserList.tsx';
-import { UserModal } from '../modals/AdminModals.tsx';
+import { Search, UserPlus, Loader2, Filter } from 'lucide-react';
+import { UserList } from '../../../components/features/admin/UserList.tsx';
+import { UserModal } from '../../../components/features/admin/modals/AdminModals.tsx';
 import { useAdminUserManagement } from '../hooks/useAdminUserManagement.ts';
-import { UserRole } from '../../../types/index';
+import { UserRole } from '../../../types/index.ts';
 
 interface AdminUsersProps {
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
@@ -45,7 +45,6 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving }) => {
         organizations={clientsList}
       />
 
-      {/* Toolbar Superior */}
       <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col xl:flex-row justify-between items-center gap-4 sticky top-0 z-20 backdrop-blur-md bg-white/90">
         <div className="relative w-full max-w-xl">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

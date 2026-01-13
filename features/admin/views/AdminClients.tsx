@@ -1,14 +1,14 @@
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Building2, Edit2, UserCheck, Loader2 } from 'lucide-react';
-import { ClientModal } from '../modals/AdminModals.tsx';
+import { ClientModal } from '../../../components/features/admin/modals/AdminModals.tsx';
 import { useAdminClientManagement } from '../hooks/useAdminClientManagement.ts';
-// Fix: Corrected import path for `User`
-import { User } from '../../../types/index'; // ClientOrganization already imported via useAdminClientManagement
+import { User } from '../../../types/index.ts';
 
 interface AdminClientsProps {
   setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
-  qualityAnalysts: User[]; // Quality analysts passed from AdminPage
+  qualityAnalysts: User[];
 }
 
 export const AdminClients: React.FC<AdminClientsProps> = ({ setIsSaving, qualityAnalysts }) => {
@@ -37,8 +37,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({ setIsSaving, quality
         editingClient={editingClient}
         clientFormData={clientFormData}
         setClientFormData={setClientFormData}
-        qualityAnalysts={qualityAnalysts} // Pass quality analysts to modal
-        onDelete={undefined} // Admin doesn't delete clients directly via modal (usually cascade operations)
+        qualityAnalysts={qualityAnalysts}
       />
 
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-xl shadow-sm">

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/authContext.tsx';
 import { useToast } from '../../../context/notificationContext.tsx';
-import { FileNode } from '../../../types/index';
+import { FileNode } from '../../../types/index.ts';
 import { fileService, notificationService } from '../../../lib/services/index.ts';
 
 export const useFileInspection = () => {
@@ -16,14 +16,12 @@ export const useFileInspection = () => {
   const [loadingFile, setLoadingFile] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
-  // Fix: Added missing state for file preview modal
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 
   const fetchFileDetails = useCallback(async () => {
     if (!user || !fileId) return;
     setLoadingFile(true);
     try {
-      // No schema real, buscamos os arquivos e filtramos o ID
       const result = await fileService.getFiles(user, null, 1, 1000); 
       const foundFile = result.items.find(f => f.id === fileId);
 
@@ -79,7 +77,6 @@ export const useFileInspection = () => {
     }
   };
 
-  // Fix: Added missing handler for file download
   const handleDownload = async (file: FileNode) => {
     if (!user) return;
     try {
@@ -90,7 +87,6 @@ export const useFileInspection = () => {
     }
   };
 
-  // Fix: Added missing handler to reset status to pending
   const handleSetStatusToPending = async (file: FileNode) => {
     if (!user) return;
     setIsProcessing(true);
@@ -116,8 +112,6 @@ export const useFileInspection = () => {
     isProcessing,
     mainPreviewUrl,
     handleInspectAction,
-    handleBack: () => navigate(-1),
-    // Fix: Exported missing state and handlers for view compatibility
     previewFile,
     setPreviewFile,
     handleDownload,

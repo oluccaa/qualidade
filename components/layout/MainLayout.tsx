@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/authContext.tsx';
 import { notificationService, adminService } from '../../lib/services/index.ts';
-import { AppNotification, UserRole, SystemStatus, normalizeRole } from '../../types/index';
+import { AppNotification, UserRole, SystemStatus, normalizeRole } from '../../types/index.ts';
 import { CookieBanner } from '../common/CookieBanner.tsx';
 import { PrivacyModal } from '../common/PrivacyModal.tsx';
 import { ChangePasswordModal } from '../features/auth/ChangePasswordModal.tsx';
@@ -11,11 +12,6 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
-  Check,
-  Info,
   User as UserIcon,
   LogOut,
   ChevronDown
@@ -33,7 +29,6 @@ const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/pub
 export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -46,7 +41,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
       if (user) {
@@ -67,8 +61,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   };
 
   const toggleSidebar = () => {
-      setIsCollapsed(!isCollapsed);
-      localStorage.setItem('sidebar_collapsed', String(!isCollapsed));
+      const newState = !isCollapsed;
+      setIsCollapsed(newState);
+      localStorage.setItem('sidebar_collapsed', String(newState));
   };
 
   const role = normalizeRole(user?.role);
@@ -85,13 +80,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const isActive = (path: string, exact = false) => {
       const current = location.pathname + location.search;
       if (exact) return current === path;
-      
-      // Para rotas com query params (ex: /admin?tab=users)
-      if (path.includes('?')) {
-          return current === path;
-      }
-
-      // Para rotas base sem query (ex: /admin/dashboard)
+      if (path.includes('?')) return current === path;
       return location.pathname === path.split('?')[0];
   };
 
@@ -136,15 +125,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               </div>
             )}
           </div>
-          {!isCollapsed && (
-            <div className="mt-4 grid grid-cols-1 gap-1">
-               {userMenuItems.map((item, idx) => (
-                  <button key={idx} onClick={item.onClick} className="flex items-center gap-3 px-3 py-2 text-[11px] text-slate-400 hover:text-white transition-colors">
-                     <item.icon size={14} /> {item.label}
-                  </button>
-               ))}
-            </div>
-          )}
         </div>
       </aside>
 
@@ -166,25 +146,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                         <Bell size={20} />
                         {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
                     </button>
-                    {isNotifOpen && (
-                        <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2">
-                             <div className="p-4 border-b border-slate-100 font-bold text-slate-800">Notificações</div>
-                             <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                                {notifications.length === 0 ? (
-                                    <div className="p-8 text-center text-slate-400 text-sm">{t('notifications.empty')}</div>
-                                ) : (
-                                    notifications.map(n => (
-                                        <div key={n.id} className="p-4 border-b border-slate-50 flex gap-3 hover:bg-slate-50 transition-colors">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold text-slate-900 leading-tight truncate">{n.title}</p>
-                                                <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{n.message}</p>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                             </div>
-                        </div>
-                    )}
                 </div>
                 <div className="h-8 w-px bg-slate-100"></div>
                 <button onClick={logout} className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-red-500 transition-colors">

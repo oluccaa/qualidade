@@ -1,9 +1,9 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React from 'react';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 interface State {
@@ -14,7 +14,8 @@ interface State {
 /**
  * Componente de fronteira de erro para capturar exceções no ciclo de vida do React.
  */
-export class ErrorBoundary extends Component<Props, State> {
+// Use React.Component explicitly to ensure TypeScript correctly identifies inherited members like setState and props
+export class ErrorBoundary extends React.Component<Props, State> {
   // Fix: Explicitly initializing state to ensure instance properties are correctly recognized by the TypeScript compiler via inheritance.
   public state: State = {
     hasError: false
@@ -27,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
@@ -47,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-3">
               <button
                 onClick={() => {
-                  // Standard setState call now recognized by the compiler
+                  // Standard setState call now correctly identified by the compiler
                   this.setState({ hasError: false });
                   window.location.reload();
                 }}
@@ -67,7 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Access props directly as it's now properly inherited and typed
+    // Access props directly as it's now properly inherited and typed from React.Component
     return this.props.children;
   }
 }
