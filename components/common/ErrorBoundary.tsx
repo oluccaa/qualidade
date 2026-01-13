@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface State {
@@ -14,8 +14,8 @@ interface State {
 /**
  * Componente de fronteira de erro para capturar exceções no ciclo de vida do React.
  */
-export class ErrorBoundary extends React.Component<Props, State> {
-  // Fix: Explicitly declaring and initializing state property to ensure instance properties are recognized by TypeScript.
+export class ErrorBoundary extends Component<Props, State> {
+  // Fix: Explicitly initializing state to ensure instance properties are correctly recognized by the TypeScript compiler via inheritance.
   public state: State = {
     hasError: false
   };
@@ -27,12 +27,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }
 
   public render() {
-    // Correctly accessing 'state' property which is explicitly declared above.
+    // Access state directly as it's now properly inherited and typed
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -47,7 +47,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="space-y-3">
               <button
                 onClick={() => {
-                  // Fix: Explicitly calling 'setState' inherited from React.Component to ensure it is recognized by the compiler.
+                  // Standard setState call now recognized by the compiler
                   this.setState({ hasError: false });
                   window.location.reload();
                 }}
@@ -67,7 +67,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Fix: Explicitly accessing 'props' inherited from React.Component to ensure it is recognized by the compiler.
+    // Access props directly as it's now properly inherited and typed
     return this.props.children;
   }
 }

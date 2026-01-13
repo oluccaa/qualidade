@@ -1,11 +1,11 @@
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Layout } from '../../../components/layout/MainLayout.tsx'; // Import Layout
+import { Layout } from '../../../components/layout/MainLayout.tsx';
 import { FilePreviewModal } from '../../../components/features/files/FilePreviewModal.tsx';
 import { InspectionSidebar } from '../components/InspectionSidebar.tsx';
 import { useFileInspection } from '../hooks/useFileInspection.ts';
 import { useTranslation } from 'react-i18next';
-// Fix: Added Loader2 import from lucide-react
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 export const FileInspection: React.FC = () => {
@@ -18,23 +18,23 @@ export const FileInspection: React.FC = () => {
     isProcessing,
     previewFile,
     setPreviewFile,
-    mainPreviewUrl, // Fix: Destructure mainPreviewUrl from hook
+    mainPreviewUrl,
     handleInspectAction,
     handleDownload,
     handleSetStatusToPending,
     handleBackToClientFiles,
   } = useFileInspection();
 
-  const [rejectionReason, setRejectionReason] = useState(''); // Local state for rejection reason
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const onInspectActionWithReason = async (action: 'APPROVE' | 'REJECT') => {
     await handleInspectAction(action, rejectionReason);
-    setRejectionReason(''); // Clear reason after action
+    setRejectionReason(''); 
   };
 
   if (loadingFile) {
     return (
-      <Layout title={t('quality.overview')}> {/* Generic title while loading */}
+      <Layout title={t('quality.overview')}>
         <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4 h-full" role="status">
           <Loader2 size={40} className="animate-spin text-blue-500" aria-hidden="true" />
           <p className="font-bold text-xs uppercase tracking-widest">{t('common.loading')}</p>
@@ -72,7 +72,6 @@ export const FileInspection: React.FC = () => {
         <div className="flex-1 flex gap-4 overflow-hidden">
           <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div className="flex-1 bg-slate-900 overflow-hidden relative">
-              {/* Fix: Use mainPreviewUrl from hook for iframe src, conditionally render */}
               {mainPreviewUrl ? (
                 <iframe
                   src={`${mainPreviewUrl}#toolbar=0&navpanes=0`}
@@ -96,7 +95,7 @@ export const FileInspection: React.FC = () => {
             onInspectAction={onInspectActionWithReason}
             onDownload={handleDownload}
             onSetPreviewFile={setPreviewFile}
-            onSetInspectorFile={() => handleBackToClientFiles()} // Closing sidebar means going back from inspection
+            onSetInspectorFile={() => handleBackToClientFiles()}
             onSetStatusToPending={handleSetStatusToPending}
             isProcessing={isProcessing}
             rejectionReason={rejectionReason}
