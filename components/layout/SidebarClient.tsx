@@ -54,7 +54,7 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
         {menuSections.map((section, idx) => (
           <div key={idx} className="mb-6">
             {!isCollapsed && (
-              <div className="mb-2 px-3 text-[9px] font-black uppercase tracking-widest text-slate-500 opacity-60">
+              <div className="mb-2 px-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 opacity-60">
                 {section.title}
               </div>
             )}
@@ -130,7 +130,6 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
         ))}
       </nav>
 
-      {/* Footer Area */}
       <div className="p-4 border-t border-slate-800/60 bg-[#0f172a]/30 space-y-3">
         {!isCollapsed && (
           <button
@@ -167,13 +166,13 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
 
 const SidebarUserProfile = ({ user, role, isCollapsed }: any) => (
   <div className={`flex items-center p-2.5 bg-slate-800/40 border border-slate-700/50 rounded-xl gap-3 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
-    <div className="w-9 h-9 rounded-lg bg-[#b23c0e] flex items-center justify-center text-white font-black shrink-0 shadow-inner">
+    <div className="w-9 h-9 rounded-lg bg-[#b23c0e] flex items-center justify-center text-white font-bold shrink-0 shadow-inner">
       {user?.name?.charAt(0) || 'U'}
     </div>
     {!isCollapsed && (
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-white truncate">{user?.name || 'Usuário'}</p>
-        <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">{user?.email || 'N/A'}</p>
+        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">{user?.email || 'N/A'}</p>
       </div>
     )}
   </div>

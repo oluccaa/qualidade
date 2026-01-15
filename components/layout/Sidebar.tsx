@@ -75,7 +75,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, role, isCollapsed, onTog
         ))}
       </nav>
 
-      {/* Footer Area with Logout above Profile Card */}
       <div className="p-4 border-t border-slate-800/60 bg-[#0f172a]/30 space-y-3">
         <button
           onClick={() => setShowLogoutConfirm(true)}
@@ -90,7 +89,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, role, isCollapsed, onTog
         <SidebarUserProfile user={user} role={role} isCollapsed={isCollapsed} />
       </div>
 
-      {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <LogoutConfirmation 
           onConfirm={logout} 
@@ -115,27 +113,36 @@ const SidebarUserProfile = ({ user, role, isCollapsed }: any) => (
   </div>
 );
 
-/* --- Reusable Logout Confirm Component --- */
 export const LogoutConfirmation = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
-  <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+  <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
     <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-300">
       <div className="p-8 text-center space-y-6">
         <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
           <AlertTriangle size={40} />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-bold text-slate-800 tracking-tight">Encerrar Sessão?</h3>
+          <h3 className="text-xl font-bold text-slate-900 tracking-tight">Encerrar Sessão?</h3>
           <p className="text-sm text-slate-500 font-medium leading-relaxed">Você precisará de suas credenciais para acessar o portal novamente.</p>
         </div>
         <div className="flex flex-col gap-3">
           <button 
-            onClick={onConfirm}
+            type="button"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onConfirm();
+            }}
             className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-600/20"
           >
             Confirmar e Sair
           </button>
           <button 
-            onClick={onCancel}
+            type="button"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancel();
+            }}
             className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
           >
             Continuar Logado

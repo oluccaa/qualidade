@@ -63,7 +63,7 @@ export const MobileNavigation: React.FC<MobileNavProps> = ({
           <div className="bg-white rounded-3xl w-full max-h-[80vh] flex flex-col p-8 shadow-2xl animate-in slide-in-from-bottom-20 duration-500">
             <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-xl font-black text-slate-800">Menu de Perfil</h3>
+                <h3 className="text-xl font-bold text-slate-800">Menu de Perfil</h3>
                 <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">{user?.email}</p>
               </div>
               <button onClick={onCloseMenu} className="p-3 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200 transition-colors">
@@ -93,7 +93,7 @@ export const MobileNavigation: React.FC<MobileNavProps> = ({
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-                <p className="text-[9px] font-black text-slate-300 uppercase tracking-[4px]">Aços Vital • Portal V1.0</p>
+                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[4px]">Aços Vital • Portal V1.0</p>
             </div>
           </div>
         </div>

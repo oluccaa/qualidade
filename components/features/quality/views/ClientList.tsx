@@ -12,10 +12,6 @@ interface ClientListProps {
   onSelectClient: (client: ClientOrganization) => void;
 }
 
-/**
- * ClientList (Orchestrator View)
- * Atua exclusivamente na coordenação visual do portfólio B2B.
- */
 export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -28,8 +24,7 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
   } = useQualityClientManagement(0);
 
   return (
-    <div className="space-y-6">
-      {/* Modais de Gestão (Contextos Isolados) */}
+    <div className="space-y-6 animate-in fade-in duration-500">
       <UserModal
         isOpen={userModal.isOpen}
         onClose={() => userModal.setOpen(false)}
@@ -53,7 +48,6 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
 
       {isProcessing && <ProcessingOverlay message={t('common.updatingDatabase')} />}
 
-      {/* Controles e Filtros de UI (Pure Components) */}
       <ClientListToolbar 
         search={clientSearch}
         onSearchChange={setClientSearch}
@@ -72,7 +66,6 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
         t={t}
       />
 
-      {/* Hub de Exibição de Dados (Multi-View) */}
       <ClientHub
         clients={sortedClients}
         onSelectClient={onSelectClient}
