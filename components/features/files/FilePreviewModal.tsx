@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   X, Download, Loader2, FileText, AlertCircle, 
   ChevronLeft, ChevronRight, Calendar, User, 
   HardDrive, Maximize2, Minimize2, ZoomIn, ZoomOut, 
-  RotateCcw, ShieldCheck, Tag, Info
+  RotateCcw, ShieldCheck, Tag, Info, ExternalLink
 } from 'lucide-react';
 import { FileNode, FileType } from '../../../types/index.ts';
 import { fileService } from '../../../lib/services/index.ts';
@@ -22,7 +23,7 @@ interface FilePreviewModalProps {
 
 /**
  * FilePreviewModal (Professional Grade Viewer)
- * Um visualizador imersivo que suporta PDFs e imagens com controles avançados de zoom e metadados técnicos.
+ * Refatorado para evitar bloqueios do Chrome em visualização de PDF.
  */
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ 
   initialFile, 
@@ -122,7 +123,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       role="dialog"
       aria-modal="true"
     >
-      {/* Top Header - Glassmorphism */}
+      {/* Top Header */}
       <header className="h-16 shrink-0 bg-slate-900/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 z-30">
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-blue-500/10 rounded-xl">
@@ -154,7 +155,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         {/* Main Viewer Area */}
         <main className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
           
-          {/* Navegação Lateral */}
           {allFiles.length > 1 && (
             <>
               <NavArrow direction="left" onClick={() => navigateFile('prev')} />
@@ -173,7 +173,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             <ViewerButton onClick={() => handleZoom('reset')} icon={RotateCcw} title="Resetar" />
           </div>
 
-          {/* Content Rendering */}
           <div 
             className="w-full h-full flex items-center justify-center transition-transform duration-200 ease-out"
             style={{ transform: `scale(${zoom})` }}
@@ -189,7 +188,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   <AlertCircle size={40} />
                 </div>
                 <h3 className="text-white font-bold text-lg mb-2">{error}</h3>
-                <p className="text-slate-400 text-sm">{t('files.permissionOrExpiredLink')}</p>
+                <p className="text-slate-400 text-sm mb-6">Ocorreu um erro ao carregar o documento.</p>
+                <button 
+                  onClick={() => url && window.open(url, '_blank')}
+                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
+                >
+                  <ExternalLink size={18} /> Abrir em Nova Aba
+                </button>
               </div>
             ) : url && (
               isImage ? (
@@ -199,11 +204,28 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   className="max-w-[90%] max-h-[90%] object-contain shadow-[0_0_80px_rgba(0,0,0,0.5)] rounded-lg"
                 />
               ) : (
-                <iframe 
-                  src={`${url}#toolbar=0&navpanes=0&scrollbar=0`}
-                  className="w-full h-full border-none bg-slate-900"
-                  title={currentFile.name}
-                />
+                <div className="w-full h-full flex flex-col bg-slate-900">
+                  <object 
+                    data={url} 
+                    type="application/pdf" 
+                    className="w-full h-full"
+                    title={currentFile.name}
+                  >
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 p-10 text-center gap-6">
+                      <AlertCircle size={48} className="text-orange-500" />
+                      <div className="space-y-2">
+                        <p className="text-lg font-bold text-white">Visualização Bloqueada pelo Chrome</p>
+                        <p className="text-sm">Seu navegador impediu a exibição interna do PDF. Você pode visualizá-lo em uma nova aba com segurança.</p>
+                      </div>
+                      <button 
+                        onClick={() => window.open(url, '_blank')}
+                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl font-bold transition-all border border-white/10"
+                      >
+                        <ExternalLink size={18} /> Abrir Documento em Nova Aba
+                      </button>
+                    </div>
+                  </object>
+                </div>
               )
             )}
           </div>
@@ -268,8 +290,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     </div>
   );
 };
-
-/* --- Componentes Internos de UI --- */
 
 const ViewerButton = ({ onClick, icon: Icon, title, active = false }: any) => (
   <button 
