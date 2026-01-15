@@ -44,7 +44,8 @@ const ClientLoginPage: React.FC = () => {
     setError('');
     const result = await login(email, pass);
     if (!result.success) {
-      setError(result.error || t('login.error'));
+      // Resolve a chave de tradução retornada pelo serviço ou usa o fallback padrão
+      setError(result.error ? t(result.error) : t('login.error'));
     }
   };
 
