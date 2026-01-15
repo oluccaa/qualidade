@@ -102,8 +102,8 @@ const ClientDashboard: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             <div className="xl:col-span-2 space-y-6">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-[3px] text-slate-400">Certificados Recentes</h3>
-                    <button onClick={() => navigate('/client/dashboard?view=files')} className="text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest">{t('dashboard.exploreAll')}</button>
+                    <h3 className="text-xs font-bold uppercase tracking-[3px] text-slate-400">Certificados Recentes</h3>
+                    <button onClick={() => navigate('/client/dashboard?view=files')} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest">{t('dashboard.exploreAll')}</button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -122,7 +122,7 @@ const ClientDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-                <h3 className="text-xs font-black uppercase tracking-[3px] text-slate-400">Status de Conformidade</h3>
+                <h3 className="text-xs font-bold uppercase tracking-[3px] text-slate-400">Status de Conformidade</h3>
                 <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
@@ -134,7 +134,7 @@ const ClientDashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
                             <span>Rastreabilidade</span>
                             <span className="text-emerald-500">100% OK</span>
                         </div>
@@ -164,9 +164,9 @@ const DashboardHero = ({ name, t }: { name: string, t: any }) => (
             <ShieldCheck size={12} className="text-emerald-500" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Acesso Seguro</span>
           </span>
-          <span className="px-3 py-1 bg-[#b23c0e] rounded-full text-[9px] font-black uppercase tracking-[3px] shadow-lg shadow-[#b23c0e]/20 whitespace-nowrap">Portal do Cliente</span>
+          <span className="px-3 py-1 bg-[#b23c0e] rounded-full text-[9px] font-bold uppercase tracking-[3px] shadow-lg shadow-[#b23c0e]/20 whitespace-nowrap">Portal do Cliente</span>
       </div>
-      <h1 className="text-4xl md:text-5xl font-black tracking-tighter leading-tight max-w-xl">
+      <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight max-w-xl">
         Bem-vindo, <span className="text-[#4c81c6]">{name}.</span>
       </h1>
       <p className="text-slate-400 max-w-md text-sm font-medium leading-relaxed">
@@ -195,11 +195,11 @@ const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick, loading }:
       <ArrowUpRight size={20} className="text-slate-200 group-hover:text-blue-500 transition-colors" />
     </div>
     <div className="space-y-1">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
       {loading ? (
         <div className="h-10 w-24 bg-slate-100 animate-pulse rounded-lg my-1" />
       ) : (
-        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{value}</h3>
+        <h3 className="text-4xl font-bold text-slate-800 tracking-tight">{value}</h3>
       )}
       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{subtext}</p>
     </div>
@@ -223,7 +223,7 @@ const RecentFileCard: React.FC<{ file: FileNode; onClick: () => void }> = ({ fil
             <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">{file.name}</p>
             <div className="flex items-center justify-between mt-1">
                 <p className="text-[10px] text-slate-400 font-mono">{file.size}</p>
-                <div className="flex items-center gap-1 text-[9px] font-black text-emerald-500 uppercase">
+                <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 uppercase">
                     <ShieldCheck size={10} /> Disponível
                 </div>
             </div>

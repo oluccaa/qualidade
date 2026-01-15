@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <h2 className={`text-xl font-bold ${desktopTitleClass} tracking-tight`}>{title}</h2>
             <div className={`flex items-center gap-2 text-[10px] ${desktopSubtitleClass} font-medium uppercase tracking-widest mt-0.5`}>
-              <span className={`${desktopRoleClass} font-black`}>{t(`roles.${role}`)}</span>
+              <span className={`${desktopRoleClass} font-bold`}>{t(`roles.${role}`)}</span>
               <span className={desktopPipeClass}>|</span>
               <span className={`truncate max-w-[200px] ${desktopOrgClass}`}>{user?.organizationName}</span>
             </div>
@@ -124,7 +124,7 @@ const NotificationTrigger = ({ count, className, onClick, "aria-expanded": ariaE
   >
     <Bell size={20} />
     {count > 0 && (
-      <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center animate-in zoom-in">
+      <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full border-2 border-white flex items-center justify-center animate-in zoom-in">
         {count > 9 ? '9+' : count}
       </span>
     )}
