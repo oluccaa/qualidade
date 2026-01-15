@@ -5,6 +5,7 @@ import { useAuth } from '../../context/authContext.tsx';
 import { fileService } from '../../lib/services/index.ts';
 import { DashboardStatsData } from '../../lib/services/interfaces.ts';
 import { useTranslation } from 'react-i18next';
+// Fixed: Lucide icons must be imported from 'lucide-react', not from types
 import { 
   Clock, 
   FileText, 
@@ -16,8 +17,8 @@ import {
   History,
   MoreVertical
 } from 'lucide-react';
-import { normalizeRole, UserRole, FileNode, FileType } from '../../types/index.ts';
 import { FilePreviewModal } from '../../components/features/files/FilePreviewModal.tsx';
+import { FileNode, FileType } from '../../types/index.ts';
 
 // ClientDashboard (para a view 'home')
 const ClientDashboard: React.FC = () => {
@@ -69,7 +70,7 @@ const ClientDashboard: React.FC = () => {
       <div className="space-y-8 pb-12 animate-in fade-in duration-700">
         <DashboardHero name={user?.name.split(' ')[0] || ''} t={t} />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <KpiCard 
             icon={Library} 
             label={t('dashboard.kpi.libraryLabel')} 
@@ -77,15 +78,6 @@ const ClientDashboard: React.FC = () => {
             subtext={t('dashboard.kpi.activeDocsSubtext')} 
             color="orange-accent"
             onClick={() => navigate('/client/dashboard?view=files')} 
-            loading={!stats}
-          />
-          <KpiCard 
-            icon={History} 
-            label={t('dashboard.kpi.recent')} 
-            value={recentFiles.length} 
-            subtext={t('dashboard.kpi.viewedToday')} 
-            color="slate" 
-            onClick={() => navigate('/client/dashboard?view=files')}
             loading={!stats}
           />
            <KpiCard 

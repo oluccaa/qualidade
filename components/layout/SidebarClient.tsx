@@ -8,6 +8,7 @@ import { User, UserRole } from '../../types/index.ts';
 import { LogoutConfirmation } from './Sidebar.tsx';
 
 const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
+const ISOTIPO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/isotipo.png";
 
 interface SidebarClientProps {
   user: User | null;
@@ -43,9 +44,9 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
 
       <div className={`h-24 flex items-center shrink-0 border-b border-slate-800/60 transition-all ${isCollapsed ? 'justify-center' : 'px-6'}`}>
         <img 
-          src={LOGO_URL} 
+          src={isCollapsed ? ISOTIPO_URL : LOGO_URL} 
           alt="Aços Vital" 
-          className={isCollapsed ? 'h-8 filter brightness-0 invert' : 'h-12 filter brightness-0 invert'} 
+          className={isCollapsed ? 'h-10' : 'h-12 filter brightness-0 invert'} 
         />
       </div>
 
