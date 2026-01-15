@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, LayoutDashboard, Library, Clock, BarChart3, Bell, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { getClientSidebarMenuConfig } from '../../config/navigation.ts';
 import { User, UserRole } from '../../types/index.ts';
+import { LogoutConfirmation } from './Sidebar.tsx';
 
 const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
 
@@ -20,16 +21,15 @@ interface SidebarClientProps {
 export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isCollapsed, onToggle, onLogout, onNavigateToSettings }) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const menuSections = getClientSidebarMenuConfig(t);
 
   const isActive = (path: string, exact = false) => {
     const current = location.pathname + location.search;
     if (exact) return current === path;
-    if (path.includes('?')) return current === path; // Check if the path itself contains query params
-    return location.pathname === path.split('?')[0] && current.startsWith(path); // Match base path and ensure it's a sub-route or exact match for queries
+    if (path.includes('?')) return current === path; 
+    return location.pathname === path.split('?')[0] && current.startsWith(path);
   };
-
-  const isClient = role === UserRole.CLIENT; // Assumindo que esta sidebar é exclusiva para CLIENT
 
   return (
     <aside className={`hidden md:flex flex-col bg-[#0f172a] text-slate-300 shadow-2xl z-[60] relative transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'}`}>
@@ -60,9 +60,8 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
             <div className="space-y-1">
               {section.items.map((item) => {
                 const active = isActive(item.path, item.exact);
-                const Icon = item.icon; // Certifique-se de que Icon está sendo usado
+                const Icon = item.icon;
                 
-                // Renderizar item de menu principal
                 if (!item.subItems) {
                   return (
                     <Link 
@@ -79,7 +78,6 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
                     </Link>
                   );
                 } else {
-                  // Renderizar item de menu com sub-itens (expansível)
                   const isSectionActive = item.subItems.some(subItem => isActive(subItem.path, subItem.exact));
                   const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(isSectionActive);
 
@@ -129,34 +127,39 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
             </div>
           </div>
         ))}
-
-        {/* Separator Line */}
-        {!isCollapsed && <div className="h-px w-full bg-slate-800/60 my-6" />}
-        
-        {/* Settings and Logout for Client */}
-        {!isCollapsed && (
-          <div className="space-y-1">
-            <button
-              onClick={onNavigateToSettings}
-              className="flex items-center w-full px-4 py-2.5 gap-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              <Settings size={20} className="text-blue-400" />
-              <span className="text-sm font-semibold truncate">{t('menu.settings')}</span>
-            </button>
-            <button
-              onClick={onLogout}
-              className="flex items-center w-full px-4 py-2.5 gap-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              <LogOut size={20} className="text-blue-400" />
-              <span className="text-sm font-semibold truncate">{t('common.logout')}</span>
-            </button>
-          </div>
-        )}
       </nav>
 
-      <div className="p-4 border-t border-slate-800/60 bg-[#0f172a]/30">
+      {/* Footer Area - Reordered Logout ABOVE Profile */}
+      <div className="p-4 border-t border-slate-800/60 bg-[#0f172a]/30 space-y-3">
+        {!isCollapsed && (
+          <button
+            onClick={onNavigateToSettings}
+            className="flex items-center w-full px-4 py-2.5 gap-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            <Settings size={20} className="text-blue-400" />
+            <span className="text-sm font-semibold truncate">{t('menu.settings')}</span>
+          </button>
+        )}
+        
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          className={`flex items-center w-full transition-all duration-200 rounded-xl group ${
+            isCollapsed ? 'justify-center py-3' : 'px-4 py-2.5 gap-3 hover:bg-red-500/10 text-slate-400 hover:text-red-400'
+          }`}
+        >
+          <LogOut size={20} className="group-hover:scale-110 transition-transform" />
+          {!isCollapsed && <span className="text-sm font-semibold">{t('common.logout')}</span>}
+        </button>
+
         <SidebarUserProfile user={user} role={role} isCollapsed={isCollapsed} />
       </div>
+
+      {showLogoutConfirm && (
+        <LogoutConfirmation 
+          onConfirm={onLogout} 
+          onCancel={() => setShowLogoutConfirm(false)} 
+        />
+      )}
     </aside>
   );
 };

@@ -1,10 +1,11 @@
 
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { getBottomNavItems, getUserMenuItems } from '../../config/navigation.ts';
 import { User, UserRole, normalizeRole } from '../../types/index.ts';
+import { LogoutConfirmation } from './Sidebar.tsx';
 
 interface MobileNavProps {
   user: User | null;
@@ -12,7 +13,6 @@ interface MobileNavProps {
   isMenuOpen: boolean;
   onCloseMenu: () => void;
   onLogout: () => void;
-  // onOpenPassword e onOpenPrivacy removidos, substituídos por onNavigateToSettings
   onNavigateToSettings: () => void; 
 }
 
@@ -21,6 +21,7 @@ export const MobileNavigation: React.FC<MobileNavProps> = ({
 }) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const bottomNavItems = getBottomNavItems(user, t);
 
   const isActive = (path: string, exact = false) => {
@@ -31,10 +32,14 @@ export const MobileNavigation: React.FC<MobileNavProps> = ({
 
   const isClient = userRole === UserRole.CLIENT;
 
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
   return (
     <>
-      {/* Bottom Action Bar (Apenas visível se NÃO for CLIENTE, pois ClientDock agora é universal) */}
-      {!isClient && bottomNavItems.length > 0 && ( // Adiciona verificação bottomNavItems.length
+      {/* Bottom Action Bar */}
+      {!isClient && bottomNavItems.length > 0 && (
         <nav className="md:hidden h-16 bg-white border-t border-slate-200 flex items-center justify-around shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-[45]">
           {bottomNavItems.map((item, idx) => {
             const active = isActive(item.path, item.exact);
@@ -68,10 +73,7 @@ export const MobileNavigation: React.FC<MobileNavProps> = ({
             
             <div className="space-y-4 overflow-y-auto">
               {getUserMenuItems(t, { 
-                onLogout: () => {
-                  onLogout();
-                  onCloseMenu();
-                }, 
+                onLogout: handleLogoutClick, 
                 onNavigateToSettings: () => { 
                   onNavigateToSettings();
                   onCloseMenu();
@@ -95,6 +97,17 @@ export const MobileNavigation: React.FC<MobileNavProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {showLogoutConfirm && (
+        <LogoutConfirmation 
+          onConfirm={() => {
+            onLogout();
+            setShowLogoutConfirm(false);
+            onCloseMenu();
+          }} 
+          onCancel={() => setShowLogoutConfirm(false)} 
+        />
       )}
     </>
   );
