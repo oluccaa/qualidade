@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, role, isCollapsed, onTog
         {menuSections.map((section, idx) => (
           <div key={idx} className="mb-6">
             {!isCollapsed && (
-              <div className="mb-2 px-3 text-[9px] font-black uppercase tracking-widest text-slate-500 opacity-60">
+              <div className="mb-2 px-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 opacity-60">
                 {section.title}
               </div>
             )}
@@ -109,7 +109,7 @@ const SidebarUserProfile = ({ user, role, isCollapsed }: any) => (
     {!isCollapsed && (
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-white truncate">{user?.name || 'Usuário'}</p>
-        <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">{user?.email || 'N/A'}</p>
+        <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">{user?.email || 'N/A'}</p>
       </div>
     )}
   </div>
@@ -124,19 +124,19 @@ export const LogoutConfirmation = ({ onConfirm, onCancel }: { onConfirm: () => v
           <AlertTriangle size={40} />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-black text-slate-800 tracking-tight">Encerrar Sessão?</h3>
-          <p className="text-sm text-slate-500 font-medium">Você precisará de suas credenciais para acessar o portal novamente.</p>
+          <h3 className="text-xl font-bold text-slate-800 tracking-tight">Encerrar Sessão?</h3>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">Você precisará de suas credenciais para acessar o portal novamente.</p>
         </div>
         <div className="flex flex-col gap-3">
           <button 
             onClick={onConfirm}
-            className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-600/20"
+            className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-600/20"
           >
             Confirmar e Sair
           </button>
           <button 
             onClick={onCancel}
-            className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+            className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
           >
             Continuar Logado
           </button>

@@ -46,7 +46,9 @@ export const pt = {
     error: "Falha na autenticação do portal.",
     restrictedAccess: "Acesso Restrito",
     identifyToAccess: "Identifique-se para acessar o painel de certificados.",
-    accessManagedByVital: "A Aços Vital gerencia seu acesso internamente."
+    accessManagedByVital: "A Aços Vital gerencia seu acesso internamente.",
+    successTitle: "Acesso Concedido!",
+    successSubtitle: "Redirecionando ao Gateway de Segurança..."
   },
   admin: {
     tabs: {

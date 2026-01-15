@@ -136,7 +136,7 @@ const ClientDashboard: React.FC = () => {
                     <div className="space-y-2">
                         <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
                             <span>Rastreabilidade</span>
-                            <span className="text-emerald-500">100% OK</span>
+                            <span className="text-emerald-500 font-bold">100% OK</span>
                         </div>
                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                             <div className="h-full bg-emerald-500 w-full" />
