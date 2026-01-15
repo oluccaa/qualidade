@@ -1,22 +1,22 @@
 
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { userService } from '../lib/services';
-import { appService } from '../lib/services/appService.tsx';
-import { logAction } from '../lib/services/loggingService.ts';
-import { User, SystemStatus } from '../types';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
+import { supabase } from '../lib/supabaseClient.ts';
+import { userService, appService } from '../lib/services/index.ts'; 
+import { User, SystemStatus } from '../types/index.ts';
 
 interface AuthState {
   user: User | null;
   isLoading: boolean;
-  systemStatus: SystemStatus | null;
   error: string | null;
-  isInitialSyncComplete: boolean;
+  systemStatus: SystemStatus | null;
 }
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  // Fix: Added missing properties required by routes.tsx
+  isInitialSyncComplete: boolean;
   retryInitialSync: () => Promise<void>;
 }
 
@@ -26,55 +26,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
-    systemStatus: null,
     error: null,
-    isInitialSyncComplete: false,
+    systemStatus: null,
   });
 
+  // Fix: Added tracking for initial sync completion
+  const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
   const mounted = useRef(true);
 
-  const refreshAuth = async () => {
+  // Função de Emergência para limpar tudo
+  const forceLogout = async () => {
+    console.warn("[Auth] Sessão inválida detectada. Realizando limpeza automática.");
     try {
-      const { user, systemStatus } = await appService.getInitialData();
-      
-      if (mounted.current) {
-        setState({
-          user,
-          systemStatus,
-          isLoading: false,
-          error: null,
-          isInitialSyncComplete: true,
-        });
-      }
-    } catch (error) {
-      if (mounted.current) setState(s => ({ ...s, isLoading: false, error: "Erro de conexão", isInitialSyncComplete: true }));
+      await supabase.auth.signOut();
+      localStorage.clear();
+    } catch (e) {
+      console.error("Erro ao limpar sessão:", e);
     }
   };
 
-  const retryInitialSync = useCallback(async () => {
-    setState(s => ({ ...s, isLoading: true, error: null, isInitialSyncComplete: false }));
-    await refreshAuth();
-  }, []);
+  const initializeApp = async () => {
+    // Fix: Ensure we reset the error state when retrying
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Busca dados via RPC utilizando o serviço injetado do barrel
+      const { user, systemStatus } = await appService.getInitialData();
+
+      if (session && !user) {
+        throw new Error("Sessão corrompida: Token existe mas usuário não encontrado.");
+      }
+
+      if (mounted.current) {
+        const safeSystemStatus: SystemStatus = systemStatus || { mode: 'ONLINE' };
+
+        setState({
+          user,
+          systemStatus: safeSystemStatus,
+          isLoading: false,
+          error: null,
+        });
+      }
+    } catch (error: any) {
+      console.error("[Auth] Erro na inicialização:", error);
+      
+      if (mounted.current) {
+        await forceLogout();
+
+        setState({ 
+          user: null,
+          isLoading: false, 
+          error: "Sessão expirada. Faça login novamente.",
+          systemStatus: { mode: 'ONLINE' }
+        });
+      }
+    } finally {
+      // Fix: Mark sync as complete even on failure
+      if (mounted.current) {
+        setIsInitialSyncComplete(true);
+      }
+    }
+  };
 
   useEffect(() => {
     mounted.current = true;
-    refreshAuth();
+    initializeApp();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-          // Log de login bem-sucedido
-          // Nota: Como o refreshAuth é assíncrono, pegamos dados básicos da sessão
-          await logAction(null, 'USER_LOGIN', session.user.email || 'unknown', 'AUTH', 'INFO', 'SUCCESS', {
-              userId: session.user.id,
-              authEvent: event
-          });
-          setState(s => ({ ...s, isLoading: true, isInitialSyncComplete: false }));
-          refreshAuth();
-      }
-      
-      if (event === 'SIGNED_OUT') {
-          setState(s => ({ ...s, user: null, isLoading: true, isInitialSyncComplete: false }));
-          refreshAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        await initializeApp();
       }
     });
 
@@ -85,32 +106,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    setState(s => ({ ...s, isLoading: true }));
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
     const result = await userService.authenticate(email, password);
-    
     if (!result.success) {
-      setState(s => ({ ...s, isLoading: false, error: result.error || 'Erro' }));
+      setState(prev => ({ ...prev, isLoading: false, error: result.error }));
+      return result;
     }
-    return result;
+    return { success: true };
   };
 
   const logout = async () => {
-    // Log de logout antes de destruir a sessão
-    if (state.user) {
-        await logAction(state.user, 'USER_LOGOUT', state.user.email, 'AUTH', 'INFO', 'SUCCESS');
+    setState(prev => ({ ...prev, isLoading: true }));
+    try {
+      await userService.logout();
+      window.location.href = '/'; 
+    } catch (error) {
+       console.error("Erro ao sair", error);
+       setState(prev => ({ ...prev, isLoading: false }));
     }
-    
-    await userService.logout();
-    window.location.href = '/'; 
   };
 
-  const value = useMemo(() => ({ ...state, login, logout, retryInitialSync }), [state, retryInitialSync]);
+  const refreshProfile = async () => {
+    await initializeApp();
+  };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const contextValue = useMemo(() => ({
+    ...state,
+    login,
+    logout,
+    refreshProfile,
+    // Fix: Expose initial sync status and retry method
+    isInitialSyncComplete,
+    retryInitialSync: initializeApp
+  }), [state, isInitialSyncComplete]);
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth deve ser usado dentro de AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth deve ser utilizado dentro de um AuthProvider');
+  }
   return context;
 };

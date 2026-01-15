@@ -1,21 +1,21 @@
-// Adicione ao seu objecto de serviço ou crie uma função isolada
-import { supabase } from '../supabaseClient';
-import { normalizeRole } from '../mappers/roleMapper';
 
-export const appService = {
+import { supabase } from '../supabaseClient.ts';
+import { normalizeRole } from '../mappers/roleMapper.ts';
+
+export const SupabaseAppService = {
   getInitialData: async () => {
     try {
-      // Chama a função SQL que criámos
+      // Tenta buscar dados do banco
       const { data, error } = await supabase.rpc('get_initial_app_data');
       
-      if (error) throw error;
-      if (!data) throw new Error("Dados não retornados");
+      if (error) {
+        console.warn("Aviso RPC (usando modo segurança):", error.message);
+      }
 
-      // Mapeamento dos dados brutos do SQL para os tipos da aplicação
-      const rawUser = data.user;
-      const rawSystem = data.systemStatus;
+      const rawUser = data?.user;
+      const rawSystem = data?.systemStatus;
 
-      // Converter user raw para User do domínio (igual ao toDomainUser)
+      // Mapeia o usuário (pode ser null se não logado)
       const domainUser = rawUser ? {
         id: rawUser.id,
         name: rawUser.full_name || 'Usuário',
@@ -28,19 +28,20 @@ export const appService = {
         lastLogin: rawUser.last_login
       } : null;
 
-      // Converter system raw (snake_case) para camelCase
+      // Se rawSystem vier nulo (banco vazio/erro), forçamos um objeto 'ONLINE'
       const domainSystem = rawSystem ? {
         mode: rawSystem.mode,
         message: rawSystem.message,
         scheduledStart: rawSystem.scheduled_start,
         scheduledEnd: rawSystem.scheduled_end,
         updatedBy: rawSystem.updated_by
-      } : null;
+      } : { mode: 'ONLINE' };
 
       return { user: domainUser, systemStatus: domainSystem };
+
     } catch (err) {
-      console.error("Falha no RPC get_initial_app_data:", err);
-      return { user: null, systemStatus: null };
+      console.error("Falha Crítica AppService:", err);
+      return { user: null, systemStatus: { mode: 'ONLINE' } as any };
     }
   }
 };

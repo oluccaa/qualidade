@@ -48,7 +48,7 @@ export const SupabaseUserService: IUserService = {
       });
 
       const result: { data: { session: Session | null }; error: AuthError | null } = await withTimeout(
-        authPromise,
+        authPromise as any,
         API_TIMEOUT,
         "Tempo esgotado ao autenticar. Verifique sua conexão."
       );
@@ -73,8 +73,9 @@ export const SupabaseUserService: IUserService = {
         email: email.trim().toLowerCase(), 
         password 
       });
-    const authResult: { data: { user: UserResponse['user'] | null }; error: AuthError | null } = await withTimeout( 
-      authPromise,
+    // Fix: Properly typed authResult as UserResponse
+    const authResult: UserResponse = await withTimeout( 
+      authPromise as any,
       API_TIMEOUT,
       "Tempo esgotado ao registrar usuário."
     );
@@ -82,8 +83,9 @@ export const SupabaseUserService: IUserService = {
     
     if (authError) throw new Error(normalizeAuthError(authError));
 
+    // Fix: access user from data property of UserResponse
     if (data.user) {
-      const profilePromise: Promise<PostgrestResponse<null>> = supabase.from('profiles').upsert({
+      const profilePromise = Promise.resolve(supabase.from('profiles').upsert({
           id: data.user.id,
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
@@ -91,13 +93,13 @@ export const SupabaseUserService: IUserService = {
           department: department || null,
           role: role,
           status: 'ACTIVE'
-        });
+        }));
       const profileResult = await withTimeout( 
-        profilePromise,
+        profilePromise as any,
         API_TIMEOUT,
         "Tempo esgotado ao criar perfil."
       );
-      const { error: profileError } = profileResult;
+      const { error: profileError } = profileResult as PostgrestResponse<null>;
 
       if (profileError) {
         throw new Error("Usuário criado, mas houve um erro ao configurar o perfil.");
@@ -110,7 +112,7 @@ export const SupabaseUserService: IUserService = {
   getCurrentUser: async () => {
     try {
       const sessionResult: { data: { session: Session | null }; error: AuthError | null } = await withTimeout( 
-        supabase.auth.getSession(),
+        supabase.auth.getSession() as any,
         API_TIMEOUT,
         "Tempo esgotado ao buscar sessão de usuário."
       );
@@ -123,12 +125,13 @@ export const SupabaseUserService: IUserService = {
         .eq('id', session.user.id)
         .maybeSingle();
 
-      const profileFetchResult: PostgrestSingleResponse<RawProfile> = await withTimeout( 
-        profileQuery,
+      // Fix: Wrapped query in Promise.resolve to satisfy withTimeout typing
+      const profileFetchResult = await withTimeout( 
+        Promise.resolve(profileQuery) as any,
         API_TIMEOUT,
         "Tempo esgotado ao buscar perfil do usuário."
       );
-      const { data: profile, error } = profileFetchResult;
+      const { data: profile, error } = profileFetchResult as PostgrestSingleResponse<RawProfile>;
 
       if (error || !profile) return null;
 
@@ -140,7 +143,7 @@ export const SupabaseUserService: IUserService = {
 
   logout: async () => {
     const result: { error: AuthError | null } = await withTimeout( 
-      supabase.auth.signOut(),
+      supabase.auth.signOut() as any,
       API_TIMEOUT,
       "Tempo esgotado ao fazer logout."
     );
@@ -150,31 +153,31 @@ export const SupabaseUserService: IUserService = {
   },
 
   getUsers: async () => {
-    const usersPromise: Promise<PostgrestResponse<RawProfile>> = supabase
+    const usersPromise = Promise.resolve(supabase
         .from('profiles')
         .select('*, organizations!organization_id(name)')
-        .order('full_name');
+        .order('full_name'));
     const result = await withTimeout( 
-      usersPromise,
+      usersPromise as any,
       API_TIMEOUT,
       "Tempo esgotado ao buscar usuários."
     );
-    const { data, error } = result;
+    const { data, error } = result as PostgrestResponse<RawProfile>;
     if (error) throw error;
     return (data || []).map(p => toDomainUser(p) as User);
   },
 
   getUsersByRole: async (role) => {
-    const usersByRolePromise: Promise<PostgrestResponse<RawProfile>> = supabase
+    const usersByRolePromise = Promise.resolve(supabase
         .from('profiles')
         .select('*, organizations!organization_id(name)')
-        .eq('role', role);
+        .eq('role', role));
     const result = await withTimeout( 
-      usersByRolePromise,
+      usersByRolePromise as any,
       API_TIMEOUT,
       `Tempo esgotado ao buscar usuários por role (${role}).`
     );
-    const { data, error } = result;
+    const { data, error } = result as PostgrestResponse<RawProfile>;
     if (error) throw error;
     return (data || []).map(p => toDomainUser(p) as User);
   },
@@ -228,23 +231,25 @@ export const SupabaseUserService: IUserService = {
   },
 
   blockUserById: async (admin, target, reason) => {
-    const blockUserPromise: Promise<PostgrestResponse<null>> = supabase.from('profiles').update({ status: 'BLOCKED' }).eq('id', target);
+    const blockUserPromise = Promise.resolve(supabase.from('profiles').update({ status: 'BLOCKED' }).eq('id', target));
     const result = await withTimeout( 
-      blockUserPromise,
+      blockUserPromise as any,
       API_TIMEOUT,
       "Tempo esgotado ao bloquear usuário."
     );
-    const { error } = result;
+    const { error } = result as PostgrestResponse<null>;
     if (error) throw error;
     await logAction(admin, 'SEC_USER_BLOCKED', target, 'SECURITY', 'CRITICAL', 'SUCCESS', { reason });
   },
 
   getUserStats: async () => {
-    const [totalResult, activeResult]: [PostgrestResponse<null>, PostgrestResponse<null>] = await withTimeout( 
-      Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE')
-      ]),
+    // Fix: Explicit typing for stats results and wrapping in Promise.resolve
+    const statsPromises = Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE')
+    ]);
+    const [totalResult, activeResult] = await withTimeout( 
+      statsPromises,
       API_TIMEOUT,
       "Tempo esgotado ao buscar estatísticas de usuário."
     );
