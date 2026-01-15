@@ -1,8 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
-import { supabase } from '../lib/supabaseClient.ts';
-import { userService, appService } from '../lib/services/index.ts'; 
-import { User, SystemStatus } from '../types/index.ts';
+import { supabase } from '../lib/supabaseClient'; 
+import { userService } from '../lib/services/index'; 
+// Assumindo que você exportou SupabaseAppService corretamente no arquivo appService
+import { SupabaseAppService } from '../lib/services/appService'; 
+import { User, SystemStatus } from '../types/index';
 
 interface AuthState {
   user: User | null;
@@ -15,7 +16,7 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  // Fix: Added missing properties required by routes.tsx
+  // Adicionados para compatibilidade com routes.tsx e prevenção de loops
   isInitialSyncComplete: boolean;
   retryInitialSync: () => Promise<void>;
 }
@@ -30,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     systemStatus: null,
   });
 
-  // Fix: Added tracking for initial sync completion
+  // Flag crucial para o routes.tsx saber que a verificação inicial terminou
   const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
   const mounted = useRef(true);
 
@@ -43,22 +44,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error("Erro ao limpar sessão:", e);
     }
+    // Não redirecionamos com window.location aqui; deixamos o estado atualizar.
   };
 
   const initializeApp = async () => {
-    // Fix: Ensure we reset the error state when retrying
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    // Resetamos erro ao tentar novamente, mas mantemos isLoading true se for o primeiro load
+    if (mounted.current) {
+        setState(prev => ({ ...prev, isLoading: true, error: null }));
+    }
+
     try {
+      // Verifica se existe sessão antes de tentar buscar dados
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Busca dados via RPC utilizando o serviço injetado do barrel
-      const { user, systemStatus } = await appService.getInitialData();
+      // Busca dados via RPC (Seu novo método blindado)
+      const { user, systemStatus } = await SupabaseAppService.getInitialData();
 
+      // DETECÇÃO DE SESSÃO ZUMBI:
       if (session && !user) {
         throw new Error("Sessão corrompida: Token existe mas usuário não encontrado.");
       }
 
       if (mounted.current) {
+        // Fallback de segurança para status ONLINE
         const safeSystemStatus: SystemStatus = systemStatus || { mode: 'ONLINE' };
 
         setState({
@@ -72,20 +80,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("[Auth] Erro na inicialização:", error);
       
       if (mounted.current) {
-        await forceLogout();
+        // Se o erro for grave e não for apenas falta de internet, considere o logout
+        // Aqui assumimos que se falhou o RPC, talvez seja melhor limpar se tivermos sessão
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            await forceLogout();
+        }
 
         setState({ 
-          user: null,
+          user: null, 
           isLoading: false, 
-          error: "Sessão expirada. Faça login novamente.",
-          systemStatus: { mode: 'ONLINE' }
+          error: "Não foi possível conectar ao servidor. " + (error.message || ""),
+          systemStatus: { mode: 'ONLINE' } // Libera o sistema para mostrar erro ou login
         });
       }
     } finally {
-      // Fix: Mark sync as complete even on failure
-      if (mounted.current) {
-        setIsInitialSyncComplete(true);
-      }
+        if (mounted.current) {
+            setIsInitialSyncComplete(true);
+        }
     }
   };
 
@@ -94,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeApp();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      // Só reage a mudanças reais para evitar loops de renderização
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         await initializeApp();
       }
@@ -112,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState(prev => ({ ...prev, isLoading: false, error: result.error }));
       return result;
     }
+    // O onAuthStateChange cuidará de atualizar o estado após o login
     return { success: true };
   };
 
@@ -119,6 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(prev => ({ ...prev, isLoading: true }));
     try {
       await userService.logout();
+      // Opcional: window.location.href = '/'; 
+      // É melhor deixar o AuthMiddleware redirecionar, mas o force reload garante limpeza de memória
       window.location.href = '/'; 
     } catch (error) {
        console.error("Erro ao sair", error);
@@ -135,7 +151,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     refreshProfile,
-    // Fix: Expose initial sync status and retry method
     isInitialSyncComplete,
     retryInitialSync: initializeApp
   }), [state, isInitialSyncComplete]);

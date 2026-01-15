@@ -25,7 +25,12 @@ const FileInspection = React.lazy(() => import('./components/features/quality/vi
 /**
  * Loader minimalista para transições de módulos, agora com opção de retry.
  */
-const PageLoader = ({ message = "Carregando...", onRetry }: { message?: string; onRetry?: () => void }) => (
+
+// No arquivo routes.tsx
+// ... imports
+
+// ADICIONE "export" AQUI
+export const PageLoader = ({ message = "Carregando...", onRetry }: { message?: string; onRetry?: () => void }) => (
   <div className="h-screen w-screen bg-white flex flex-col items-center justify-center text-[#081437]">
       <Loader2 size={32} className="animate-spin text-blue-500 mb-6" />
       <p className="text-[10px] font-black text-slate-400 tracking-[6px] uppercase animate-pulse mb-4">{message}</p>
