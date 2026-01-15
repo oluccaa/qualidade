@@ -7,25 +7,32 @@ import { NotificationProvider } from './context/notificationContext.tsx';
 import { Loader2 } from 'lucide-react';
 import './lib/i18n.ts';
 
-const GlobalLoading = () => (
-  <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
-    <Loader2 className="animate-spin text-blue-500" size={32} />
+const GlobalSuspenseFallback = () => (
+  <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#081437]">
+    <Loader2 className="animate-spin text-blue-500 mb-4" size={32} />
+    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[4px]">Preparando o Portal da Qualidade Aços Vital</p>
   </div>
+);
+
+const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ErrorBoundary>
+    <Suspense fallback={<GlobalSuspenseFallback />}>
+      <HashRouter>
+        <NotificationProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </NotificationProvider>
+      </HashRouter>
+    </Suspense>
+  </ErrorBoundary>
 );
 
 const App: React.FC = () => {
   return (
-    <ErrorBoundary>
-      <Suspense fallback={<GlobalLoading />}>
-        <HashRouter>
-          <NotificationProvider>
-            <AuthProvider>
-              <AppRoutes />
-            </AuthProvider>
-          </NotificationProvider>
-        </HashRouter>
-      </Suspense>
-    </ErrorBoundary>
+    <AppProviders>
+      <AppRoutes />
+    </AppProviders>
   );
 };
 

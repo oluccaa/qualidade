@@ -72,28 +72,7 @@ const Login: React.FC = () => {
       
       <div className="fixed inset-0 pointer-events-none opacity-[0.012] z-[100] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
-      <div className="absolute top-6 right-6 z-[110] animate-in fade-in slide-in-from-top-4 duration-1000">
-          <div className="bg-white/60 backdrop-blur-xl border border-slate-200/50 p-1 rounded-xl shadow-sm flex items-center gap-1">
-              <div className="pl-2.5 pr-1.5 text-slate-400">
-                  <Globe size={14} aria-hidden="true" />
-              </div>
-              {['pt', 'en', 'es'].map((lang) => (
-                  <button
-                      key={lang}
-                      onClick={() => changeLanguage(lang)}
-                      className={`
-                          px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg transition-all duration-300
-                          ${i18n.language === lang 
-                              ? 'bg-[#081437] text-white shadow-sm' 
-                              : 'text-slate-500 hover:bg-slate-100 hover:text-[#081437]'}
-                      `}
-                      aria-label={t(`common.language.${lang}`)} 
-                  >
-                      {lang}
-                  </button>
-              ))}
-          </div>
-      </div>
+      {/* Language Selector removido deste arquivo. */}
 
       <CookieBanner />
       <PrivacyModal isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
@@ -188,7 +167,7 @@ const Login: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Campo Senha Premium */}
+                {/* Campo Senha de Acesso */}
                 <div className="space-y-2 group">
                     <div className="flex justify-between items-end px-1">
                         <label htmlFor="password-input" className="text-[10px] font-black text-slate-400 uppercase tracking-[2px] transition-colors group-focus-within:text-[#62A5FA]">
@@ -255,10 +234,8 @@ const Login: React.FC = () => {
             </form>
 
             <div className="text-center pt-8 border-t border-slate-50">
-                <p className="text-[12px] text-slate-400 font-medium">
-                  {t('login.newUser')} <Link to="/signup" className="text-[#081437] font-black hover:text-[#B23C0E] transition-colors ml-1 uppercase tracking-wider" aria-label={t('login.requestRegister')}>
-                      {t('login.requestRegister')}
-                  </Link>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                   Acessos gerenciados pelo Administrador do Sistema.
                 </p>
             </div>
         </div>

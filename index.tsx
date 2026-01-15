@@ -1,12 +1,15 @@
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 
-// Prevenção rigorosa de dupla inicialização no ambiente ESM
+/**
+ * Ponto de entrada da aplicação.
+ * Encapsulado em StrictMode para capturar efeitos colaterais em desenvolvimento.
+ */
 const container = document.getElementById('root');
 
-if (container && !container.hasAttribute('data-react-initialized')) {
-  container.setAttribute('data-react-initialized', 'true');
+if (container) {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>

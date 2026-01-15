@@ -1,39 +1,52 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
-import { useAuth } from '../context/authContext.tsx';
-import { adminService } from '../lib/services/index.ts';
-import { UserRole, SystemStatus } from '../types/index.ts';
-import { MaintenanceScreen } from '../components/common/MaintenanceScreen.tsx';
+import { useAuth } from '../context/authContext';
+import { adminService } from '../lib/services';
+import { UserRole, normalizeRole, SystemStatus } from '../types';
+import { MaintenanceScreen } from '../components/common/MaintenanceScreen';
 
 export const MaintenanceMiddleware: React.FC = () => {
-  const { user } = useAuth();
-  const [status, setStatus] = useState<SystemStatus>({ mode: 'ONLINE' });
-  const [isChecking, setIsChecking] = useState(true);
+  const { user, isLoading, systemStatus: initialStatus } = useAuth();
+  const [liveStatus, setLiveStatus] = useState<SystemStatus | null>(initialStatus);
+  const isSubscribed = useRef(false);
 
-  const checkStatus = async () => {
-      const s = await adminService.getSystemStatus();
-      setStatus(s);
-      setIsChecking(false);
-  };
-
+  // 1. Sincroniza estado inicial (evita flicker na tela)
   useEffect(() => {
-      checkStatus();
-      const interval = setInterval(checkStatus, 30000);
-      return () => clearInterval(interval);
-  }, []);
+    if (initialStatus) {
+        setLiveStatus(initialStatus);
+    }
+  }, [initialStatus]);
 
-  if (isChecking) return null;
+  // 2. Inscrição Segura (Realtime)
+  useEffect(() => {
+    if (!user || isSubscribed.current) return;
 
-  if (status.mode === 'MAINTENANCE') {
-      const userRole = String(user?.role).toUpperCase();
-      if (!user || userRole !== 'ADMIN') {
-          return <MaintenanceScreen status={status} onRetry={checkStatus} />;
-      }
+    console.log("[Maintenance] Iniciando monitoramento em tempo real...");
+    isSubscribed.current = true;
+
+    const unsubscribe = adminService.subscribeToSystemStatus((newStatus) => {
+      console.log("[Maintenance] Atualização recebida:", newStatus);
+      setLiveStatus(newStatus);
+    });
+
+    return () => {
+      isSubscribed.current = false;
+      unsubscribe();
+    };
+  }, [user]); // Dependência apenas 'user' para recriar se o usuário mudar (ex: relogin)
+
+  if (isLoading) return null; // Ou um Loading Spinner bonitinho
+
+  // Se não carregou status ainda, assume que está online para não travar o usuário
+  // (Fail-open strategy), a menos que a segurança seja crítica extrema.
+  const currentStatus = liveStatus || initialStatus; 
+
+  if (currentStatus?.mode === 'MAINTENANCE') {
+    const role = user ? normalizeRole(user.role) : UserRole.CLIENT;
+    if (role !== UserRole.ADMIN) {
+      return <MaintenanceScreen status={currentStatus} onRetry={() => window.location.reload()} />;
+    }
   }
 
-  return (
-    <>
-        <Outlet context={{ systemStatus: status }} />
-    </>
-  );
+  return <Outlet context={{ systemStatus: currentStatus }} />;
 };

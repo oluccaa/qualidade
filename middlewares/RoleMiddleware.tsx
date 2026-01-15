@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/authContext.tsx';
@@ -7,25 +8,35 @@ interface RoleMiddlewareProps {
   allowedRoles: UserRole[];
 }
 
+/**
+ * Middleware de Autorização Baseada em Papéis (RBAC).
+ * (S) Única responsabilidade: Validar se o papel do usuário permite acesso à rota.
+ */
 export const RoleMiddleware: React.FC<RoleMiddlewareProps> = ({ allowedRoles }) => {
   const { user, isLoading } = useAuth();
   
-  // Se ainda estiver carregando o perfil, não decide nada
   if (isLoading) return null;
-
   if (!user) return <Navigate to="/login" replace />;
 
   const userRole = normalizeRole(user.role);
-  const isAllowed = allowedRoles.includes(userRole);
+  const hasAccess = allowedRoles.includes(userRole);
 
-  if (!isAllowed) {
-    console.warn(`[Security] Acesso negado para role: ${userRole}. Redirecionando para área segura.`);
-    
-    // Fallback inteligente baseado na role real
-    if (userRole === UserRole.ADMIN) return <Navigate to="/admin/dashboard" replace />;
-    if (userRole === UserRole.QUALITY) return <Navigate to="/quality/dashboard" replace />;
-    return <Navigate to="/client/dashboard" replace />;
+  if (!hasAccess) {
+    return <Navigate to={getSecureFallbackPath(userRole)} replace />;
   }
 
   return <Outlet />;
+};
+
+/**
+ * Estratégia de fallback explícita para os perfis internos.
+ */
+const getSecureFallbackPath = (role: UserRole): string => {
+  switch (role) {
+    case UserRole.ADMIN:
+      return '/admin/dashboard';
+    case UserRole.QUALITY:
+    default:
+      return '/quality/dashboard';
+  }
 };

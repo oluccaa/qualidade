@@ -1,4 +1,5 @@
 
+
 import { 
   User, 
   UserRole, 
@@ -14,6 +15,7 @@ import {
   MaintenanceEvent, 
   AppNotification 
 } from '../../types/index.ts';
+import { AccountStatus } from '../../types/auth.ts';
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -48,9 +50,33 @@ export interface QualityOverviewStats {
   totalActiveClients: number;
 }
 
+// Raw interface for Supabase `organizations` table response, including joined `profiles`
+export interface RawClientOrganization {
+  id: string;
+  name: string | null;
+  cnpj: string | null;
+  status: AccountStatus;
+  contract_date: string; // snake_case from DB
+  quality_analyst_id: string | null;
+  profiles: { full_name: string | null } | { full_name: string | null }[] | null; // Joined profile data
+}
+
+// Raw interface for Supabase `profiles` table response, including joined `organizations`
+export interface RawProfile {
+  id: string;
+  full_name: string | null;
+  email: string;
+  organization_id: string | null;
+  department: string | null;
+  role: UserRole;
+  status: AccountStatus;
+  last_login: string | null;
+  organizations: { name: string | null } | { name: string | null }[] | null; // Joined organization data
+}
+
 export interface IUserService {
   authenticate: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password: string, fullName: string, organizationId?: string, department?: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, organizationId?: string, department?: string, role?: UserRole) => Promise<void>;
   getCurrentUser: () => Promise<User | null>;
   logout: () => Promise<void>;
   getUsers: () => Promise<User[]>;
@@ -64,7 +90,8 @@ export interface IUserService {
 }
 
 export interface IFileService {
-  getFiles: (user: User, folderId: string | null, page?: number, pageSize?: number) => Promise<PaginatedResponse<FileNode>>;
+  // Fix: Added searchTerm to getFiles signature
+  getFiles: (user: User, folderId: string | null, page?: number, pageSize?: number, searchTerm?: string) => Promise<PaginatedResponse<FileNode>>;
   getFilesByOwner: (ownerId: string) => Promise<FileNode[]>;
   getRecentFiles: (user: User, limit?: number) => Promise<FileNode[]>;
   getLibraryFiles: (user: User, filters: LibraryFilters, page?: number, pageSize?: number) => Promise<PaginatedResponse<FileNode>>;
@@ -72,11 +99,14 @@ export interface IFileService {
   createFolder: (user: User, parentId: string | null, name: string, ownerId?: string) => Promise<FileNode | null>;
   uploadFile: (user: User, fileData: Partial<FileNode> & { fileBlob?: Blob }, ownerId: string) => Promise<FileNode>;
   updateFile: (user: User, fileId: string, updates: Partial<FileNode>) => Promise<void>;
-  deleteFile: (user: User, fileId: string) => Promise<void>;
-  searchFiles: (user: User, query: string, page?: number, pageSize?: number) => Promise<PaginatedResponse<FileNode>>;
+  // Fix: Updated deleteFile signature to accept an array of IDs
+  deleteFile: (user: User, fileIds: string[]) => Promise<void>;
+  // Fix: Added renameFile to IFileService
+  renameFile: (user: User, fileId: string, newName: string) => Promise<void>;
+  searchFiles: (user: User, query: string, page?: number, number?: number) => Promise<PaginatedResponse<FileNode>>;
   getBreadcrumbs: (folderId: string | null) => Promise<BreadcrumbItem[]>;
-  toggleFavorite: (user: User, fileId: string) => Promise<boolean>;
-  getFavorites: (user: User) => Promise<FileNode[]>;
+  // Removed toggleFavorite: (user: User, fileId: string) => Promise<boolean>;
+  // Removed getFavorites: (user: User) => Promise<FileNode[]>;
   getFileSignedUrl: (user: User, fileId: string) => Promise<string>;
   logAction: (
     user: User | null,
@@ -112,5 +142,5 @@ export interface INotificationService {
   getUnreadCount: (user: User) => Promise<number>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: (user: User) => Promise<void>;
-  addNotification: (targetUserId: string, title: string, message: string, type: AppNotification['type'], link?: string) => Promise<void>;
+  addNotification: (targetUserId: string | null, title: string, message: string, type: AppNotification['type'], link?: string) => Promise<void>;
 }

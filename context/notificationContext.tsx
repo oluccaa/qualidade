@@ -17,16 +17,20 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+/**
+ * Gerenciador de Feedback do Usuário (Toasts).
+ * (S) Responsabilidade única de enfileirar e exibir notificações temporárias.
+ */
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((current) => current.filter((t) => t.id !== id));
   }, []);
 
   const showToast = useCallback((message: string, type: ToastType, duration: number = 5000) => {
     const id = crypto.randomUUID();
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
+    setToasts((current) => [...current, { id, message, type, duration }]);
   }, []);
 
   return (
@@ -52,7 +56,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 export const useToast = () => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    throw new Error('useToast deve ser usado dentro de um NotificationProvider');
+    throw new Error('useToast deve ser invocado dentro de um NotificationProvider');
   }
   return context;
 };
