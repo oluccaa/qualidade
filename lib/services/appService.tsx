@@ -1,21 +1,21 @@
+// Adicione ao seu objecto de serviço ou crie uma função isolada
+import { supabase } from '../supabaseClient';
+import { normalizeRole } from '../mappers/roleMapper';
 
-import { supabase } from '../supabaseClient.ts';
-import { normalizeRole } from '../mappers/roleMapper.ts';
-
-export const SupabaseAppService = {
+export const appService = {
   getInitialData: async () => {
     try {
-      // Tenta buscar dados do banco
+      // Chama a função SQL que criámos
       const { data, error } = await supabase.rpc('get_initial_app_data');
       
-      if (error) {
-        console.warn("Aviso RPC (usando modo segurança):", error.message);
-      }
+      if (error) throw error;
+      if (!data) throw new Error("Dados não retornados");
 
-      const rawUser = data?.user;
-      const rawSystem = data?.systemStatus;
+      // Mapeamento dos dados brutos do SQL para os tipos da aplicação
+      const rawUser = data.user;
+      const rawSystem = data.systemStatus;
 
-      // Mapeia o usuário (pode ser null se não logado)
+      // Converter user raw para User do domínio (igual ao toDomainUser)
       const domainUser = rawUser ? {
         id: rawUser.id,
         name: rawUser.full_name || 'Usuário',
@@ -28,20 +28,19 @@ export const SupabaseAppService = {
         lastLogin: rawUser.last_login
       } : null;
 
-      // Se rawSystem vier nulo (banco vazio/erro), forçamos um objeto 'ONLINE'
+      // Converter system raw (snake_case) para camelCase
       const domainSystem = rawSystem ? {
         mode: rawSystem.mode,
         message: rawSystem.message,
         scheduledStart: rawSystem.scheduled_start,
         scheduledEnd: rawSystem.scheduled_end,
         updatedBy: rawSystem.updated_by
-      } : { mode: 'ONLINE' };
+      } : null;
 
       return { user: domainUser, systemStatus: domainSystem };
-
     } catch (err) {
-      console.error("Falha Crítica AppService:", err);
-      return { user: null, systemStatus: { mode: 'ONLINE' } as any };
+      console.error("Falha no RPC get_initial_app_data:", err);
+      return { user: null, systemStatus: null };
     }
   }
 };
