@@ -26,7 +26,8 @@ export const pt = {
       en: "Inglês",
       es: "Espanhol"
     },
-    clear: "Limpar"
+    clear: "Limpar",
+    moreOptions: "Mais opções"
   },
   login: {
     title: "Portal da Qualidade",
@@ -46,9 +47,13 @@ export const pt = {
     error: "Falha na autenticação do portal.",
     restrictedAccess: "Acesso Restrito",
     identifyToAccess: "Identifique-se para acessar o painel de certificados.",
-    accessManagedByVital: "A Aços Vital gerencia seu acesso internamente.",
+    accessManagedByVital: "Aços Vital gerencia seu acesso internamente.",
     successTitle: "Acesso Concedido!",
-    successSubtitle: "Redirecionando ao Gateway de Segurança..."
+    successSubtitle: "Redirecionando ao Gateway de Segurança...",
+    connectionError: "Erro de conexão com o servidor de segurança."
+  },
+  signup: {
+    passwordPlaceholder: "Mínimo de 6 caracteres"
   },
   admin: {
     tabs: {
@@ -83,6 +88,19 @@ export const pt = {
       email: "E-mail Corporativo",
       org: "Empresa Vinculada",
       filters: "Filtrar por"
+    },
+    clients: {
+      createTitle: "Nova Empresa Cliente",
+      editTitle: "Editar Empresa"
+    },
+    logs: {
+      allSeverities: "Todas Severidades",
+      severity: {
+        INFO: "Informativo",
+        WARNING: "Aviso",
+        ERROR: "Erro",
+        CRITICAL: "Crítico"
+      }
     }
   },
   quality: {
@@ -103,7 +121,7 @@ export const pt = {
   roles: {
     ADMIN: "Administrador",
     QUALITY: "Analista Qualidade",
-    CLIENT: "Cliente B2B"
+    CLIENT: "Parceiro"
   },
   dashboard: {
     status: {
@@ -111,13 +129,30 @@ export const pt = {
     },
     kpi: {
       libraryLabel: "Minha Biblioteca",
-      activeDocsSubtext: "Certificados Ativos"
+      activeDocsSubtext: "Certificados Ativos",
+      recent: "Recentes",
+      viewedToday: "Visualizados Hoje",
+      compliance: "Conformidade",
+      assured: "VALIDADA",
+      qualityAssured: "Gestão Vital"
     },
     exploreAll: "Explorar Tudo",
     fileStatusTimeline: "Linha do Tempo do Certificado",
     organization: "Razão Social",
     fiscalID: "CNPJ",
-    contractDate: "Início do Contrato"
+    contractDate: "Início do Contrato",
+    recentCertificates: "Certificados Recentes",
+    complianceStatus: "Status de Conformidade",
+    certifiedOperation: "Operação Certificada",
+    vitalStandard: "PADRÃO AÇOS VITAL",
+    traceability: "Rastreabilidade",
+    disclaimer: "Todos os certificados exibidos neste portal foram validados pelo laboratório técnico da Aços Vital.",
+    available: "Disponível",
+    noRecentFiles: "Nenhum arquivo recente.",
+    criticalPendencies: "Pendências Críticas",
+    lastAnalysis: "Última Análise",
+    allClients: "Todos os Clientes",
+    activeClients: "Clientes Ativos"
   },
   cookie: {
     title: "Privacidade e Segurança",
@@ -136,6 +171,7 @@ export const pt = {
   },
   files: {
     authenticatingAccess: "Autenticando Accesso...",
+    authenticatingLayers: "Autenticando Camadas...",
     authenticatedView: "Visualização Autenticada",
     errorLoadingDocument: "Erro ao carregar documento técnico.",
     errorLoadingFiles: "Erro ao listar arquivos do servidor.",
@@ -188,7 +224,8 @@ export const pt = {
     delete: {
       confirmTitle: "Confirmar Exclusão",
       confirmMessage: "Tem certeza que deseja excluir {{count}} item(ns) selecionado(s)? Esta ação não pode ser desfeita.",
-      button: "Excluir"
+      button: "Excluir",
+      success: "Itens excluídos permanentemente."
     },
     downloadButton: "Download",
     selectItem: "Selecionar {{name}}",
@@ -224,5 +261,27 @@ export const pt = {
     errorLoading: "Erro ao carregar notificações: {{message}}",
     errorMarkingAsRead: "Erro ao marcar notificação como lida: {{message}}",
     errorMarkingAllAsRead: "Erro ao marcar todas como lidas: {{message}}",
+  },
+  maintenance: {
+    title: "Manutenção de Sistemas",
+    message: "O gateway de segurança está passando por atualizações técnicas planejadas para melhorar a performance de visualização de certificados.",
+    returnEstimate: "Estimativa de Retorno",
+    todayAt: "Hoje às {{time}}",
+    soon: "Em breve",
+    retry: "Tentar Novamente",
+    contact: "Contatar Suporte",
+    systemId: "Vital Cloud Engine v2.4"
+  },
+  maintenanceSchedule: {
+    title: "Agendar Manutenção",
+    eventTitle: "Título do Evento",
+    eventTitlePlaceholder: "Ex: Upgrade do Cluster de Arquivos",
+    date: "Data Prevista",
+    time: "Horário de Início",
+    duration: "Duração Estimada (minutos)",
+    customMessage: "Comunicado aos Usuários",
+    scheduleButton: "Confirmar Janela",
+    scheduledSuccess: "Manutenção '{{title}}' agendada com sucesso.",
+    scheduledError: "Falha ao agendar manutenção: {{message}}"
   }
 };

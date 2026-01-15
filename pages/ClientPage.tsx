@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/authContext.tsx';
@@ -301,7 +302,7 @@ const ClientPage: React.FC = () => {
 
       <div className="flex flex-col relative w-full gap-6 pb-20">
         <main className="min-h-[calc(100vh-280px)] animate-in fade-in slide-in-from-bottom-3 duration-700">
-            <Suspense fallback={<ClientViewLoader />}>
+            <Suspense fallback={<ClientViewLoader t={t} />}>
                 {renderContent()}
             </Suspense>
         </main>
@@ -310,13 +311,13 @@ const ClientPage: React.FC = () => {
   );
 };
 
-const ClientViewLoader = () => (
+const ClientViewLoader = ({ t }: { t: any }) => (
   <div className="flex flex-col items-center justify-center h-96 bg-white rounded-[3rem] border border-dashed border-slate-200">
     <div className="relative mb-6">
       <Loader2 size={56} className="animate-spin text-blue-500" />
       <ShieldCheck size={24} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#081437]" />
     </div>
-    <p className="font-black text-[10px] uppercase tracking-[6px] text-slate-400 animate-pulse">Autenticando Camadas...</p>
+    <p className="font-black text-[10px] uppercase tracking-[6px] text-slate-400 animate-pulse">{t('files.authenticatingLayers')}</p>
   </div>
 );
 

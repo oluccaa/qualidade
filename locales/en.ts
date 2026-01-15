@@ -28,7 +28,8 @@ export const en: typeof pt = {
       en: "English",
       es: "Spanish"
     },
-    clear: "Clear"
+    clear: "Clear",
+    moreOptions: "More options"
   },
   login: {
     title: "Quality Portal",
@@ -45,12 +46,16 @@ export const en: typeof pt = {
     certification: "TECHNICAL QUALITY CERTIFIED",
     secureData: "ENCRYPTED B2B LINK",
     monitoring: "REAL-TIME SYSTEM MONITORING",
-    error: "Portal authentication failed. Please verify your credentials.",
+    error: "Portal authentication failed.",
     restrictedAccess: "Restricted Access",
     identifyToAccess: "Identify yourself to access the secure certificate panel.",
     accessManagedByVital: "Aços Vital manages your access governance internally.",
     successTitle: "Access Granted!",
-    successSubtitle: "Redirecting to Security Gateway..."
+    successSubtitle: "Redirecting to Security Gateway...",
+    connectionError: "Security server connection failure."
+  },
+  signup: {
+    passwordPlaceholder: "Min. 6 characters"
   },
   admin: {
     tabs: {
@@ -85,6 +90,19 @@ export const en: typeof pt = {
       email: "Corporate Identity",
       org: "Partner Entity",
       filters: "Filter by"
+    },
+    clients: {
+      createTitle: "New Partner Identity",
+      editTitle: "Modify Partner"
+    },
+    logs: {
+      allSeverities: "All Severities",
+      severity: {
+        INFO: "Informational",
+        WARNING: "Warning",
+        ERROR: "Error",
+        CRITICAL: "Critical"
+      }
     }
   },
   quality: {
@@ -105,7 +123,7 @@ export const en: typeof pt = {
   roles: {
     ADMIN: "System Administrator",
     QUALITY: "Technical Quality Analyst",
-    CLIENT: "Corporate Partner"
+    CLIENT: "Partner"
   },
   dashboard: {
     status: {
@@ -113,13 +131,30 @@ export const en: typeof pt = {
     },
     kpi: {
       libraryLabel: "Asset Library",
-      activeDocsSubtext: "Verified Certificates"
+      activeDocsSubtext: "Verified Certificates",
+      recent: "Recent",
+      viewedToday: "Viewed Today",
+      compliance: "Compliance",
+      assured: "VALIDATED",
+      qualityAssured: "Vital Management"
     },
     exploreAll: "Expand Portfolio",
     fileStatusTimeline: "Asset Compliance Lifecycle",
     organization: "Corporate Entity",
     fiscalID: "Tax Identification",
-    contractDate: "Lifecycle Start"
+    contractDate: "Lifecycle Start",
+    recentCertificates: "Recent Certificates",
+    complianceStatus: "Compliance Status",
+    certifiedOperation: "Certified Operation",
+    vitalStandard: "AÇOS VITAL STANDARD",
+    traceability: "Traceability",
+    disclaimer: "All certificates displayed on this portal have been validated by Aços Vital's technical laboratory.",
+    available: "Available",
+    noRecentFiles: "No recent files found.",
+    criticalPendencies: "Critical Pendencies",
+    lastAnalysis: "Last Analysis",
+    allClients: "All Clients",
+    activeClients: "Active Clients"
   },
   cookie: {
     title: "Privacy & Data Protection",
@@ -127,7 +162,7 @@ export const en: typeof pt = {
     accept: "Acknowledge & Continue"
   },
   menu: {
-    dashboard: "Command Center",
+    dashboard: "Home",
     library: "Asset Library",
     management: "Governance",
     qualityManagement: "Quality Compliance",
@@ -138,6 +173,7 @@ export const en: typeof pt = {
   },
   files: {
     authenticatingAccess: "Authorizing Request...",
+    authenticatingLayers: "Authenticating Layers...",
     authenticatedView: "Verified Viewport",
     errorLoadingDocument: "Failed to render technical resource.",
     errorLoadingFiles: "Resource synchronization error.",
@@ -190,7 +226,8 @@ export const en: typeof pt = {
     delete: {
       confirmTitle: "Resource Removal",
       confirmMessage: "Execute permanent removal of {{count}} selected item(s)? This operation is immutable.",
-      button: "Execute Removal"
+      button: "Execute Removal",
+      success: "Items permanently deleted."
     },
     downloadButton: "Export",
     selectItem: "Target {{name}}",
@@ -226,5 +263,27 @@ export const en: typeof pt = {
     errorLoading: "Alert synchronization failure: {{message}}",
     errorMarkingAsRead: "Failure to archive alert: {{message}}",
     errorMarkingAllAsRead: "Failure to flush alerts: {{message}}",
+  },
+  maintenance: {
+    title: "System Maintenance",
+    message: "Security gateway is undergoing planned technical updates to improve certificate viewing performance.",
+    returnEstimate: "Estimated Return",
+    todayAt: "Today at {{time}}",
+    soon: "Soon",
+    retry: "Retry Connection",
+    contact: "Contact Support",
+    systemId: "Vital Cloud Engine v2.4"
+  },
+  maintenanceSchedule: {
+    title: "Schedule Maintenance",
+    eventTitle: "Event Description",
+    eventTitlePlaceholder: "Ex: File Cluster Upgrade",
+    date: "Target Date",
+    time: "Start Time",
+    duration: "Estimated Downtime (mins)",
+    customMessage: "User Announcement",
+    scheduleButton: "Confirm Window",
+    scheduledSuccess: "Maintenance '{{title}}' scheduled successfully.",
+    scheduledError: "Scheduling failure: {{message}}"
   }
 };

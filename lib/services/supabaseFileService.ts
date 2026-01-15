@@ -114,8 +114,9 @@ export const SupabaseFileService: IFileService = {
         subValue: totalApproved.count || 0,
         pendingValue: totalPending.count || 0,
         status: (totalPending.count || 0) > 0 ? 'PENDING' : 'REGULAR',
-        mainLabel: role === UserRole.CLIENT ? 'Meus Certificados' : 'Certificados Globais',
-        subLabel: role === UserRole.CLIENT ? 'Validados e Prontos' : 'Docs. Validados'
+        // As labels agora usam chaves de tradução dinâmicas
+        mainLabel: 'dashboard.kpi.libraryLabel',
+        subLabel: 'dashboard.kpi.activeDocsSubtext'
     };
   },
 
@@ -247,7 +248,7 @@ export const SupabaseFileService: IFileService = {
   },
 
   getBreadcrumbs: async (currentFolderId: string | null): Promise<BreadcrumbItem[]> => {
-    const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'Início' }];
+    const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'dashboard.kpi.libraryLabel' }]; // Usando chave de tradução
     let folderId = currentFolderId;
 
     // Proteção contra loop infinito e verificação de acesso via RLS a cada passo
@@ -265,10 +266,6 @@ export const SupabaseFileService: IFileService = {
     }
     return breadcrumbs;
   },
-
-  // Removed toggleFavorite: async (user, fileId) => { ... }
-
-  // Removed getFavorites: async (user) => { ... }
 
   getFileSignedUrl: async (user, fileId): Promise<string> => {
     // RLS garantirá que só encontramos o arquivo se pertencermos à org correta

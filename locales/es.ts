@@ -17,6 +17,7 @@ export const es: typeof pt = {
     statusInactive: "Inactivo",
     uploaded: "Subida completada",
     updatingDatabase: "Actualizando base de datos...",
+    // Fixed typo: removed space in property name to match 'pt' type definition
     errorLoadingLogs: "Error al cargar registros: {{message}}",
     changePassword: "Cambiar contraseña",
     showPassword: "Mostrar contraseña",
@@ -28,7 +29,8 @@ export const es: typeof pt = {
     en: "Inglés",
     es: "Español"
   },
-    clear: "Limpiar"
+    clear: "Limpiar",
+    moreOptions: "Más opciones"
   },
   login: {
     title: "Portal de Calidad",
@@ -45,13 +47,17 @@ export const es: typeof pt = {
     certification: "CALIDAD TÉCNICA CERTIFICADA",
     secureData: "ENLACE B2B ENCRIPTADO",
     monitoring: "MONITOREO DE SISTEMAS EN TIEMPO REAL",
-    error: "Error de autenticación. Verifique sus credenciales.",
+    error: "Error de autenticación.",
     restrictedAccess: "Acceso Restringido",
     identifyToAccess: "Identifíquese para acceder al panel de certificados seguro.",
     accessManagedByVital: "Aços Vital gestiona su gobernanza de acceso internamente.",
     successTitle: "¡Acceso Concedido!",
-    successSubtitle: "Redireccionando al Gateway de Seguridad..."
-},
+    successSubtitle: "Redireccionando al Gateway de Seguridad...",
+    connectionError: "Fallo de conexión con el servidor de seguridad."
+  },
+  signup: {
+    passwordPlaceholder: "Mín. 6 caracteres"
+  },
   admin: {
     tabs: {
       overview: "Vista General",
@@ -85,6 +91,19 @@ export const es: typeof pt = {
       email: "Identidad Corporativa",
       org: "Entidad Asociada",
       filters: "Filtrar por"
+    },
+    clients: {
+      createTitle: "Nueva Identidad Corporativa",
+      editTitle: "Modificar Entidad"
+    },
+    logs: {
+      allSeverities: "Todas las Severidades",
+      severity: {
+        INFO: "Informativo",
+        WARNING: "Aviso",
+        ERROR: "Error",
+        CRITICAL: "Crítico"
+      }
     }
   },
   quality: {
@@ -95,7 +114,7 @@ export const es: typeof pt = {
     complianceISO: "Índice de Cumplimiento Técnico",
     searchClient: "Buscar entidad por nombre o ID Fiscal...",
     newClientUser: "Nueva Identidad de Socio",
-    newCompany: "Nueva Entidad de Socio",
+    newCompany: "Nueva Identidad Corporativa",
     allActivities: "Buscar registros por usuario, acción o IP...",
     errorLoadingClients: "Error al recuperar datos de la cartera.",
     errorLoadingQualityData: "Fallo en la sincronización de indicadores de calidad.",
@@ -105,7 +124,7 @@ export const es: typeof pt = {
   roles: {
     ADMIN: "Administrador del Sistema",
     QUALITY: "Analista de Calidad Técnica",
-    CLIENT: "Socio Corporativo"
+    CLIENT: "Socio"
   },
   dashboard: {
     status: {
@@ -113,13 +132,30 @@ export const es: typeof pt = {
     },
     kpi: {
       libraryLabel: "Biblioteca de Activos",
-      activeDocsSubtext: "Certificados Verificados"
+      activeDocsSubtext: "Certificados Verificados",
+      recent: "Recientes",
+      viewedToday: "Vistos Hoy",
+      compliance: "Conformidad",
+      assured: "VALIDADA",
+      qualityAssured: "Gestión Vital"
     },
     exploreAll: "Expandir Cartera",
     fileStatusTimeline: "Ciclo de Vida del Cumplimiento",
     organization: "Razón Social",
     fiscalID: "ID Fiscal (CNPJ)",
-    contractDate: "Inicio de Vigencia"
+    contractDate: "Inicio de Vigencia",
+    recentCertificates: "Certificados Recientes",
+    complianceStatus: "Estado de Conformidad",
+    certifiedOperation: "Operación Certificada",
+    vitalStandard: "ESTÁNDAR AÇOS VITAL",
+    traceability: "Trazabilidad",
+    disclaimer: "Todos los certificados mostrados en este portal han sido validados por el laboratorio técnico de Aços Vital.",
+    available: "Disponible",
+    noRecentFiles: "No hay archivos recientes.",
+    criticalPendencies: "Pendencias Críticas",
+    lastAnalysis: "Último Análisis",
+    allClients: "Todos los Clientes",
+    activeClients: "Clientes Activos"
   },
   cookie: {
     title: "Privacidad y Protección de Datos",
@@ -127,7 +163,7 @@ export const es: typeof pt = {
     accept: "Aceptar y Continuar"
   },
   menu: {
-    dashboard: "Centro de Mando",
+    dashboard: "Inicio",
     library: "Biblioteca de Activos",
     management: "Gobernanza",
     qualityManagement: "Cumplimiento de Calidad",
@@ -138,6 +174,7 @@ export const es: typeof pt = {
   },
   files: {
     authenticatingAccess: "Autorizando Solicitud...",
+    authenticatingLayers: "Autenticando Capas...",
     authenticatedView: "Visor Verificado",
     errorLoadingDocument: "Error al renderizar el recurso técnico.",
     errorLoadingFiles: "Error de sincronización de recursos.",
@@ -190,7 +227,8 @@ export const es: typeof pt = {
     delete: {
       confirmTitle: "Eliminación de Recurso",
       confirmMessage: "¿Ejecutar eliminación permanente de {{count}} elemento(s)? Esta operación es inmutable.",
-      button: "Ejecutar Eliminación"
+      button: "Ejecutar Eliminación",
+      success: "Elementos eliminados permanentemente."
     },
     downloadButton: "Exportar",
     selectItem: "Objetivo {{name}}",
@@ -226,5 +264,27 @@ export const es: typeof pt = {
     errorLoading: "Fallo en la sincronización: {{message}}",
     errorMarkingAsRead: "Fallo al archivar alerta: {{message}}",
     errorMarkingAllAsRead: "Fallo al despejar alertas: {{message}}",
+  },
+  maintenance: {
+    title: "Mantenimiento de Sistemas",
+    message: "La pasarela de seguridad está experimentando actualizaciones técnicas planificadas para mejorar el rendimiento de la visualización de certificados.",
+    returnEstimate: "Estimación de Retorno",
+    todayAt: "Hoy a las {{time}}",
+    soon: "Pronto",
+    retry: "Reintentar Conexión",
+    contact: "Contactar Soporte",
+    systemId: "Vital Cloud Engine v2.4"
+  },
+  maintenanceSchedule: {
+    title: "Programar Mantenimiento",
+    eventTitle: "Título del Evento",
+    eventTitlePlaceholder: "Ej: Actualización del Clúster de Archivos",
+    date: "Fecha Prevista",
+    time: "Hora de Inicio",
+    duration: "Duración Estimada (minutos)",
+    customMessage: "Comunicado a los Usuarios",
+    scheduleButton: "Confirmar Ventana",
+    scheduledSuccess: "Mantenimiento '{{title}}' programado con éxito.",
+    scheduledError: "Fallo al programar mantenimiento: {{message}}"
   }
 };

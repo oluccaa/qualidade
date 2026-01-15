@@ -35,7 +35,7 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
     <aside className={`hidden md:flex flex-col bg-[#0f172a] text-slate-300 shadow-2xl z-[60] relative transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'}`}>
       <button 
         onClick={onToggle} 
-        className="absolute -right-3 top-8 z-[70] bg-white text-slate-600 border rounded-full h-7 w-7 flex items-center justify-center shadow-lg hover:text-blue-600 transition-all active:scale-90"
+        className="absolute -right-3 top-8 z-[70] bg-white text-slate-600 border rounded-full h-7 w-7 flex items-center justify-center shadow-lg hover:text-[#b23c0e] transition-all active:scale-90"
         aria-label={isCollapsed ? "Expandir" : "Recolher"}
       >
         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -70,10 +70,10 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
                       className={`flex items-center rounded-xl transition-all duration-200 ${
                         isCollapsed ? 'justify-center py-3' : 'px-4 py-2.5 gap-3'
                       } ${
-                        active ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        active ? 'bg-[#b23c0e] text-white shadow-lg shadow-[#b23c0e]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      <Icon size={20} className={active ? 'text-white' : 'text-blue-400'} />
+                      <Icon size={20} className={active ? 'text-white' : 'text-[#b23c0e]'} />
                       {!isCollapsed && <span className="text-sm font-semibold truncate">{item.label}</span>}
                     </Link>
                   );
@@ -88,11 +88,11 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
                         className={`flex items-center w-full rounded-xl transition-all duration-200 ${
                           isCollapsed ? 'justify-center py-3' : 'px-4 py-2.5 gap-3'
                         } ${
-                          isSectionActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                          isSectionActive ? 'bg-[#b23c0e] text-white shadow-lg shadow-[#b23c0e]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'
                         }`}
                         aria-expanded={isSubMenuOpen}
                       >
-                        <Icon size={20} className={isSectionActive ? 'text-white' : 'text-blue-400'} />
+                        <Icon size={20} className={isSectionActive ? 'text-white' : 'text-[#b23c0e]'} />
                         {!isCollapsed && (
                           <>
                             <span className="text-sm font-semibold flex-1 text-left truncate">{item.label}</span>
@@ -110,10 +110,10 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
                                 key={subItem.label}
                                 to={subItem.path}
                                 className={`flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 gap-3 ml-2 ${
-                                  subActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                  subActive ? 'bg-[#b23c0e] text-white shadow-lg shadow-[#b23c0e]/30' : 'text-slate-400 hover:text-white hover:bg-white/5'
                                 }`}
                               >
-                                <SubIcon size={16} className={subActive ? 'text-white' : 'text-blue-400'} />
+                                <SubIcon size={16} className={subActive ? 'text-white' : 'text-[#b23c0e]'} />
                                 <span className="text-sm font-semibold truncate">{subItem.label}</span>
                               </Link>
                             );
@@ -129,14 +129,14 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
         ))}
       </nav>
 
-      {/* Footer Area - Reordered Logout ABOVE Profile */}
+      {/* Footer Area */}
       <div className="p-4 border-t border-slate-800/60 bg-[#0f172a]/30 space-y-3">
         {!isCollapsed && (
           <button
             onClick={onNavigateToSettings}
             className="flex items-center w-full px-4 py-2.5 gap-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
           >
-            <Settings size={20} className="text-blue-400" />
+            <Settings size={20} className="text-[#b23c0e]" />
             <span className="text-sm font-semibold truncate">{t('menu.settings')}</span>
           </button>
         )}
@@ -166,7 +166,7 @@ export const SidebarClient: React.FC<SidebarClientProps> = ({ user, role, isColl
 
 const SidebarUserProfile = ({ user, role, isCollapsed }: any) => (
   <div className={`flex items-center p-2.5 bg-slate-800/40 border border-slate-700/50 rounded-xl gap-3 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
-    <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-inner">
+    <div className="w-9 h-9 rounded-lg bg-[#b23c0e] flex items-center justify-center text-white font-black shrink-0 shadow-inner">
       {user?.name?.charAt(0) || 'U'}
     </div>
     {!isCollapsed && (
