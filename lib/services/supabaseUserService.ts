@@ -10,6 +10,18 @@ import { AuthError, Session, UserResponse, PostgrestSingleResponse, PostgrestRes
 
 const API_TIMEOUT = 8000;
 
+/**
+ * Normaliza erros do provedor de autenticação para chaves i18n controladas.
+ */
+const normalizeAuthError = (error: AuthError): string => {
+  const msg = error.message.toLowerCase();
+  if (msg.includes("invalid login credentials")) return "auth.errors.invalidCredentials";
+  if (msg.includes("should be different from the old password")) return "auth.errors.samePassword";
+  if (msg.includes("too many requests")) return "auth.errors.tooManyRequests";
+  if (msg.includes("password should be at least")) return "auth.errors.weakPassword";
+  return "auth.errors.unexpected";
+};
+
 const toDomainUser = (row: RawProfile | null, sessionEmail?: string): User | null => {
   if (!row) return null;
   const orgData = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
@@ -43,19 +55,16 @@ export const SupabaseUserService: IUserService = {
       const { data, error } = result;
 
       if (error) {
-        // Log de falha de tentativa de acesso (anônimo)
         await logAction(null, 'LOGIN_ATTEMPT_FAILED', email, 'AUTH', 'WARNING', 'FAILURE', { reason: error.message });
         return { 
           success: false, 
-          error: error.message === "Invalid login credentials" 
-            ? "E-mail ou senha incorretos." 
-            : "Falha na autenticação."
+          error: normalizeAuthError(error)
         };
       }
       
       return { success: true };
     } catch (e: any) {
-      return { success: false, error: e.message || "Erro de conexão." };
+      return { success: false, error: "auth.errors.unexpected" };
     }
   },
 
@@ -71,7 +80,7 @@ export const SupabaseUserService: IUserService = {
     );
     const { data, error: authError } = authResult;
     
-    if (authError) throw authError;
+    if (authError) throw new Error(normalizeAuthError(authError));
 
     if (data.user) {
       const profilePromise: Promise<PostgrestResponse<null>> = supabase.from('profiles').upsert({
@@ -94,7 +103,6 @@ export const SupabaseUserService: IUserService = {
         throw new Error("Usuário criado, mas houve um erro ao configurar o perfil.");
       }
 
-      // Log de criação de novo usuário
       await logAction(null, 'USER_SIGNUP', email, 'AUTH', 'INFO', 'SUCCESS', { fullName, role });
     }
   },
@@ -172,7 +180,6 @@ export const SupabaseUserService: IUserService = {
   },
 
   saveUser: async (u) => {
-    // Implementação com Auditoria
     const action = async () => {
       const { error } = await supabase.from('profiles').update({
           full_name: u.name,
@@ -186,7 +193,6 @@ export const SupabaseUserService: IUserService = {
       if (error) throw error;
     };
 
-    // Logamos a atualização de perfil como uma ação de dados crítica
     await withAuditLog(null, 'USER_PROFILE_UPDATE', { 
         target: u.id, 
         category: 'DATA', 
@@ -197,11 +203,10 @@ export const SupabaseUserService: IUserService = {
   changePassword: async (userId, current, newPass) => {
     const action = async () => {
         const { error } = await supabase.auth.updateUser({ password: newPass });
-        if (error) throw error;
+        if (error) throw new Error(normalizeAuthError(error));
         return true;
     };
 
-    // Log de segurança para alteração de senha
     return await withAuditLog(null, 'USER_PASSWORD_CHANGE', { 
         target: userId, 
         category: 'SECURITY', 

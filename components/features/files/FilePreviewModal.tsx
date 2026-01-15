@@ -4,7 +4,8 @@ import {
   X, Download, Loader2, FileText, AlertCircle, 
   ChevronLeft, ChevronRight, Calendar, User, 
   HardDrive, Maximize2, Minimize2, ZoomIn, ZoomOut, 
-  RotateCcw, ShieldCheck, Tag, Info, ExternalLink
+  RotateCcw, ShieldCheck, Tag, Info, ExternalLink,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { FileNode, FileType } from '../../../types/index.ts';
 import { fileService } from '../../../lib/services/index.ts';
@@ -12,6 +13,11 @@ import { useAuth } from '../../../context/authContext.tsx';
 import { useTranslation } from 'react-i18next';
 import { FileStatusBadge } from './components/FileStatusBadge.tsx';
 import { QualityStatus } from '../../../types/metallurgy.ts';
+
+// Configuração do Worker do PDF.js para processamento paralelo
+if (typeof window !== 'undefined' && (window as any).pdfjsLib) {
+  (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+}
 
 interface FilePreviewModalProps {
   initialFile: FileNode | null;
@@ -21,10 +27,6 @@ interface FilePreviewModalProps {
   onDownloadFile: (file: FileNode) => void;
 }
 
-/**
- * FilePreviewModal (Professional Grade Viewer)
- * Refatorado para evitar bloqueios do Chrome em visualização de PDF.
- */
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ 
   initialFile, 
   allFiles, 
@@ -35,6 +37,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const modalRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [currentFile, setCurrentFile] = useState<FileNode | null>(initialFile);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
@@ -42,50 +45,117 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Viewer States
-  const [zoom, setZoom] = useState(1);
-  const [showSidebar, setShowSidebar] = useState(false); // Inicia FECHADO por padrão conforme solicitado
+  // PDF Document States
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [pageNum, setPageNum] = useState(1);
+  const [numPages, setNumPages] = useState(0);
+  const [isRendering, setIsRendering] = useState(false);
+  
+  // Viewer States - Iniciando sempre em 50% conforme solicitado
+  const [zoom, setZoom] = useState(0.5); 
+  const [showSidebar, setShowSidebar] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Sincronização inicial
+  // Sincronização de arquivo atual e reset de visualização
   useEffect(() => {
     if (isOpen && initialFile) {
       const idx = allFiles.findIndex(f => f.id === initialFile.id);
       setCurrentIndex(idx);
       setCurrentFile(initialFile);
-      setZoom(1);
+      setZoom(0.5); // Reset de zoom para 50% ao abrir ou mudar arquivo
+      setPageNum(1);
     }
   }, [isOpen, initialFile, allFiles]);
 
-  // Carregamento de URL Assinada
+  // Carregamento de URL e Documento PDF
   useEffect(() => {
     if (currentFile && user && isOpen) {
       setLoading(true);
       setError(null);
+      setPdfDoc(null);
+      
       fileService.getFileSignedUrl(user, currentFile.id)
-        .then(signedUrl => setUrl(signedUrl))
+        .then(async (signedUrl) => {
+          setUrl(signedUrl);
+          
+          if (currentFile.type === FileType.PDF || currentFile.name.toLowerCase().endsWith('.pdf')) {
+            try {
+              const loadingTask = (window as any).pdfjsLib.getDocument(signedUrl);
+              const pdf = await loadingTask.promise;
+              setPdfDoc(pdf);
+              setNumPages(pdf.numPages);
+              setPageNum(1);
+            } catch (err) {
+              console.error("PDF Load Error:", err);
+              setError(t('files.errorLoadingDocument'));
+            }
+          }
+        })
         .catch(() => setError(t('files.errorLoadingDocument')))
         .finally(() => setLoading(false));
     }
   }, [currentFile, user, isOpen, t]);
 
-  // Handlers de Navegação
+  // Renderização de Página no Canvas
+  const renderPage = useCallback(async (num: number, scale: number) => {
+    if (!pdfDoc || !canvasRef.current) return;
+    
+    setIsRendering(true);
+    try {
+      const page = await pdfDoc.getPage(num);
+      const viewport = page.getViewport({ scale });
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+
+      // Suporte a HiDPI / Retina
+      const outputScale = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(viewport.width * outputScale);
+      canvas.height = Math.floor(viewport.height * outputScale);
+      canvas.style.width = Math.floor(viewport.width) + "px";
+      canvas.style.height = Math.floor(viewport.height) + "px";
+
+      const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport,
+        transform: transform
+      };
+
+      await page.render(renderContext).promise;
+    } catch (err) {
+      console.error("Render error:", err);
+    } finally {
+      setIsRendering(false);
+    }
+  }, [pdfDoc]);
+
+  // Re-renderizar quando página ou zoom mudar
+  useEffect(() => {
+    if (pdfDoc) {
+      renderPage(pageNum, zoom);
+    }
+  }, [pageNum, zoom, pdfDoc, renderPage]);
+
+  // Navegação entre arquivos do sistema
   const navigateFile = useCallback((direction: 'next' | 'prev') => {
     if (allFiles.length <= 1) return;
+    
     let newIndex = direction === 'next' 
       ? (currentIndex + 1) % allFiles.length 
       : (currentIndex - 1 + allFiles.length) % allFiles.length;
     
     setCurrentIndex(newIndex);
     setCurrentFile(allFiles[newIndex]);
-    setZoom(1);
+    setZoom(0.5); // Sempre inicia no 50% ao trocar de arquivo pelas setas
+    setPageNum(1);
   }, [allFiles, currentIndex]);
 
-  // Handlers de Visualização
+  // Zoom Handlers
   const handleZoom = (type: 'in' | 'out' | 'reset') => {
-    if (type === 'in') setZoom(prev => Math.min(prev + 0.25, 3));
-    else if (type === 'out') setZoom(prev => Math.max(prev - 0.25, 0.5));
-    else setZoom(1);
+    if (type === 'in') setZoom(prev => Math.min(prev + 0.25, 4));
+    else if (type === 'out') setZoom(prev => Math.max(prev - 0.25, 0.25));
+    else setZoom(0.5); // Reset para 50%
   };
 
   const toggleFullscreen = () => {
@@ -98,48 +168,58 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     }
   };
 
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeys = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-      if (e.key === 'ArrowRight') navigateFile('next');
-      if (e.key === 'ArrowLeft') navigateFile('prev');
-      if (e.key === 'Escape') onClose();
-      if (e.key === '+' || e.key === '=') handleZoom('in');
-      if (e.key === '-') handleZoom('out');
-    };
-    window.addEventListener('keydown', handleKeys);
-    return () => window.removeEventListener('keydown', handleKeys);
-  }, [isOpen, navigateFile, onClose]);
-
   if (!isOpen || !currentFile) return null;
 
-  const isImage = currentFile.name.match(/\.(jpg|jpeg|png|webp)$/i);
+  const isImage = currentFile.type === FileType.IMAGE || currentFile.name.match(/\.(jpg|jpeg|png|webp)$/i);
+  const isPDF = currentFile.type === FileType.PDF || currentFile.name.toLowerCase().endsWith('.pdf');
 
   return (
     <div 
       ref={modalRef}
-      className="fixed inset-0 z-[200] bg-slate-950 flex flex-col animate-in fade-in duration-300"
+      className="fixed inset-0 z-[200] bg-slate-900 flex flex-col animate-in fade-in duration-300"
       role="dialog"
       aria-modal="true"
     >
       {/* Top Header */}
-      <header className="h-16 shrink-0 bg-slate-900/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 z-30">
+      <header className="h-16 shrink-0 bg-slate-900/90 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-6 z-50">
         <div className="flex items-center gap-4">
-          <div className="p-2.5 bg-blue-500/10 rounded-xl">
-             {isImage ? <Tag className="text-blue-400" size={20} /> : <FileText className="text-blue-400" size={20} />}
+          <div className="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
+             {isImage ? <Tag className="text-blue-400" size={18} /> : <FileText className="text-blue-400" size={18} />}
           </div>
-          <div>
-            <h2 className="text-white font-bold text-sm md:text-base tracking-tight leading-none">{currentFile.name}</h2>
-            <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest mt-1">
-              Visualização Técnica Controlada
+          <div className="min-w-0">
+            <h2 className="text-white font-bold text-sm truncate max-w-[200px] md:max-w-md tracking-tight leading-none">{currentFile.name}</h2>
+            <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mt-1">
+              Terminal de Visualização Vital Cloud
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <ViewerButton onClick={() => onDownloadFile(currentFile)} icon={Download} title="Baixar Original" />
-          <div className="w-px h-6 bg-white/10 mx-2" />
+        <div className="flex items-center gap-1 md:gap-3">
+          {/* Navegação de Páginas do PDF */}
+          {isPDF && numPages > 1 && (
+            <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-white/5 mr-4 shadow-inner">
+               <button 
+                onClick={() => setPageNum(p => Math.max(1, p - 1))}
+                disabled={pageNum <= 1}
+                className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+               >
+                 <ChevronUp size={16} />
+               </button>
+               <div className="px-3 text-[10px] font-black text-white border-x border-white/5 min-w-[60px] text-center">
+                 Pág {pageNum} / {numPages}
+               </div>
+               <button 
+                onClick={() => setPageNum(p => Math.min(numPages, p + 1))}
+                disabled={pageNum >= numPages}
+                className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+               >
+                 <ChevronDown size={16} />
+               </button>
+            </div>
+          )}
+
+          <ViewerButton onClick={() => onDownloadFile(currentFile)} icon={Download} title="Baixar PDF" />
+          <div className="w-px h-6 bg-white/10 mx-1" />
           <ViewerButton onClick={() => setShowSidebar(!showSidebar)} icon={showSidebar ? Minimize2 : Info} title="Info" active={showSidebar} />
           <ViewerButton onClick={toggleFullscreen} icon={isFullscreen ? Minimize2 : Maximize2} title="Tela Cheia" />
           <button 
@@ -151,89 +231,76 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Main Viewer Area */}
-        <main className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
-          
-          {allFiles.length > 1 && (
-            <>
-              <NavArrow direction="left" onClick={() => navigateFile('prev')} />
-              <NavArrow direction="right" onClick={() => navigateFile('next')} />
-            </>
-          )}
+      <div className="flex-1 flex overflow-hidden relative bg-[#0f172a]">
+        {/* Navegação Global entre Certificados - Setas para trocar de arquivo */}
+        {allFiles.length > 1 && (
+          <>
+            <NavArrow direction="left" onClick={() => navigateFile('prev')} />
+            <NavArrow direction="right" onClick={() => navigateFile('next')} />
+          </>
+        )}
 
-          {/* Floating Action Bar (Zoom & Tools) */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/80 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-2xl z-40">
-            <ViewerButton onClick={() => handleZoom('out')} icon={ZoomOut} title="Zoom Out" />
-            <div className="px-3 text-[10px] font-black text-slate-400 w-14 text-center">
-              {Math.round(zoom * 100)}%
-            </div>
-            <ViewerButton onClick={() => handleZoom('in')} icon={ZoomIn} title="Zoom In" />
-            <div className="w-px h-4 bg-white/10 mx-1" />
-            <ViewerButton onClick={() => handleZoom('reset')} icon={RotateCcw} title="Resetar" />
+        {/* Floating Tool Bar */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-2xl z-40">
+          <ViewerButton onClick={() => handleZoom('out')} icon={ZoomOut} title="Zoom Out" />
+          <div className="px-3 text-[10px] font-black text-slate-400 w-14 text-center">
+            {Math.round(zoom * 100)}%
           </div>
+          <ViewerButton onClick={() => handleZoom('in')} icon={ZoomIn} title="Zoom In" />
+          <div className="w-px h-4 bg-white/10 mx-1" />
+          <ViewerButton onClick={() => handleZoom('reset')} icon={RotateCcw} title="Reset 50%" />
+        </div>
 
-          <div 
-            className="w-full h-full flex items-center justify-center transition-transform duration-200 ease-out"
-            style={{ transform: `scale(${zoom})` }}
-          >
-            {loading ? (
-              <div className="flex flex-col items-center gap-4 text-slate-500">
+        {/* Área de Renderização Principal */}
+        <main className="flex-1 overflow-auto custom-scrollbar flex items-start justify-center p-4 md:p-8">
+          <div className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)]">
+            {loading && (
+              <div className="flex flex-col items-center gap-4 text-slate-500 py-32">
                 <Loader2 size={48} className="animate-spin text-blue-500" />
                 <p className="text-[10px] font-black uppercase tracking-[4px]">Sincronizando Buffer...</p>
               </div>
-            ) : error ? (
-              <div className="text-center p-8 max-w-sm">
+            )}
+            
+            {error && (
+              <div className="text-center p-20 max-w-sm bg-slate-800/50 rounded-3xl border border-white/5 backdrop-blur-xl">
                 <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
                   <AlertCircle size={40} />
                 </div>
                 <h3 className="text-white font-bold text-lg mb-2">{error}</h3>
-                <p className="text-slate-400 text-sm mb-6">Ocorreu um erro ao carregar o documento.</p>
                 <button 
                   onClick={() => url && window.open(url, '_blank')}
-                  className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
+                  className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
                 >
                   <ExternalLink size={18} /> Abrir em Nova Aba
                 </button>
               </div>
-            ) : url && (
-              isImage ? (
-                <img 
-                  src={url} 
-                  alt={currentFile.name} 
-                  className="max-w-[90%] max-h-[90%] object-contain shadow-[0_0_80px_rgba(0,0,0,0.5)] rounded-lg"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col bg-slate-900">
-                  <object 
-                    data={url} 
-                    type="application/pdf" 
-                    className="w-full h-full"
-                    title={currentFile.name}
-                  >
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 p-10 text-center gap-6">
-                      <AlertCircle size={48} className="text-orange-500" />
-                      <div className="space-y-2">
-                        <p className="text-lg font-bold text-white">Visualização Bloqueada pelo Chrome</p>
-                        <p className="text-sm">Seu navegador impediu a exibição interna do PDF. Você pode visualizá-lo em uma nova aba com segurança.</p>
-                      </div>
-                      <button 
-                        onClick={() => window.open(url, '_blank')}
-                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl font-bold transition-all border border-white/10"
-                      >
-                        <ExternalLink size={18} /> Abrir Documento em Nova Aba
-                      </button>
-                    </div>
-                  </object>
-                </div>
-              )
+            )}
+
+            {isPDF && pdfDoc && (
+              <div className={`relative bg-white rounded shadow-2xl transition-opacity duration-300 ${isRendering ? 'opacity-50' : 'opacity-100'}`}>
+                {isRendering && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-100/20 backdrop-blur-[2px]">
+                    <Loader2 size={32} className="animate-spin text-blue-600" />
+                  </div>
+                )}
+                <canvas ref={canvasRef} className="max-w-none bg-white rounded" />
+              </div>
+            )}
+
+            {isImage && url && (
+              <img 
+                src={url} 
+                alt={currentFile.name} 
+                style={{ transform: `scale(${zoom / 0.5})`, transformOrigin: 'top center' }}
+                className="max-w-[95vw] shadow-2xl rounded-lg transition-transform duration-200"
+              />
             )}
           </div>
         </main>
 
-        {/* Technical Sidebar */}
+        {/* Metadata Sidebar */}
         {showSidebar && (
-          <aside className="w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-300 z-40">
+          <aside className="w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-300 z-50">
             <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
               <div>
                 <h3 className="text-slate-900 text-xl font-black tracking-tighter leading-tight mb-6">
@@ -295,10 +362,10 @@ const ViewerButton = ({ onClick, icon: Icon, title, active = false }: any) => (
   <button 
     onClick={onClick}
     className={`p-2 rounded-xl transition-all flex flex-col items-center gap-1 group
-      ${active ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+      ${active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
     title={title}
   >
-    <Icon size={20} className="group-active:scale-90 transition-transform" />
+    <Icon size={18} className="group-active:scale-90 transition-transform" />
   </button>
 );
 
@@ -306,11 +373,11 @@ const NavArrow = ({ direction, onClick }: { direction: 'left' | 'right', onClick
   <button 
     onClick={(e) => { e.stopPropagation(); onClick(); }}
     className={`absolute ${direction === 'left' ? 'left-6' : 'right-6'} top-1/2 -translate-y-1/2 
-                w-14 h-14 bg-slate-900/40 backdrop-blur-md text-white rounded-full 
+                w-12 h-12 bg-slate-900/60 backdrop-blur-md text-white rounded-full 
                 flex items-center justify-center hover:bg-blue-600 transition-all 
-                border border-white/5 shadow-2xl z-40 group`}
+                border border-white/10 shadow-2xl z-[60] group`}
   >
-    {direction === 'left' ? <ChevronLeft size={32} className="group-hover:-translate-x-1 transition-transform" /> : <ChevronRight size={32} className="group-hover:translate-x-1 transition-transform" />}
+    {direction === 'left' ? <ChevronLeft size={24} className="group-hover:-translate-x-0.5 transition-transform" /> : <ChevronRight size={24} className="group-hover:translate-x-0.5 transition-transform" />}
   </button>
 );
 

@@ -1,6 +1,5 @@
-
 import { supabase } from '../supabaseClient.ts';
-import { FileNode, FileType, BreadcrumbItem, normalizeRole, UserRole } from '../../types/index.ts';
+import { FileNode, FileType, BreadcrumbItem, normalizeRole, UserRole, AuditLog } from '../../types/index.ts';
 import { QualityStatus } from '../../types/metallurgy.ts';
 import { logAction as internalLogAction } from './loggingService.ts';
 import { IFileService, PaginatedResponse, DashboardStatsData } from './interfaces.ts';
@@ -114,9 +113,8 @@ export const SupabaseFileService: IFileService = {
         subValue: totalApproved.count || 0,
         pendingValue: totalPending.count || 0,
         status: (totalPending.count || 0) > 0 ? 'PENDING' : 'REGULAR',
-        // As labels agora usam chaves de tradução dinâmicas
-        mainLabel: 'dashboard.kpi.libraryLabel',
-        subLabel: 'dashboard.kpi.activeDocsSubtext'
+        mainLabel: role === UserRole.CLIENT ? 'Meus Certificados' : 'Certificados Globais',
+        subLabel: role === UserRole.CLIENT ? 'Validados e Prontos' : 'Docs. Validados'
     };
   },
 
@@ -248,7 +246,7 @@ export const SupabaseFileService: IFileService = {
   },
 
   getBreadcrumbs: async (currentFolderId: string | null): Promise<BreadcrumbItem[]> => {
-    const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'dashboard.kpi.libraryLabel' }]; // Usando chave de tradução
+    const breadcrumbs: BreadcrumbItem[] = [{ id: null, name: 'Início' }];
     let folderId = currentFolderId;
 
     // Proteção contra loop infinito e verificação de acesso via RLS a cada passo
@@ -293,26 +291,33 @@ export const SupabaseFileService: IFileService = {
     await internalLogAction(user, action, target, category, severity, status, metadata);
   },
 
-  getAuditLogs: async (user) => {
+  getAuditLogs: async (user): Promise<AuditLog[]> => {
     // Logs geralmente precisam de RLS próprio ou serem restritos apenas a ADMIN
-    const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
     if (error) throw error;
-    return data.map(l => mapLog(l));
+    return (data || []).map(mapLog);
   },
 
-  getQualityAuditLogs: async (user, filters) => {
+  getQualityAuditLogs: async (user, filters): Promise<AuditLog[]> => {
     let query = supabase.from('audit_logs').select('*').eq('category', 'DATA').order('created_at', { ascending: false });
+    
     if (filters?.severity && filters.severity !== 'ALL') {
         query = query.eq('severity', filters.severity);
     }
+    
     const { data, error } = await query.limit(100);
     if (error) throw error;
-    return (data || []).map(l => mapLog(l));
+    return (data || []).map(mapLog);
   }
 };
 
 // Helper para mapear logs e evitar duplicação de código
-const mapLog = (l: any) => ({
+const mapLog = (l: any): AuditLog => ({
     id: l.id,
     timestamp: l.created_at,
     userId: l.user_id,
@@ -323,8 +328,8 @@ const mapLog = (l: any) => ({
     target: l.target,
     severity: l.severity,
     status: l.status,
-    ip: l.ip,
-    location: l.location,
+    ip: l.ip || null, // Garante que o IP seja passado, tratando nulos
+    location: l.location, // Passa a localização se existir
     userAgent: l.user_agent,
     device: l.device,
     metadata: l.metadata,

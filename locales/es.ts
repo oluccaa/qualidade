@@ -17,7 +17,6 @@ export const es: typeof pt = {
     statusInactive: "Inactivo",
     uploaded: "Subida completada",
     updatingDatabase: "Actualizando base de datos...",
-    // Fixed typo: removed space in property name to match 'pt' type definition
     errorLoadingLogs: "Error al cargar registros: {{message}}",
     changePassword: "Cambiar contraseña",
     showPassword: "Mostrar contraseña",
@@ -25,12 +24,22 @@ export const es: typeof pt = {
     close: "Cerrar",
     delete: "Eliminar",
     language: {
-    pt: "Portugués",
-    en: "Inglés",
-    es: "Español"
-  },
+      pt: "Portugués",
+      en: "Inglés",
+      es: "Español"
+    },
     clear: "Limpiar",
     moreOptions: "Más opciones"
+  },
+  auth: {
+    errors: {
+      invalidCredentials: "Correo electrónico o contraseña incorrectos.",
+      samePassword: "La nueva contraseña debe ser diferente de la antigua.",
+      weakPassword: "La contraseña proporcionada no cumple con los requisitos de complejidad.",
+      tooManyRequests: "Demasiados intentos de acceso. Inténtelo de nuevo en unos momentos.",
+      unexpected: "Ocurrió un error técnico inesperado.",
+      sessionExpired: "Su sesión ha expirado. Por favor, identifíquese de nuevo."
+    }
   },
   login: {
     title: "Portal de Calidad",
@@ -52,11 +61,11 @@ export const es: typeof pt = {
     identifyToAccess: "Identifíquese para acceder al panel de certificados seguro.",
     accessManagedByVital: "Aços Vital gestiona su gobernanza de acceso internamente.",
     successTitle: "¡Acceso Concedido!",
-    successSubtitle: "Redireccionando al Gateway de Seguridad...",
+    successSubtitle: "Redireccionando al Gateway de Segurança...",
     connectionError: "Fallo de conexión con el servidor de seguridad."
   },
   signup: {
-    passwordPlaceholder: "Mín. 6 caracteres"
+    passwordPlaceholder: "Mín. 8 caracteres"
   },
   admin: {
     tabs: {
@@ -81,7 +90,7 @@ export const es: typeof pt = {
       }
     },
     users: {
-      identity: "Identidad",
+      identity: "Identity",
       role: "Privilegios",
       roleLabel: "Nivel de Acceso",
       department: "Unidad",
@@ -131,13 +140,13 @@ export const es: typeof pt = {
       monitoringActive: "SISTEMAS BAJO MONITOREO"
     },
     kpi: {
-      libraryLabel: "Biblioteca de Activos",
+      libraryLabel: "Inicio",
       activeDocsSubtext: "Certificados Verificados",
       recent: "Recientes",
       viewedToday: "Vistos Hoy",
       compliance: "Conformidad",
       assured: "VALIDADA",
-      qualityAssured: "Gestión Vital"
+      qualityAssured: "Gestão Vital"
     },
     exploreAll: "Expandir Cartera",
     fileStatusTimeline: "Ciclo de Vida del Cumplimiento",
@@ -158,36 +167,43 @@ export const es: typeof pt = {
     activeClients: "Clientes Activos"
   },
   cookie: {
-    title: "Privacidad y Protección de Datos",
+    title: "Privacidade y Protección de Datos",
     text: "Utilizamos cookies esenciales para garantizar la seguridad de la sesión y la integridad de los certificados técnicos. Al continuar navegando, acepta nuestra política de gobernanza de datos.",
     accept: "Aceptar y Continuar"
   },
   menu: {
     dashboard: "Inicio",
     library: "Biblioteca de Activos",
-    management: "Gobernanza",
+    certificates: "Certificados",
+    management: "Gobernanza de Acceso",
     qualityManagement: "Cumplimiento de Calidad",
     portalName: "Portal de Calidad",
     brand: "Aços Vital",
     systemMonitoring: "MONITOREO DE INFRAESTRUCTURA",
-    settings: "Preferencias", 
+    settings: "Preferencias de Perfil",
+    sections: {
+      main: "Navegação Principal",
+      documents: "Gestión Documental",
+      operational: "Módulos Operacionais",
+      governance: "Governança e Segurança"
+    }
   },
   files: {
     authenticatingAccess: "Autorizando Solicitud...",
-    authenticatingLayers: "Autenticando Capas...",
+    authenticatingLayers: "Autenticando Capas de Segurança...",
     authenticatedView: "Visor Verificado",
     errorLoadingDocument: "Error al renderizar el recurso técnico.",
     errorLoadingFiles: "Error de sincronización de recursos.",
     openInNewTab: "Ver Recurso Completo",
     pending: "Esperando Auditoría Técnica",
     groups: {
-      approved: "Conforme",
-      rejected: "No Conforme"
+      approved: "Conforme / Aprovado",
+      rejected: "No Conforme / Rechazado"
     },
     sort: {
       nameAsc: "Lexicográfico (A-Z)"
     },
-    searchPlaceholder: "Buscar activos seguros...",
+    searchPlaceholder: "Buscar certificados, lotes o carpetas...",
     listView: "Lista Estructurada",
     gridView: "Cuadrícula Dinámica",
     itemSelected: "recurso identificado",
@@ -202,15 +218,15 @@ export const es: typeof pt = {
       fileNamePlaceholder: "Ej: Espec_Material_Lote123.pdf",
       uploadButton: "Iniciar Carga",
       noFileSelected: "Ningún recurso identificado.",
-      fileNameRequired: "El descriptor es obligatorio.",
+      fileNameRequired: "El descriptor es obligatorio para trazabilidad.",
       success: "¡Recurso sincronizado con éxito!",
       noOrgLinked: "Usuario huérfano. Importación de recursos deshabilitada."
     },
     createFolder: {
-      title: "Nuevo Directorio",
+      title: "Nuevo Directorio Estructural",
       button: "Nuevo Directorio",
       folderName: "Descriptor de directorio",
-      folderNamePlaceholder: "Ej: Registros Lote 2024",
+      folderNamePlaceholder: "Ej: Registros_Lote_2024",
       createButton: "Inicializar Directorio",
       nameRequired: "El descriptor de directorio é obligatorio.",
       success: "¡Directorio inicializado con éxito!",
@@ -226,33 +242,45 @@ export const es: typeof pt = {
     },
     delete: {
       confirmTitle: "Eliminación de Recurso",
-      confirmMessage: "¿Ejecutar eliminación permanente de {{count}} elemento(s)? Esta operación es inmutable.",
+      confirmMessage: "¿Ejecutar eliminación permanente de {{count}} elemento(s)? Esta operación es inmutable y auditada.",
       button: "Ejecutar Eliminación",
-      success: "Elementos eliminados permanentemente."
+      success: "Elementos eliminados permanentemente del clúster."
     },
-    downloadButton: "Exportar",
+    downloadButton: "Exportar PDF",
     selectItem: "Objetivo {{name}}",
     noResultsFound: "Ningún activo coincide con la consulta.",
     typeToSearch: "Escriba para filtrar recursos..."
   },
   changePassword: {
-    title: "Restablecer Credenciales",
-    current: "Credencial Existente",
-    new: "Nueva Clave Secreta",
-    confirm: "Validar Nueva Clave",
-    minCharacters: "Entropía: Mín {{count}} caracteres",
-    matchError: "Las credenciales no coinciden.",
-    success: "¡Credenciales actualizadas con éxito!",
+    title: "Segurança de Acesso",
+    current: "Senha Atual",
+    currentError: "A senha atual informada está incorreta.",
+    new: "Nova Senha Técnica",
+    confirm: "Confirmar Nova Senha",
+    matchError: "As senhas não conferem.",
+    success: "¡Contraseña actualizada con éxito!",
     errorUpdatingPassword: "Fallo en el servicio de actualización de credenciales.",
-    submit: "Aplicar Política de Seguridad" 
+    submit: "Aplicar Política de Seguridad",
+    requirements: {
+      length: "Al menos 8 caracteres",
+      upper: "Una letra mayúscula",
+      number: "Un número (0-9)",
+      special: "Un carácter especial (@#$!*)"
+    }
   },
   privacy: {
-    title: "Política de Gobernanza de Datos",
+    title: "Gobernanza de Datos y Privacidad",
     subtitle: "Cumplimiento Regulatorio y Marco de Seguridad",
     close: "Entendido",
+    viewPolicy: "Ver Política",
     section1: "Alcance de la Plataforma",
-    section2: "Telemetría e Identidade",
-    section3: "Infraestructura de Ciberseguridad"
+    section1_content: "El Portal de Calidad Aços Vital es una plataforma B2B para la gestión de documentos técnicos y certificados de calidad. Esta política aclara el cumplimiento de las Normas Técnicas y las leyes de protección de datos vigentes.",
+    section2: "Datos Recopilados",
+    section2_item1: "Identificación: Nombre y correo electrónico corporativo.",
+    section2_item2: "Corporativo: Identificación fiscal (CNPJ) e historial contractual.",
+    section2_item3: "Auditoria: Registros de IP y acciones de usuario (ver/descargar).",
+    section3: "Cifrado y Almacenamiento",
+    section3_content: "Utilizamos cifrado TLS 1.2+ y segregación estrita por organização (Multi-tenant). Sus documentos nunca son accesibles para otras empresas del portafolio."
   },
   notifications: {
     title: "Alertas Operativas",
@@ -273,11 +301,11 @@ export const es: typeof pt = {
     soon: "Pronto",
     retry: "Reintentar Conexión",
     contact: "Contactar Soporte",
-    systemId: "Vital Cloud Engine v2.4"
+    systemId: "Vital Cloud Engine v2.4.0"
   },
   maintenanceSchedule: {
     title: "Programar Mantenimiento",
-    eventTitle: "Título del Evento",
+    eventTitle: "Identificador del Evento",
     eventTitlePlaceholder: "Ej: Actualización del Clúster de Archivos",
     date: "Fecha Prevista",
     time: "Hora de Inicio",

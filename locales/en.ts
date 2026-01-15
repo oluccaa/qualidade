@@ -31,6 +31,16 @@ export const en: typeof pt = {
     clear: "Clear",
     moreOptions: "More options"
   },
+  auth: {
+    errors: {
+      invalidCredentials: "Invalid email or password.",
+      samePassword: "New password should be different from the old password.",
+      weakPassword: "The provided password does not meet complexity requirements.",
+      tooManyRequests: "Too many login attempts. Please try again in a few moments.",
+      unexpected: "An unexpected technical error occurred.",
+      sessionExpired: "Your session has expired. Please authenticate again."
+    }
+  },
   login: {
     title: "Quality Portal",
     subtitle: "QUALITY MANAGEMENT SYSTEM",
@@ -55,7 +65,7 @@ export const en: typeof pt = {
     connectionError: "Security server connection failure."
   },
   signup: {
-    passwordPlaceholder: "Min. 6 characters"
+    passwordPlaceholder: "Min. 8 characters"
   },
   admin: {
     tabs: {
@@ -130,7 +140,7 @@ export const en: typeof pt = {
       monitoringActive: "SYSTEMS UNDER MONITORING"
     },
     kpi: {
-      libraryLabel: "Asset Library",
+      libraryLabel: "Home",
       activeDocsSubtext: "Verified Certificates",
       recent: "Recent",
       viewedToday: "Viewed Today",
@@ -164,52 +174,59 @@ export const en: typeof pt = {
   menu: {
     dashboard: "Home",
     library: "Asset Library",
-    management: "Governance",
+    certificates: "Certificates",
+    management: "Access Governance",
     qualityManagement: "Quality Compliance",
     portalName: "Quality Portal",
     brand: "Aços Vital",
     systemMonitoring: "INFRASTRUCTURE MONITORING",
-    settings: "Preferences", 
+    settings: "Profile Preferences",
+    sections: {
+      main: "Main Navigation",
+      documents: "Document Management",
+      operational: "Operational Modules",
+      governance: "Security & Governance"
+    }
   },
   files: {
     authenticatingAccess: "Authorizing Request...",
-    authenticatingLayers: "Authenticating Layers...",
+    authenticatingLayers: "Validating Security Layers...",
     authenticatedView: "Verified Viewport",
     errorLoadingDocument: "Failed to render technical resource.",
     errorLoadingFiles: "Resource synchronization error.",
     openInNewTab: "View Full Resource",
     pending: "Awaiting Technical Audit",
     groups: {
-      approved: "Compliant",
-      rejected: "Non-Compliant"
+      approved: "Compliant / Approved",
+      rejected: "Non-Compliant / Rejected"
     },
     sort: {
       nameAsc: "Lexicographical (A-Z)"
     },
-    searchPlaceholder: "Search secure assets...",
-    listView: "Structured List",
-    gridView: "Dynamic Grid",
+    searchPlaceholder: "Search certificates, batches or folders...",
+    listView: "Detailed List",
+    gridView: "Icon Grid",
     itemSelected: "resource identified",
     itemsSelected: "resources identified",
     processingFiles: "Executing resource analysis...",
     upload: {
       title: "Secure Upload",
       button: "Import",
-      selectFile: "Select source resource",
+      selectFile: "Select technical resource",
       chooseFile: "Browse files",
       fileName: "Resource descriptor",
       fileNamePlaceholder: "Ex: Material_Spec_Batch123.pdf",
       uploadButton: "Initialize Upload",
       noFileSelected: "No resource identified.",
-      fileNameRequired: "Descriptor is mandatory.",
+      fileNameRequired: "Descriptor is mandatory for traceability.",
       success: "Resource successfully synchronized!",
       noOrgLinked: "Orphaned user. Resource import disabled."
     },
     createFolder: {
-      title: "New Directory",
+      title: "New Structural Directory",
       button: "New Directory",
       folderName: "Directory descriptor",
-      folderNamePlaceholder: "Ex: Batch 2024 Records",
+      folderNamePlaceholder: "Ex: Batch_Records_2024",
       createButton: "Initialize Directory",
       nameRequired: "Directory descriptor is mandatory.",
       success: "Directory successfully initialized!",
@@ -225,33 +242,45 @@ export const en: typeof pt = {
     },
     delete: {
       confirmTitle: "Resource Removal",
-      confirmMessage: "Execute permanent removal of {{count}} selected item(s)? This operation is immutable.",
+      confirmMessage: "Execute permanent removal of {{count}} selected item(s)? This operation is immutable and audited.",
       button: "Execute Removal",
-      success: "Items permanently deleted."
+      success: "Items permanently deleted from cluster."
     },
-    downloadButton: "Export",
+    downloadButton: "Export PDF",
     selectItem: "Target {{name}}",
     noResultsFound: "No assets matched the query.",
     typeToSearch: "Start typing to filter resources..."
   },
   changePassword: {
-    title: "Credential Reset",
+    title: "Access Security",
     current: "Existing Credential",
-    new: "New Secret",
+    currentError: "The provided current password is incorrect.",
+    new: "New Technical Secret",
     confirm: "Validate New Secret",
-    minCharacters: "Entropy: Min {{count}} chars",
     matchError: "Credentials do not match.",
-    success: "Credentials successfully updated!",
+    success: "Password successfully updated!",
     errorUpdatingPassword: "Fault in credential update service.",
-    submit: "Apply Security Policy" 
+    submit: "Apply Security Policy",
+    requirements: {
+      length: "At least 8 characters",
+      upper: "One uppercase letter",
+      number: "One number (0-9)",
+      special: "One special character (@#$!*)"
+    }
   },
   privacy: {
-    title: "Data Governance Policy",
+    title: "Data Governance & Privacy",
     subtitle: "Regulatory Compliance & Security Framework",
     close: "Acknowledged",
+    viewPolicy: "View Policy",
     section1: "Platform Scope",
-    section2: "Telemetry & Identity",
-    section3: "Cybersecurity Infrastructure"
+    section1_content: "The Aços Vital Quality Portal is a B2B platform for technical document and quality certificate management. This policy clarifies compliance with Technical Standards and current data protection laws (LGPD/GDPR).",
+    section2: "Collected Data",
+    section2_item1: "Identification: Name and corporate email.",
+    section2_item2: "Corporate: Tax ID (CNPJ) and contract history.",
+    section2_item3: "Audit: IP logs and user actions (view/download).",
+    section3: "Encryption & Storage",
+    section3_content: "We use TLS 1.2+ encryption and strict organization-level segregation (Multi-tenant). Your documents are never accessible to other companies in the portfolio."
   },
   notifications: {
     title: "Operational Alerts",
@@ -272,7 +301,7 @@ export const en: typeof pt = {
     soon: "Soon",
     retry: "Retry Connection",
     contact: "Contact Support",
-    systemId: "Vital Cloud Engine v2.4"
+    systemId: "Vital Cloud Engine v2.4.0"
   },
   maintenanceSchedule: {
     title: "Schedule Maintenance",
