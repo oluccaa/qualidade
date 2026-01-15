@@ -44,7 +44,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   
   // Viewer States
   const [zoom, setZoom] = useState(1);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false); // Inicia FECHADO por padrão conforme solicitado
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Sincronização inicial
