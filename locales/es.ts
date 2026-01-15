@@ -42,7 +42,7 @@ export const es: typeof pt = {
     heroSubtitle: "Repositorio central de documentos técnicos y certificados. Precisión industrial en cada dato.",
     footerNote: "SISTEMAS MONITORIZADOS • PRIVACIDAD • © 2026 AÇOS VITAL",
     slogan: "Acero de confianza, Calidad Certificada",
-    certification: "ISO 9001:2015 CERTIFICADO",
+    certification: "CALIDAD TÉCNICA CERTIFICADA",
     secureData: "ENLACE B2B SEGURO",
     monitoring: "SISTEMAS MONITORIZADOS",
     error: "Error de autenticación del portal.",
@@ -90,7 +90,7 @@ export const es: typeof pt = {
     myAuditLog: "Mi Registro de Auditoría",
     activePortfolio: "Cartera Activa",
     pendingDocs: "Docs. Pendientes",
-    complianceISO: "Cumplimiento ISO",
+    complianceISO: "Cumplimiento Técnico",
     searchClient: "Buscar por nombre o CNPJ...",
     newClientUser: "Nuevo Usuario Cliente",
     newCompany: "Nueva Empresa",
@@ -128,7 +128,7 @@ export const es: typeof pt = {
     dashboard: "Inicio",
     library: "Biblioteca",
     management: "Gestión",
-    qualityManagement: "Gestión de Calidad",
+    qualityManagement: "Gestão de Calidad",
     portalName: "Portal de Calidad",
     brand: "Aços Vital",
     systemMonitoring: "MONITOREO DEL SISTEMA",
@@ -183,7 +183,7 @@ export const es: typeof pt = {
       newNamePlaceholder: "Ingrese el nuevo nombre",
       renameButton: "Renombrar",
       nameRequired: "El nuevo nombre es obligatorio.",
-      success: "¡Elemento renombrado exitosamente!"
+      success: "¡Elemento renonbrado exitosamente!"
     },
     delete: {
       confirmTitle: "Confirmar Eliminación",
@@ -208,7 +208,7 @@ export const es: typeof pt = {
   },
   privacy: {
     title: "Política de Privacidad",
-    subtitle: "Cumplimiento de LGPD e ISO 9001",
+    subtitle: "Cumplimiento de LGPD y Normas Técnicas",
     close: "Entendido",
     section1: "Sobre el Portal",
     section2: "Datos Recopilados",

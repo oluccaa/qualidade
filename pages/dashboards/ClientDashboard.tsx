@@ -32,8 +32,6 @@ const ClientDashboard: React.FC = () => {
   const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 
   useEffect(() => {
-    // Redirecionamento de roles já é tratado pelo ClientPage ou RoleMiddleware
-    // Este useEffect agora foca apenas no carregamento de dados para o dashboard.
     if (user) {
       fileService.getDashboardStats(user).then(setStats);
       setIsLoadingRecent(true);
@@ -53,13 +51,12 @@ const ClientDashboard: React.FC = () => {
 
   return (
     <>
-      {/* Fix: Changed 'file' prop to 'initialFile' to match FilePreviewModalProps interface */}
       <FilePreviewModal 
         initialFile={selectedFile} 
-        allFiles={recentFiles.filter(f => f.type !== FileType.FOLDER)} // Pass only files for navigation
+        allFiles={recentFiles.filter(f => f.type !== FileType.FOLDER)} 
         isOpen={isPreviewOpen} 
         onClose={() => setIsPreviewOpen(false)} 
-        onDownloadFile={async (file: FileNode) => { // Implement download action
+        onDownloadFile={async (file: FileNode) => {
           try {
             const url = await fileService.getFileSignedUrl(user!, file.id);
             window.open(url, '_blank');
@@ -72,41 +69,30 @@ const ClientDashboard: React.FC = () => {
       <div className="space-y-8 pb-12 animate-in fade-in duration-700">
         <DashboardHero name={user?.name.split(' ')[0] || ''} t={t} />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Adjusted grid-cols for 3 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <KpiCard 
             icon={Library} 
             label={t('dashboard.kpi.libraryLabel')} 
             value={stats?.subValue ?? '--'} 
             subtext={t('dashboard.kpi.activeDocsSubtext')} 
-            color="orange-accent" // Altera para a nova variante de cor
+            color="orange-accent"
             onClick={() => navigate('/client/dashboard?view=files')} 
             loading={!stats}
           />
-          {/* Removed Favorites KpiCard 
-          <KpiCard 
-            icon={Star} 
-            label={t('menu.favorites')} 
-            value={0} // Mock favorites count or implement in service
-            subtext="Arquivos Marcados" 
-            color="orange-accent" // Altera para a nova variante de cor
-            onClick={() => navigate('/client/dashboard?view=favorites')} 
-            loading={!stats}
-          />
-          */}
           <KpiCard 
             icon={History} 
             label="Recentes" 
             value={recentFiles.length} 
             subtext="Visualizados Hoje" 
             color="slate" 
-            onClick={() => navigate('/client/dashboard?view=files')} // Redireciona para a view de arquivos
+            onClick={() => navigate('/client/dashboard?view=files')}
             loading={!stats}
           />
            <KpiCard 
             icon={ShieldCheck} 
             label="Conformidade" 
-            value={"ISO 9001"} 
-            subtext="Certificação Ativa" 
+            value={"VALIDADA"} 
+            subtext="Qualidade Assegurada" 
             color="emerald" 
             onClick={() => navigate('/client/dashboard?view=files')} 
             loading={!stats}
@@ -114,7 +100,6 @@ const ClientDashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            {/* Coluna Principal: Recentes / Sugestões */}
             <div className="xl:col-span-2 space-y-6">
                 <div className="flex items-center justify-between">
                     <h3 className="text-xs font-black uppercase tracking-[3px] text-slate-400">Certificados Recentes</h3>
@@ -136,7 +121,6 @@ const ClientDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Coluna Lateral: Status e Infos */}
             <div className="space-y-6">
                 <h3 className="text-xs font-black uppercase tracking-[3px] text-slate-400">Status de Conformidade</h3>
                 <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
@@ -146,7 +130,7 @@ const ClientDashboard: React.FC = () => {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-slate-800">Operação Certificada</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ISO 9001:2015</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PADRÃO AÇOS VITAL</p>
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -175,13 +159,11 @@ const DashboardHero = ({ name, t }: { name: string, t: any }) => (
   <div className="bg-[#081437] rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
     <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
     <div className="relative z-10 space-y-4">
-      {/* Container dos badges "Acesso Seguro" e "Portal do Cliente" */}
-      <div className="flex flex-wrap items-center gap-2 md:gap-4"> {/* Alterado para flex-wrap e adicionado gap */}
+      <div className="flex flex-wrap items-center gap-2 md:gap-4">
           <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20 text-emerald-300 shadow-lg shadow-emerald-500/10 whitespace-nowrap">
             <ShieldCheck size={12} className="text-emerald-500" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Acesso Seguro</span>
           </span>
-          {/* Badge "Portal do Cliente" com a nova cor e sem mt-2 */}
           <span className="px-3 py-1 bg-[#b23c0e] rounded-full text-[9px] font-black uppercase tracking-[3px] shadow-lg shadow-[#b23c0e]/20 whitespace-nowrap">Portal do Cliente</span>
       </div>
       <h1 className="text-4xl md:text-5xl font-black tracking-tighter leading-tight max-w-xl">
@@ -205,7 +187,7 @@ const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick, loading }:
         color === 'blue' ? 'bg-blue-50 text-blue-600' : 
         color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
         color === 'orange-accent' ? 'bg-[#ff4C00]/10 text-[#ff4C00]' : 
-        color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : // Added emerald variant
+        color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
         'bg-slate-50 text-slate-600'
       }`}>
         <Icon size={28} />
@@ -224,7 +206,6 @@ const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick, loading }:
   </button>
 );
 
-// DO: Explicitly typing as React.FC to handle 'key' prop correctly in list iterations
 const RecentFileCard: React.FC<{ file: FileNode; onClick: () => void }> = ({ file, onClick }) => (
     <div 
         onClick={onClick}

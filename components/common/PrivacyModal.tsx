@@ -13,7 +13,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"> {/* Ajustado z-index para 150 */}
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
         
         <ModalHeader title={t('privacy.title')} subtitle={t('privacy.subtitle')} onClose={onClose} />
@@ -24,7 +24,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
               icon={<FileText size={20} className="text-[var(--color-detail-blue)]" />}
             >
                 <p className="text-sm text-slate-600 leading-relaxed text-justify">
-                    O <strong>{t('menu.portalName')} {t('menu.brand')}</strong> é uma plataforma B2B destinada ao gerenciamento de documentos técnicos e certificados de qualidade. Esta política visa esclarecer a conformidade com a ISO 9001 e a legislação LGPD vigente.
+                    O <strong>{t('menu.portalName')} {t('menu.brand')}</strong> é uma plataforma B2B destinada ao gerenciamento de documentos técnicos e certificados de qualidade. Esta política visa esclarecer a conformidade com as Normas Técnicas e a legislação LGPD vigente.
                 </p>
             </PrivacySection>
 

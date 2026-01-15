@@ -1,6 +1,10 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Download, ExternalLink, Loader2, FileText, AlertCircle, LucideIcon, ChevronLeft, ChevronRight, Info, Calendar, User, HardDrive, Maximize2, Minimize2 } from 'lucide-react';
+import { 
+  X, Download, Loader2, FileText, AlertCircle, 
+  ChevronLeft, ChevronRight, Calendar, User, 
+  HardDrive, Maximize2, Minimize2, ZoomIn, ZoomOut, 
+  RotateCcw, ShieldCheck, Tag, Info
+} from 'lucide-react';
 import { FileNode, FileType } from '../../../types/index.ts';
 import { fileService } from '../../../lib/services/index.ts';
 import { useAuth } from '../../../context/authContext.tsx';
@@ -9,272 +13,295 @@ import { FileStatusBadge } from './components/FileStatusBadge.tsx';
 import { QualityStatus } from '../../../types/metallurgy.ts';
 
 interface FilePreviewModalProps {
-  initialFile: FileNode | null; // O arquivo a ser exibido inicialmente
-  allFiles: FileNode[]; // Todos os arquivos na pasta atual para navegação
+  initialFile: FileNode | null;
+  allFiles: FileNode[];
   isOpen: boolean;
   onClose: () => void;
-  onDownloadFile: (file: FileNode) => void; // Ação de download delegada
+  onDownloadFile: (file: FileNode) => void;
 }
 
 /**
- * Modal de Visualização de Documentos (Immersive Quick Look)
- * Gerencia a recuperação de tokens de acesso, renderização segura de frames e navegação imersiva.
+ * FilePreviewModal (Professional Grade Viewer)
+ * Um visualizador imersivo que suporta PDFs e imagens com controles avançados de zoom e metadados técnicos.
  */
-export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ initialFile, allFiles, isOpen, onClose, onDownloadFile }) => {
+export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ 
+  initialFile, 
+  allFiles, 
+  isOpen, 
+  onClose, 
+  onDownloadFile 
+}) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  const [currentFileInPreview, setCurrentFileInPreview] = useState<FileNode | null>(initialFile);
+  const [currentFile, setCurrentFile] = useState<FileNode | null>(initialFile);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Viewer States
+  const [zoom, setZoom] = useState(1);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Efeito para sincronizar o arquivo inicial e a lista
+  // Sincronização inicial
   useEffect(() => {
     if (isOpen && initialFile) {
       const idx = allFiles.findIndex(f => f.id === initialFile.id);
-      if (idx !== -1) {
-        setCurrentIndex(idx);
-        setCurrentFileInPreview(allFiles[idx]);
-      } else {
-        // Fallback: se o initialFile não estiver na lista (ex: lista vazia ou filtro aplicado)
-        setCurrentFileInPreview(initialFile);
-        setCurrentIndex(-1); // Indica que não está na lista para navegação
-      }
-    } else {
-      // Resetar estado quando o modal é fechado
-      setCurrentFileInPreview(null);
-      setCurrentIndex(-1);
-      setUrl(null);
-      setError(null);
+      setCurrentIndex(idx);
+      setCurrentFile(initialFile);
+      setZoom(1);
     }
   }, [isOpen, initialFile, allFiles]);
 
-  // Efeito para carregar a URL assinada quando o arquivo de preview muda
+  // Carregamento de URL Assinada
   useEffect(() => {
-    if (currentFileInPreview && user) {
+    if (currentFile && user && isOpen) {
       setLoading(true);
       setError(null);
-      fileService.getFileSignedUrl(user, currentFileInPreview.id)
+      fileService.getFileSignedUrl(user, currentFile.id)
         .then(signedUrl => setUrl(signedUrl))
-        .catch(err => {
-          console.error("[FilePreviewModal] Sync Failure:", err);
-          setError(t('files.errorLoadingDocument'));
-        })
+        .catch(() => setError(t('files.errorLoadingDocument')))
         .finally(() => setLoading(false));
-    } else {
-      setUrl(null);
-      setError(null);
     }
-  }, [currentFileInPreview, user, t]);
+  }, [currentFile, user, isOpen, t]);
 
-  // Lógica de navegação entre arquivos
+  // Handlers de Navegação
   const navigateFile = useCallback((direction: 'next' | 'prev') => {
-    if (allFiles.length === 0 || currentIndex === -1) return; // Não navega se não há arquivos ou arquivo atual não está na lista
-
-    let newIndex = currentIndex;
-    if (direction === 'next') {
-      newIndex = (currentIndex + 1) % allFiles.length;
-    } else { // prev
-      newIndex = (currentIndex - 1 + allFiles.length) % allFiles.length;
-    }
+    if (allFiles.length <= 1) return;
+    let newIndex = direction === 'next' 
+      ? (currentIndex + 1) % allFiles.length 
+      : (currentIndex - 1 + allFiles.length) % allFiles.length;
+    
     setCurrentIndex(newIndex);
-    setCurrentFileInPreview(allFiles[newIndex]);
+    setCurrentFile(allFiles[newIndex]);
+    setZoom(1);
   }, [allFiles, currentIndex]);
 
-  // Manipulador de eventos de teclado (Escape, ArrowLeft, ArrowRight)
+  // Handlers de Visualização
+  const handleZoom = (type: 'in' | 'out' | 'reset') => {
+    if (type === 'in') setZoom(prev => Math.min(prev + 0.25, 3));
+    else if (type === 'out') setZoom(prev => Math.max(prev - 0.25, 0.5));
+    else setZoom(1);
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      modalRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  // Keyboard Shortcuts
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
+    const handleKeys = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      if (e.key === 'ArrowRight') {
-        navigateFile('next');
-      } else if (e.key === 'ArrowLeft') {
-        navigateFile('prev');
-      } else if (e.key === 'Escape') {
-        onClose();
-      }
+      if (e.key === 'ArrowRight') navigateFile('next');
+      if (e.key === 'ArrowLeft') navigateFile('prev');
+      if (e.key === 'Escape') onClose();
+      if (e.key === '+' || e.key === '=') handleZoom('in');
+      if (e.key === '-') handleZoom('out');
     };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener('keydown', handleKeys);
+    return () => window.removeEventListener('keydown', handleKeys);
   }, [isOpen, navigateFile, onClose]);
 
-  if (!isOpen) return null;
-  if (!currentFileInPreview) return null; // Não renderiza se não há arquivo para preview
+  if (!isOpen || !currentFile) return null;
 
-  const isImage = currentFileInPreview.name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-  const canNavigate = allFiles.length > 1 && currentIndex !== -1;
+  const isImage = currentFile.name.match(/\.(jpg|jpeg|png|webp)$/i);
 
   return (
     <div 
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/80 backdrop-blur-lg p-4 md:p-8 animate-in fade-in duration-300"
+      ref={modalRef}
+      className="fixed inset-0 z-[200] bg-slate-950 flex flex-col animate-in fade-in duration-300"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="file-preview-title"
     >
-      <div className="flex flex-row w-full h-full max-w-[1500px] max-h-[95vh] bg-white rounded-3xl shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-300">
-        
-        {/* Main Content Area (Viewer) */}
-        <section className="flex-1 bg-black relative overflow-hidden flex items-center justify-center">
-          {/* Floating Buttons */}
-          <div className="absolute top-4 right-4 flex gap-3 z-10">
-            <button
-              onClick={() => onDownloadFile(currentFileInPreview)}
-              className="p-3 bg-white/20 backdrop-blur-md text-white rounded-xl shadow-md hover:bg-white/30 transition-all active:scale-95 border border-white/30"
-              title={t('files.downloadButton')}
-              aria-label={t('files.downloadButton')}
-            >
-              <Download size={20} />
-            </button>
-            <button
-              onClick={() => setShowSidebar(prev => !prev)}
-              className="p-3 bg-white/20 backdrop-blur-md text-white rounded-xl shadow-md hover:bg-white/30 transition-all active:scale-95 border border-white/30"
-              title={showSidebar ? "Minimizar Sidebar" : "Maximizar Sidebar"}
-              aria-label={showSidebar ? "Minimizar Sidebar" : "Maximizar Sidebar"}
-            >
-              {showSidebar ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-            </button>
-            <button
-              onClick={onClose}
-              className="p-3 bg-white/20 backdrop-blur-md text-white rounded-xl shadow-md hover:bg-white/30 transition-all active:scale-95 border border-white/30"
-              aria-label={t('common.close')}
-            >
-              <X size={20} />
-            </button>
+      {/* Top Header - Glassmorphism */}
+      <header className="h-16 shrink-0 bg-slate-900/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 z-30">
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 bg-blue-500/10 rounded-xl">
+             {isImage ? <Tag className="text-blue-400" size={20} /> : <FileText className="text-blue-400" size={20} />}
           </div>
+          <div>
+            <h2 className="text-white font-bold text-sm md:text-base tracking-tight leading-none">{currentFile.name}</h2>
+            <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest mt-1">
+              Visualização Técnica Controlada
+            </p>
+          </div>
+        </div>
 
-          {/* Navigation Arrows */}
-          {canNavigate && (
+        <div className="flex items-center gap-2">
+          <ViewerButton onClick={() => onDownloadFile(currentFile)} icon={Download} title="Baixar Original" />
+          <div className="w-px h-6 bg-white/10 mx-2" />
+          <ViewerButton onClick={() => setShowSidebar(!showSidebar)} icon={showSidebar ? Minimize2 : Info} title="Info" active={showSidebar} />
+          <ViewerButton onClick={toggleFullscreen} icon={isFullscreen ? Minimize2 : Maximize2} title="Tela Cheia" />
+          <button 
+            onClick={onClose}
+            className="ml-2 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
+          >
+            <X size={24} />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Main Viewer Area */}
+        <main className="flex-1 relative flex items-center justify-center bg-slate-950 overflow-hidden">
+          
+          {/* Navegação Lateral */}
+          {allFiles.length > 1 && (
             <>
-              <button
-                onClick={() => navigateFile('prev')}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/20 backdrop-blur-md text-white rounded-full shadow-md hover:bg-white/30 transition-all active:scale-95 z-10"
-                aria-label="Arquivo Anterior"
-              >
-                <ChevronLeft size={24} />
-              </button>
-              <button
-                onClick={() => navigateFile('next')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/20 backdrop-blur-md text-white rounded-full shadow-md hover:bg-white/30 transition-all active:scale-95 z-10"
-                aria-label="Próximo Arquivo"
-              >
-                <ChevronRight size={24} />
-              </button>
+              <NavArrow direction="left" onClick={() => navigateFile('prev')} />
+              <NavArrow direction="right" onClick={() => navigateFile('next')} />
             </>
           )}
 
-          {/* Viewer Content */}
-          {loading && <LoadingOverlay label={t('files.authenticatingAccess')} />}
+          {/* Floating Action Bar (Zoom & Tools) */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/80 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-2xl z-40">
+            <ViewerButton onClick={() => handleZoom('out')} icon={ZoomOut} title="Zoom Out" />
+            <div className="px-3 text-[10px] font-black text-slate-400 w-14 text-center">
+              {Math.round(zoom * 100)}%
+            </div>
+            <ViewerButton onClick={() => handleZoom('in')} icon={ZoomIn} title="Zoom In" />
+            <div className="w-px h-4 bg-white/10 mx-1" />
+            <ViewerButton onClick={() => handleZoom('reset')} icon={RotateCcw} title="Resetar" />
+          </div>
 
-          {error && (
-            <ErrorOverlay 
-              message={error} 
-              subtext={t('files.permissionOrExpiredLink')} 
-              onRetry={() => {}} // Retry function is tied to currentFileInPreview effect
-              retryLabel={t('maintenance.retry')}
-            />
-          )}
+          {/* Content Rendering */}
+          <div 
+            className="w-full h-full flex items-center justify-center transition-transform duration-200 ease-out"
+            style={{ transform: `scale(${zoom})` }}
+          >
+            {loading ? (
+              <div className="flex flex-col items-center gap-4 text-slate-500">
+                <Loader2 size={48} className="animate-spin text-blue-500" />
+                <p className="text-[10px] font-black uppercase tracking-[4px]">Sincronizando Buffer...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center p-8 max-w-sm">
+                <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <AlertCircle size={40} />
+                </div>
+                <h3 className="text-white font-bold text-lg mb-2">{error}</h3>
+                <p className="text-slate-400 text-sm">{t('files.permissionOrExpiredLink')}</p>
+              </div>
+            ) : url && (
+              isImage ? (
+                <img 
+                  src={url} 
+                  alt={currentFile.name} 
+                  className="max-w-[90%] max-h-[90%] object-contain shadow-[0_0_80px_rgba(0,0,0,0.5)] rounded-lg"
+                />
+              ) : (
+                <iframe 
+                  src={`${url}#toolbar=0&navpanes=0&scrollbar=0`}
+                  className="w-full h-full border-none bg-slate-900"
+                  title={currentFile.name}
+                />
+              )
+            )}
+          </div>
+        </main>
 
-          {!loading && !error && url && (
-            isImage ? (
-              <img 
-                src={url} 
-                alt={currentFileInPreview.name} 
-                className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-500" 
-              />
-            ) : (
-              <iframe 
-                src={`${url}#toolbar=0&navpanes=0`} 
-                className="w-full h-full border-none bg-white animate-in fade-in duration-700"
-                title={currentFileInPreview.name}
-              ></iframe>
-            )
-          )}
-        </section>
-
-        {/* Metadata Sidebar */}
+        {/* Technical Sidebar */}
         {showSidebar && (
-          <MetadataSidebar file={currentFileInPreview} t={t} />
+          <aside className="w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-300 z-40">
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+              <div>
+                <h3 className="text-slate-900 text-xl font-black tracking-tighter leading-tight mb-6">
+                  {currentFile.name}
+                </h3>
+                
+                <div className="space-y-6">
+                  <MetadataRow icon={FileText} label="Tipo de Recurso" value={currentFile.mimeType || 'N/A'} />
+                  <MetadataRow icon={HardDrive} label="Peso do Arquivo" value={currentFile.size || 'N/A'} />
+                  <MetadataRow icon={Calendar} label="Registro de Entrada" value={new Date(currentFile.updatedAt).toLocaleDateString('pt-BR')} />
+                </div>
+              </div>
+
+              <div className="pt-8 border-t border-slate-100">
+                <h4 className="text-[10px] font-black uppercase tracking-[3px] text-slate-400 mb-4">Status de Auditoria</h4>
+                <FileStatusBadge status={currentFile.metadata?.status} />
+              </div>
+
+              {currentFile.metadata?.status === QualityStatus.REJECTED && (
+                <div className="p-4 bg-red-50 rounded-2xl border border-red-100 space-y-2">
+                   <p className="text-[10px] font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
+                    <AlertCircle size={14} /> Motivo da Recusa
+                   </p>
+                   <p className="text-xs text-red-900 italic font-medium leading-relaxed">
+                     "{currentFile.metadata.rejectionReason}"
+                   </p>
+                </div>
+              )}
+
+              {(currentFile.metadata?.inspectedBy || currentFile.metadata?.inspectedAt) && (
+                <div className="pt-8 border-t border-slate-100 space-y-6">
+                   <MetadataRow 
+                      icon={User} 
+                      label="Analista Responsável" 
+                      value={currentFile.metadata.inspectedBy || 'N/A'} 
+                   />
+                   <MetadataRow 
+                      icon={ShieldCheck} 
+                      label="Data da Validação" 
+                      value={currentFile.metadata.inspectedAt ? new Date(currentFile.metadata.inspectedAt).toLocaleDateString('pt-BR') : 'N/A'} 
+                   />
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 bg-slate-50 border-t border-slate-200">
+                <p className="text-[9px] text-slate-400 font-bold uppercase text-center tracking-widest">
+                  ID: {currentFile.id.split('-')[0].toUpperCase()} • Aços Vital SGQ
+                </p>
+            </div>
+          </aside>
         )}
       </div>
     </div>
   );
 };
 
-/* --- Sub-componentes Puros (Clean Code) --- */
+/* --- Componentes Internos de UI --- */
 
-const LoadingOverlay: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex flex-col items-center gap-3 text-white animate-in fade-in">
-    <Loader2 size={40} className="animate-spin text-[var(--color-detail-blue)]" />
-    <p className="text-xs font-black uppercase tracking-[4px]">{label}</p>
-  </div>
+const ViewerButton = ({ onClick, icon: Icon, title, active = false }: any) => (
+  <button 
+    onClick={onClick}
+    className={`p-2 rounded-xl transition-all flex flex-col items-center gap-1 group
+      ${active ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+    title={title}
+  >
+    <Icon size={20} className="group-active:scale-90 transition-transform" />
+  </button>
 );
 
-interface ErrorOverlayProps {
-  message: string;
-  subtext: string;
-  onRetry: () => void;
-  retryLabel: string;
-}
-
-const ErrorOverlay: React.FC<ErrorOverlayProps> = ({ message, subtext, onRetry, retryLabel }) => (
-  <div className="flex flex-col items-center gap-4 text-center p-8 max-w-sm animate-in zoom-in-95">
-    <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shadow-inner">
-      <AlertCircle size={32} />
-    </div>
-    <div>
-      <p className="font-black text-white uppercase tracking-tight">{message}</p>
-      <p className="text-xs text-slate-300 mt-2 font-medium leading-relaxed">{subtext}</p>
-    </div>
-    {/* Removed retry button from here, as the URL loading is handled by effect. */}
-    {/* <button 
-      onClick={onRetry}
-      className="mt-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
-    >
-      {retryLabel}
-    </button> */}
-  </div>
+const NavArrow = ({ direction, onClick }: { direction: 'left' | 'right', onClick: () => void }) => (
+  <button 
+    onClick={(e) => { e.stopPropagation(); onClick(); }}
+    className={`absolute ${direction === 'left' ? 'left-6' : 'right-6'} top-1/2 -translate-y-1/2 
+                w-14 h-14 bg-slate-900/40 backdrop-blur-md text-white rounded-full 
+                flex items-center justify-center hover:bg-blue-600 transition-all 
+                border border-white/5 shadow-2xl z-40 group`}
+  >
+    {direction === 'left' ? <ChevronLeft size={32} className="group-hover:-translate-x-1 transition-transform" /> : <ChevronRight size={32} className="group-hover:translate-x-1 transition-transform" />}
+  </button>
 );
 
-const MetadataSidebar: React.FC<{ file: FileNode; t: any }> = ({ file, t }) => (
-  <aside className="w-80 shrink-0 bg-white/10 backdrop-blur-xl border-l border-white/20 p-6 space-y-6 text-white text-sm">
-    <h3 id="file-preview-title" className="text-xl font-bold mb-4 tracking-tight leading-none text-[var(--color-detail-blue)]">{file.name}</h3>
-
-    <MetadataItem icon={FileText} label="Tipo" value={file.mimeType || 'N/A'} />
-    <MetadataItem icon={HardDrive} label="Tamanho" value={file.size || 'N/A'} />
-    <MetadataItem icon={Calendar} label="Data de Upload" value={new Date(file.updatedAt).toLocaleDateString('pt-BR')} />
-    
-    <div className="pt-4 border-t border-white/10">
-      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">{t('common.status')}</h4>
-      <FileStatusBadge status={file.metadata?.status} />
+const MetadataRow = ({ icon: Icon, label, value }: { icon: any, label: string, value: string }) => (
+  <div className="flex gap-4">
+    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0 border border-slate-100">
+      <Icon size={18} />
     </div>
-
-    {file.metadata?.status === QualityStatus.REJECTED && file.metadata?.rejectionReason && (
-      <div className="p-3 bg-red-500/20 rounded-lg border border-red-400/30 text-red-100 text-xs italic">
-        <strong className="block mb-1">Motivo da Recusa:</strong> {file.metadata.rejectionReason}
-      </div>
-    )}
-
-    {file.metadata?.inspectedBy && (
-      <div className="pt-4 border-t border-white/10">
-        <MetadataItem icon={User} label="Analisado por" value={file.metadata.inspectedBy} />
-      </div>
-    )}
-     {file.metadata?.inspectedAt && (
-      <div className="border-t border-white/10 pt-4">
-        <MetadataItem icon={Calendar} label="Data da Análise" value={new Date(file.metadata.inspectedAt).toLocaleDateString('pt-BR')} />
-      </div>
-    )}
-  </aside>
-);
-
-const MetadataItem: React.FC<{ icon: LucideIcon; label: string; value: string }> = ({ icon: Icon, label, value }) => (
-  <div className="flex items-center gap-3">
-    <Icon size={16} className="text-[var(--color-detail-blue)] shrink-0" />
-    <div className="flex-1">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">{label}</p>
-      <p className="font-medium text-white break-words">{value}</p>
+    <div className="min-w-0">
+      <p className="text-[10px] font-black uppercase text-slate-400 tracking-[1.5px] mb-0.5">{label}</p>
+      <p className="text-sm font-bold text-slate-700 truncate">{value}</p>
     </div>
   </div>
 );
