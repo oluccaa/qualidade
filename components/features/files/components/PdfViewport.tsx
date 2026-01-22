@@ -2,16 +2,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
-// @ts-ignore - Importa a URL do worker local processado pelo Vite
-import workerUrl from '../../../../lib/workers/pdf.worker.min.js?url';
-
 /**
  * CONFIGURAÇÃO DO WORKER (Singleton)
- * Utiliza o ativo local da pasta lib/workers. 
- * Isso torna o portal imune a bloqueios de rede externa ou falta de internet.
+ * Utilizamos o CDN da Cloudflare para garantir que o worker esteja sempre disponível.
  */
+const PDF_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
 if (typeof window !== 'undefined' && (window as any).pdfjsLib) {
-  (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
 }
 
 interface PdfViewportProps {
@@ -36,28 +34,38 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   
-  // Estado para Panning Manual (Mãozinha Premium)
   const [drag, setDrag] = useState({ isDragging: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+  
+  // Refs para controle de concorrência de renderização
   const renderTaskRef = useRef<any>(null);
+  const isPageChangingRef = useRef<boolean>(false);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback(async () => {
     if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch (e) {}
-      renderTaskRef.current = null;
+      try {
+        // Sinaliza o cancelamento
+        renderTaskRef.current.cancel();
+        // IMPORTANTE: Aguarda a promessa da tarefa cancelada ser rejeitada pelo pdf.js
+        // Isso garante que o canvas seja liberado pelo motor antes da próxima chamada.
+        await renderTaskRef.current.promise;
+      } catch (e) {
+        // O erro de 'RenderingCancelledException' é esperado aqui
+      } finally {
+        renderTaskRef.current = null;
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!url) return;
     const loadPdf = async () => {
-      cleanup();
+      await cleanup();
       setError(null);
       setIsRendering(true);
       try {
         const loadingTask = (window as any).pdfjsLib.getDocument({
           url,
           withCredentials: false,
-          // Fallback de CMaps para renderização de fontes especiais sem dependência externa
           cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/`,
           cMapPacked: true,
         });
@@ -74,12 +82,19 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
       }
     };
     loadPdf();
-    return cleanup;
+    return () => { cleanup(); };
   }, [url, cleanup, onPdfLoad]);
 
   const renderPage = useCallback(async () => {
     if (!pdfDoc || !canvasRef.current) return;
-    cleanup();
+    
+    // Bloqueia múltiplas entradas simultâneas na mesma função
+    if (isPageChangingRef.current) return;
+    isPageChangingRef.current = true;
+
+    // Garante que a tarefa anterior morreu e o canvas está livre
+    await cleanup();
+    
     setIsRendering(true);
     try {
       const page = await pdfDoc.getPage(pageNum);
@@ -104,20 +119,29 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
 
       const renderTask = page.render(renderContext);
       renderTaskRef.current = renderTask;
+      
+      // Aguarda a renderização no buffer
       await renderTask.promise;
 
+      // Desenha do buffer para o canvas principal de uma só vez (evita flickering)
       canvas.width = bufferCanvas.width;
       canvas.height = bufferCanvas.height;
       context.drawImage(bufferCanvas, 0, 0);
       setDimensions({ width: viewport.width, height: viewport.height });
+      
     } catch (err: any) {
-      if (err.name !== 'RenderingCancelledException') console.error(err);
+      if (err.name !== 'RenderingCancelledException') {
+        console.error("Render error:", err);
+      }
     } finally {
       setIsRendering(false);
+      isPageChangingRef.current = false;
     }
   }, [pdfDoc, pageNum, zoom, cleanup]);
 
-  useEffect(() => { renderPage(); }, [renderPage]);
+  useEffect(() => { 
+    renderPage(); 
+  }, [renderPage]);
 
   // MANIPULAÇÃO DE PANNING (Mãozinha Premium)
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -140,7 +164,6 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
 
-    // Ajusta o scroll nativo do container com base no movimento do mouse
     containerRef.current.scrollLeft = drag.scrollLeft - dx;
     containerRef.current.scrollTop = drag.scrollTop - dy;
   };
@@ -157,7 +180,8 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
         if (!onZoomChange) return;
         e.preventDefault();
         const direction = e.deltaY < 0 ? 1 : -1;
-        onZoomChange(Math.max(0.1, Math.min(5, zoom + direction * 0.15)));
+        // Mantido o limite de 50% (0.5)
+        onZoomChange(Math.max(0.5, Math.min(5, zoom + direction * 0.15)));
     }
   };
 
@@ -176,10 +200,9 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
       }`}
       style={{ 
         scrollBehavior: drag.isDragging ? 'auto' : 'smooth',
-        padding: '100px' 
+        padding: '1rem'
       }}
     >
-      {/* Grid Técnico High-Tech (Background) */}
       <div 
         className="fixed inset-0 pointer-events-none opacity-[0.07]" 
         style={{ 
@@ -192,10 +215,8 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
         }} 
       />
       
-      {/* Glow Atmosférico */}
       <div className="fixed inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,_#1e293b_0%,_transparent_70%)]" />
 
-      {/* Documento (Canvas + Overlay) */}
       <div 
         className="relative flex-shrink-0 transition-opacity duration-700 ease-out"
         style={{ 
@@ -205,20 +226,16 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
           pointerEvents: isHandToolActive ? 'none' : 'auto'
         }}
       >
-        {/* Sombra de Profundidade */}
         <div className="absolute inset-0 bg-black/60 blur-[60px] rounded-sm -z-10 translate-y-10 scale-[0.98]" />
         
-        {/* Bordas do Papel Técnico */}
         <div className="bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_30px_100px_rgba(0,0,0,0.6)] rounded-sm overflow-hidden border border-white/10">
             <canvas ref={canvasRef} style={{ width: dimensions.width, height: dimensions.height, display: 'block' }} />
         </div>
         
-        {/* Camada Interativa (Anotações) */}
         <div className={`absolute inset-0 z-10 ${isHandToolActive ? 'pointer-events-none' : 'pointer-events-auto'}`}>
           {dimensions.width > 0 && renderOverlay && renderOverlay(dimensions.width, dimensions.height)}
         </div>
         
-        {/* Indicador de Renderização em Progresso */}
         {isRendering && (
           <div className="absolute top-8 right-8 z-[60] bg-blue-600/90 backdrop-blur-md p-2.5 rounded-full shadow-2xl animate-pulse ring-4 ring-blue-500/20">
              <Loader2 size={16} className="animate-spin text-white" />
@@ -231,7 +248,7 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
             <AlertCircle size={64} className="text-red-500 mb-6 drop-shadow-[0_0_15px_rgba(239,68,68,0.4)]" />
             <h3 className="text-white text-xl font-black uppercase tracking-[4px] mb-2">Erro de Viewport</h3>
             <p className="text-slate-400 text-sm max-w-xs mx-auto mb-8 font-medium">O cluster industrial não conseguiu renderizar o laudo técnico.</p>
-            <button onClick={() => window.location.reload()} className="flex items-center gap-3 px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[3px] transition-all shadow-2xl active:scale-95">
+            <button onClick={() => window.location.reload()} className="flex items-center gap-3 px-10 py-4 bg-blue-600 hover:bg-blue-50 text-white rounded-2xl text-[10px] font-black uppercase tracking-[3px] transition-all shadow-2xl active:scale-95">
                <RefreshCw size={14} /> Reiniciar Protocolo
             </button>
         </div>

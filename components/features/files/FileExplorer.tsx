@@ -1,4 +1,5 @@
-import React, { forwardRef, useImperativeHandle, useCallback } from 'react'; 
+
+import React, { forwardRef, useImperativeHandle } from 'react'; 
 import { useTranslation } from 'react-i18next';
 import { FileNode, BreadcrumbItem, UserRole } from '../../../types/index.ts';
 import { FileListView, FileGridView } from './components/FileViews.tsx';
@@ -41,37 +42,32 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>((p
       clearSelection: () => {} 
   }));
 
-  const handleNavigate = useCallback((id: string | null) => onNavigate(id), [onNavigate]);
-  const handlePreview = useCallback((file: FileNode | null) => onFileSelectForPreview(file), [onFileSelectForPreview]);
-  const handleToggle = useCallback((id: string) => onToggleFileSelection(id), [onToggleFileSelection]);
-  const handleRename = useCallback((file: FileNode) => onRenameFile(file), [onRenameFile]);
-  const handleDelete = useCallback((id: string) => onDeleteFile(id), [onDeleteFile]);
-
   if (loading && files.length === 0) return <LoadingState message="Acessando Cluster Industrial..." />;
   if (!loading && files.length === 0) return <EmptyState t={t} />;
 
   const viewProps = {
     files,
-    onNavigate: handleNavigate,
-    onSelectFileForPreview: handlePreview,
+    onNavigate,
+    onSelectFileForPreview: onFileSelectForPreview,
     selectedFileIds,
-    onToggleFileSelection: handleToggle,
+    onToggleFileSelection,
     onDownload: onDownloadFile,
-    onRename: handleRename,
-    onDelete: handleDelete,
+    onRename: onRenameFile,
+    onDelete: onDeleteFile,
     userRole,
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto custom-scrollbar bg-white/50 scroll-smooth">
-      <div className="p-3 md:p-8 min-h-full">
-        <div className="max-w-[1800px] mx-auto pb-48 md:pb-40">
+    <div className="w-full h-full overflow-y-auto custom-scrollbar bg-slate-50/50">
+      <div className="p-4 md:p-6 lg:p-8 min-h-full w-full">
+        {/* Removida a trava de largura fixa para expansão dinâmica fluida */}
+        <div className="w-full pb-40">
           {viewMode === 'list' ? (
-            <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden w-full">
               <FileListView {...viewProps} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 4xl:grid-cols-8 gap-4 md:gap-6 w-full">
               <FileGridView {...viewProps} />
             </div>
           )}

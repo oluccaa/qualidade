@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -46,8 +45,15 @@ export const FilePreviewPage: React.FC = () => {
   const isAuditMode = searchParams.get('mode') === 'audit';
   const showNotesParam = searchParams.get('notes') === 'true';
   const shouldShowAnnotations = isAuditMode || showNotesParam;
+
+  // Lógica de Trava de Segurança:
+  // Anotações só são permitidas se:
+  // 1. O usuário for Parceiro (CLIENT)
+  // 2. O acesso vier via Workflow (parâmetro mode=audit)
+  // 3. O Passo atual do arquivo for o Passo 2 (Conferência de Dados)
+  const isStep2Active = currentFile?.metadata?.currentStep === 2;
   const isStep2Finished = !!currentFile?.metadata?.signatures?.step2_documental;
-  const canAnnotate = role === UserRole.CLIENT && !isStep2Finished;
+  const canAnnotate = role === UserRole.CLIENT && isAuditMode && isStep2Active && !isStep2Finished;
   
   const [activeTool, setActiveTool] = useState<DrawingTool>('hand');
   const [selectedColor, setSelectedColor] = useState('#ef4444');
@@ -101,7 +107,7 @@ export const FilePreviewPage: React.FC = () => {
                <span className="px-2 py-0.5 bg-blue-600 text-[8px] font-black uppercase rounded shadow-lg shadow-blue-500/20">v{currentFile?.versionNumber || 1}.0</span>
             </div>
             <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">
-              {isStep2Finished ? 'Modo de Leitura de Laudo' : isAuditMode ? 'Terminal de Auditoria B2B Ativo' : 'Visualização Segura Protocolada'}
+              {isStep2Finished ? 'Modo de Leitura de Laudo' : canAnnotate ? 'Terminal de Auditoria B2B Ativo' : 'Visualização Segura Protocolada'}
             </p>
           </div>
         </div>
@@ -113,7 +119,7 @@ export const FilePreviewPage: React.FC = () => {
                     <span className="text-[9px] font-black uppercase tracking-widest text-blue-300">Sync Ativo</span>
                 </div>
             )}
-            {isAuditMode && canAnnotate && (
+            {canAnnotate && (
                 <button onClick={handlePersistChanges} disabled={isSyncing || !url} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-[3px] flex items-center gap-2.5 transition-all shadow-xl shadow-emerald-600/20 active:scale-95 disabled:opacity-30">
                     <Save size={14} /> Salvar Veredito
                 </button>
@@ -188,7 +194,7 @@ export const FilePreviewPage: React.FC = () => {
             title="Mover (Arrastar)" 
           />
           
-          {isAuditMode && canAnnotate && (
+          {canAnnotate && (
             <div className="relative">
               <button 
                 onClick={() => setShowToolsMenu(!showToolsMenu)} 
@@ -244,14 +250,14 @@ export const FilePreviewPage: React.FC = () => {
               )}
             </div>
           )}
-          {isAuditMode && canAnnotate && <PremiumToolBtn icon={Undo} onClick={handleUndo} disabled={(annotations[pageNum] || []).length === 0} title="Desfazer" />}
+          {canAnnotate && <PremiumToolBtn icon={Undo} onClick={handleUndo} disabled={(annotations[pageNum] || []).length === 0} title="Desfazer" />}
         </div>
 
         <div className="w-px h-8 bg-white/10 mx-1" />
 
         {/* Zoom Engine */}
         <div className="flex items-center gap-1.5">
-          <PremiumToolBtn icon={ZoomOut} onClick={() => setZoom(Math.max(0.1, zoom - 0.2))} />
+          <PremiumToolBtn icon={ZoomOut} onClick={() => setZoom(Math.max(0.5, zoom - 0.2))} />
           <div className="px-4 py-2.5 bg-black/60 rounded-2xl min-w-[75px] text-center border border-white/5 shadow-inner">
             <span className="text-[10px] font-black text-blue-400 font-mono tracking-tighter transition-all">
               {Math.round(zoom * 100)}%

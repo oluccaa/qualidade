@@ -1,127 +1,131 @@
-import React, { memo } from 'react';
+import React from 'react';
 import { usePartnerDashboard } from '../../partner/hooks/usePartnerDashboard.ts';
-import { ShieldCheck, FileText, Clock, FileWarning, ArrowRight, ClipboardCheck, ArrowUpRight } from 'lucide-react';
+import { ShieldCheck, FileText, Clock, FileWarning, ArrowRight, Loader2, ClipboardCheck, Info } from 'lucide-react';
 import { FileStatusBadge } from '../../files/components/FileStatusBadge.tsx';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
-export const ClientDashboardView: React.FC = memo(() => {
-  const { stats, recentFiles, isLoading, isLive } = usePartnerDashboard();
+export const ClientDashboardView: React.FC = () => {
+  const { t } = useTranslation();
+  const { stats, recentFiles, isLoading } = usePartnerDashboard();
   const [, setSearchParams] = useSearchParams();
 
-  if (isLoading) return <ClientDashboardSkeleton />;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
+        <Loader2 className="animate-spin text-blue-500 mb-4" size={40} />
+        <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-400">{t('client.dashboard.loading')}</p>
+      </div>
+    );
+  }
 
   const totalPending = stats?.pendingValue || 0;
   const hasPending = totalPending > 0;
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-safe-nav">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        
-        {/* KPI: Pendências -> Navega para Fluxo de Auditoria */}
-        <button 
-          onClick={() => setSearchParams({ view: 'audit_flow' })}
-          className={`group p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border shadow-xl flex flex-col justify-between transition-all relative overflow-hidden text-left active:scale-[0.98] animate-stagger ${
-            hasPending ? 'bg-orange-600 border-orange-500 text-white' : 'bg-white border-slate-200'
-          }`} style={{ animationDelay: '100ms' }}>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* KPI: Pendências de Auditoria */}
+        <div className={`p-6 rounded-[2.5rem] border shadow-xl flex flex-col justify-between transition-all relative overflow-hidden group ${
+          hasPending ? 'bg-orange-600 border-orange-500 text-white' : 'bg-white border-slate-200'
+        }`}>
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${
+            <div className="flex items-center gap-4 mb-4">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${
                 hasPending ? 'bg-white text-orange-600' : 'bg-[#132659] text-white'
               }`}>
-                <ClipboardCheck size={20} className="md:w-6 md:h-6" />
+                <ClipboardCheck size={24} />
               </div>
-              <ArrowUpRight size={18} className={`transition-opacity ${hasPending ? 'text-white/40 group-hover:opacity-100' : 'text-slate-300 opacity-0 group-hover:opacity-100'}`} />
+              <h3 className={`text-[10px] font-black uppercase tracking-[2px] ${hasPending ? 'text-white/70' : 'text-slate-400'}`}>{t('client.dashboard.pendingActions')}</h3>
             </div>
             <div>
-              <p className="text-4xl md:text-5xl font-black tracking-tighter">{totalPending}</p>
-              <h3 className={`text-[9px] md:text-[10px] font-black uppercase tracking-[2px] mt-2 ${hasPending ? 'text-white/70' : 'text-slate-400'}`}>Ações Pendentes</h3>
+              <p className="text-5xl font-black tracking-tighter" aria-live="polite">{totalPending}</p>
+              <p className={`text-[10px] font-bold uppercase mt-1 tracking-widest ${hasPending ? 'text-white/80' : 'text-orange-600'}`}>
+                {hasPending ? t('client.dashboard.requireReview') : t('dashboard.kpi.assured')}
+              </p>
             </div>
           </div>
-          {hasPending && <FileWarning className="absolute -right-4 -bottom-4 opacity-10 rotate-12 pointer-events-none w-24 h-24 md:w-32 md:h-32" />}
-        </button>
+          {hasPending && <FileWarning className="absolute -right-4 -bottom-4 opacity-10 rotate-12 pointer-events-none" size={120} aria-hidden="true" />}
+        </div>
 
-        {/* KPI: Validados -> Navega para Biblioteca */}
-        <button 
-          onClick={() => setSearchParams({ view: 'library' })}
-          className="bg-white p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between group relative overflow-hidden text-left active:scale-[0.98] animate-stagger transition-all hover:border-blue-300 hover:shadow-md" style={{ animationDelay: '200ms' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center border border-emerald-100 shadow-inner group-hover:scale-110 transition-transform">
-              <ShieldCheck size={20} className="md:w-6 md:h-6" />
+        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between group relative overflow-hidden">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100 shadow-inner group-hover:scale-110 transition-transform" aria-hidden="true">
+              <ShieldCheck size={24} />
             </div>
-            <ArrowUpRight size={18} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <h3 className="text-[10px] font-black uppercase tracking-[2px] text-slate-400">{t('client.dashboard.validatedAssets')}</h3>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter">{stats?.subValue || 0}</p>
-            <h3 className="text-[9px] md:text-[10px] font-black uppercase tracking-[2px] text-slate-400 mt-2">Ativos Validados</h3>
+            <p className="text-4xl font-black text-slate-800 tracking-tighter" aria-live="polite">{stats?.subValue || 0}</p>
+            <p className="text-[10px] text-emerald-600 font-bold uppercase mt-1 tracking-widest">{t('client.dashboard.complianceSubtitle')}</p>
           </div>
-        </button>
+        </div>
 
-        {/* KPI: Última Auditoria -> Navega para Fluxo de Auditoria (Histórico) */}
-        <button 
-          onClick={() => setSearchParams({ view: 'audit_flow' })}
-          className="bg-[#132659] p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] text-white flex flex-col justify-between shadow-2xl relative overflow-hidden group text-left active:scale-[0.98] animate-stagger transition-all hover:shadow-blue-900/30 sm:col-span-2 lg:col-span-1" style={{ animationDelay: '300ms' }}>
-          <div className="flex items-center justify-between mb-4 relative z-10">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 text-blue-400 rounded-xl md:rounded-2xl flex items-center justify-center border border-white/5 shadow-lg group-hover:rotate-12 transition-transform">
-              <Clock size={20} className="md:w-6 md:h-6" />
+        <div className="bg-[#132659] p-6 rounded-[2.5rem] text-white flex flex-col justify-between shadow-2xl relative overflow-hidden group">
+          <div className="flex items-center gap-4 mb-4 relative z-10">
+            <div className="w-12 h-12 bg-white/10 text-blue-400 rounded-2xl flex items-center justify-center border border-white/5 shadow-lg group-hover:rotate-12 transition-transform" aria-hidden="true">
+              <Clock size={24} />
             </div>
-            <ArrowUpRight size={18} className="text-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <h3 className="text-[10px] font-black uppercase tracking-[2px] text-slate-500">{t('client.dashboard.lastAudit')}</h3>
           </div>
           <div className="relative z-10">
-            <p className="text-xl md:text-2xl font-black tracking-tight leading-none">
-              {stats?.lastAnalysis ? new Date(stats.lastAnalysis).toLocaleString('pt-BR', { dateStyle: 'short' }) : '--/--/----'}
+            <p className="text-2xl font-black tracking-tight" aria-live="polite">
+              {stats?.lastAnalysis ? new Date(stats.lastAnalysis).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '--/--/----'}
             </p>
-            <h3 className="text-[9px] md:text-[10px] font-black uppercase tracking-[2px] text-slate-500 mt-2">Sincronia Vital</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-[3px]">{t('client.dashboard.protocolLabel')}</p>
           </div>
-        </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm animate-stagger" style={{ animationDelay: '400ms' }}>
-        <header className="px-6 md:px-8 py-4 md:py-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-            <h4 className="text-[10px] md:text-xs font-black text-slate-800 uppercase tracking-[2px] md:tracking-[3px]">Atividade em Tempo Real</h4>
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm" aria-labelledby="recent-assets-title">
+        <header className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+             <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" aria-hidden="true" />
+             <h4 id="recent-assets-title" className="text-xs font-black text-slate-800 uppercase tracking-[3px]">{t('client.dashboard.recentHistory')}</h4>
           </div>
           <button 
             onClick={() => setSearchParams({ view: 'library' })}
-            className="px-3 md:px-4 py-1.5 md:py-2 bg-slate-100 hover:bg-slate-200 text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-widest rounded-lg md:rounded-xl transition-all"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-[9px] font-black text-slate-600 uppercase tracking-widest rounded-xl transition-all"
           >
-            Ver Todos
+            {t('client.dashboard.accessLibrary')}
           </button>
         </header>
         <div className="divide-y divide-slate-50">
-          {recentFiles.slice(0, 5).map(file => (
+          {recentFiles.map(file => (
             <div 
               key={file.id} 
+              role="button"
+              tabIndex={0}
               onClick={() => setSearchParams({ view: 'library', folderId: file.parentId || '' })}
-              className="flex items-center justify-between p-4 md:p-6 hover:bg-blue-50/30 transition-all group cursor-pointer"
+              onKeyDown={(e) => e.key === 'Enter' && setSearchParams({ view: 'library', folderId: file.parentId || '' })}
+              className="flex items-center justify-between p-6 hover:bg-blue-50/30 transition-all group cursor-pointer"
             >
-              <div className="flex items-center gap-3 md:gap-5 min-w-0">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 text-slate-400 rounded-xl md:rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-                  <FileText size={18} className="md:w-6 md:h-6" />
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center border border-slate-100 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all shadow-sm" aria-hidden="true">
+                  <FileText size={24} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs md:text-sm font-bold text-slate-800 uppercase tracking-tight truncate">{file.name}</p>
-                  <div className="mt-1">
+                <div>
+                  <p className="text-sm font-bold text-slate-800 leading-tight uppercase tracking-tight">{file.name}</p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{file.size}</span>
                     <FileStatusBadge status={file.metadata?.status} />
                   </div>
                 </div>
               </div>
-              <ArrowRight size={16} className="text-slate-200 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0 ml-2" />
+              <div className="flex items-center gap-4">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline">{t('client.dashboard.auditAsset')}</span>
+                  <ArrowRight size={20} className="text-slate-200 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" aria-hidden="true" />
+              </div>
             </div>
           ))}
+          {recentFiles.length === 0 && (
+            <div className="py-24 text-center text-slate-300 italic">
+              <ShieldCheck size={48} className="mx-auto mb-4 opacity-10" aria-hidden="true" />
+              <p className="text-sm font-medium uppercase tracking-widest">{t('client.dashboard.noRecent')}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-});
-
-const ClientDashboardSkeleton = () => (
-    <div className="space-y-6 md:space-y-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {[1, 2, 3].map(i => (
-                <div key={i} className="h-40 md:h-44 bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2.5rem] skeleton-shimmer shadow-sm" />
-            ))}
-        </div>
-        <div className="h-80 md:h-96 bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2.5rem] skeleton-shimmer shadow-sm" />
-    </div>
-);
+};

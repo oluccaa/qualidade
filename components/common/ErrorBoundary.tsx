@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, ShieldAlert, Copy, ChevronDown, ChevronUp, DatabaseZap } from 'lucide-react';
 
 interface Props {
@@ -17,9 +17,10 @@ interface State {
  * Proteção de última instância para falhas catastróficas.
  * Projetado para funcionar mesmo se o sistema de estilos ou tradução falhar.
  */
-// Fix: Extending Component directly from react to ensure inheritance is correctly resolved by TypeScript
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
+// Use React.Component for robust inheritance and visibility of setState/props in TypeScript
+export class ErrorBoundary extends React.Component<Props, State> {
+  // State initialization following standard class component pattern
+  public override state: State = {
     hasError: false,
     error: null,
     errorInfo: null,
@@ -31,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log forense para auditoria
     console.error('[FATAL_SYSTEM_CRASH]', {
       message: error.message,
@@ -40,12 +41,12 @@ export class ErrorBoundary extends Component<Props, State> {
       timestamp: new Date().toISOString()
     });
     
-    // Fix: setState is inherited from Component base class
+    // Correctly using this.setState from the React.Component base class
     this.setState({ errorInfo });
   }
 
   private handleSoftReset = () => {
-    // Fix: setState is available on this instance extending Component
+    // Correctly using this.setState from the React.Component base class to reset error state
     this.setState({ hasError: false, error: null, errorInfo: null });
     window.location.href = '/';
   };
@@ -67,7 +68,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
     alert('Relatório de erro copiado para a área de transferência.');
   };
 
-  public render(): ReactNode {
+  public override render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans text-slate-300">
@@ -81,7 +82,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
             <div className="p-8 md:p-12">
               <div className="flex flex-col items-center text-center space-y-6">
                 <div className="relative">
-                  <div className="w-24 h-24 bg-red-500/10 rounded-3xl flex items-center justify-center border border-red-500/20 shadow-inner animate-pulse">
+                  <div className="w-24 h-24 bg-red-50/10 rounded-3xl flex items-center justify-center border border-red-500/20 shadow-inner animate-pulse">
                     <ShieldAlert size={48} className="text-red-500" />
                   </div>
                   <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#081437] border border-white/10 rounded-xl flex items-center justify-center text-orange-500 shadow-xl">
@@ -115,7 +116,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
 
                 <div className="w-full pt-6 border-t border-white/5">
                   <button 
-                    // Fix: setState call from Component instance
+                    // Correctly using this.setState to toggle visibility
                     onClick={() => this.setState({ showDetails: !this.state.showDetails })}
                     className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[3px] text-slate-500 hover:text-slate-300 transition-colors mx-auto"
                   >
@@ -164,7 +165,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
       );
     }
 
-    // Fix: Accessing children from props inherited from Component
+    // Accessing props.children correctly from the React.Component base class
     return this.props.children;
   }
 }

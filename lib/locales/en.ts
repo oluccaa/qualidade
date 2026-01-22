@@ -4,6 +4,7 @@ export const en: typeof pt = {
   common: {
     welcome: "Welcome",
     loading: "Loading...",
+    syncing: "Syncing...",
     privacy: "Privacy",
     logout: "Logout",
     edit: "Edit",
@@ -28,7 +29,108 @@ export const en: typeof pt = {
       es: "Spanish"
     },
     clear: "Clear",
-    moreOptions: "More options"
+    moreOptions: "More options",
+    skipToContent: "Skip to content",
+    retry: "Retry",
+    success: "Success",
+    error: "Error"
+  },
+  loaders: {
+    preparingPortal: "Preparing Aços Vital Quality Portal",
+    preparingInterface: "Preparing Vital Interface...",
+    validatingProtocols: "Validating Security Protocols...",
+    syncFailure: "Sync Failure",
+    syncingModule: "Syncing Module...",
+    scanningLedger: "Scanning Ledger...",
+    syncingVault: "Syncing Vault...",
+    syncingBacklog: "Syncing Technical Backlog..."
+  },
+  audit: {
+    workflow: {
+      title: "Industrial Audit Flow",
+      partnerTitle: "Compliance and Technical Acceptance",
+      subtitle: "Rigorous control of industrial verdicts.",
+      partnerSubtitle: "Verification and signature of approved certificates.",
+      steps: {
+        step1: "1. Vital Release (QMS)",
+        step2: "2. Data Verification",
+        step3: "3. Physical Inspection",
+        step4: "4. Technical Arbitration",
+        step5: "5. Partner Verdict",
+        step6: "6. Digital Consolidation",
+        step7: "7. Certified Vital Protocol"
+      },
+      labels: {
+        authFlow: "Authorize Industrial Flow",
+        stationAnnotation: "Technical Annotation Station",
+        viewNotes: "View Notes (Read Only)",
+        attachDocs: "Attach Scanned Documentation",
+        attachDocsDesc: "Use this field if you printed the document to take notes by hand or if you have additional evidence of discrepancy.",
+        auditFlags: "Audit Flags",
+        addFlag: "Add marker...",
+        reportDivergence: "Discrepancy Report",
+        reportDivergencePlaceholder: "Formally describe technical observations on this document...",
+        signValidation: "Sign Data Validation",
+        galleryField: "Field Gallery (Photos/Docs)",
+        galleryFieldDesc: "Attach here photos of the received load, seals, or documents accompanying transport.",
+        physicalState: "Physical Condition (Receiving Flags)",
+        physicalNotes: "Field Observations",
+        physicalNotesPlaceholder: "Report material reception conditions at the site...",
+        approveLoad: "Approve Load",
+        rejectLoad: "Reject Load",
+        fullCompliance: "Full Compliance Detected",
+        noDivergence: "No disqualifying discrepancies. Arbitration completed automatically.",
+        arbitrationPlaceholder: "Describe final technical mediation for this batch...",
+        signArbitration: "Sign Technical Arbitration",
+        vitalMediationNote: "Vital Mediation Note",
+        acceptBatch: "Accept Batch",
+        rejectBatch: "Reject Batch",
+        clientAcceptance: "Client Acceptance Status",
+        homologated: "Batch Homologated",
+        refused: "Batch Refused",
+        repPartner: "Partner Representative",
+        repQuality: "Quality Analyst",
+        signDigitalSealClient: "Sign Digital Seal (Client)",
+        signDigitalSealAnalyst: "Sign Digital Seal (Analyst)",
+        vitalCertification: "Vital SGQ Certification",
+        homologatedAsset: "Asset homologated for safe industrial use.",
+        transmissionBlocked: "Transmission Blocked",
+        rejectedByPartner: "Batch rejected by the partner. Workflow requires external technical mediation.",
+        criticalDivergence: "Critical technical discrepancy detected. Await contact from Aços Vital Quality.",
+        partnerContact: "Partner Contact (Representative)",
+        digitalSignature: "Audited Digital Signature",
+        signed: "Signed",
+        waiting: "Waiting...",
+        completion: "Completion of 7 Steps",
+        protocolValidated: "Protocol Validated",
+        phaseAnalysis: "Phase in Analysis",
+        awaitingRelease: "Awaiting Release"
+      },
+      messages: {
+        signSuccess: "Protocol successfully signed.",
+        syncError: "Technical synchronization error.",
+        evidenceSuccess: "Evidence archived successfully.",
+        noImages: "No Images Attached"
+      }
+    },
+    metrics: {
+      referenceId: "Reference ID",
+      assetVersion: "Asset Version",
+      partnerCompany: "Partner Company",
+      vitalManager: "Vital Manager",
+      clientUser: "Client User",
+      auditWindow: "Audit Window",
+      cycleStart: "Cycle Start",
+      techConclusion: "Technical Conclusion"
+    }
+  },
+  settings: {
+    title: "Profile Preferences",
+    subtitle: "Manage your security guidelines and access protocols.",
+    securityCompliance: "Security & Compliance",
+    techId: "TECH ID",
+    changePassDesc: "Update your authentication secret periodically to maintain account integrity.",
+    privacyDesc: "Consult how your technical data and audit records are processed in the portal."
   },
   auth: {
     errors: {
@@ -128,7 +230,6 @@ export const en: typeof pt = {
     errorLoadingQualityData: "Quality indicator synchronization failed.",
     noQualityLogsFound: "No technical audit logs detected.",
     invalidConfirmationCredentials: "Authentication for confirmation failed.",
-    // Fix: Added missing properties for quality workflow
     releaseTransmission: "Release Transmission",
     releaseTransmissionSuccess: "Transmission released to client.",
     contestVerdict: "Contest Verdict",
@@ -180,6 +281,38 @@ export const en: typeof pt = {
     lastAnalysis: "Last Analysis",
     allClients: "All Clients",
     activeClients: "Active Clients"
+  },
+  client: {
+    home: "Home",
+    flux: "Flow",
+    portal: {
+      title: "Partner Terminal",
+      libraryTitle: "Asset Repository",
+      auditTitle: "Compliance Management",
+      gatewayActive: "B2B Gateway Active",
+      exclusiveTerminal: "Your exclusive industrial certification terminal.",
+      flowTitle: "Flow Monitoring",
+      flowSubtitle: "Real-time physical and documentary verification status"
+    },
+    dashboard: {
+      loading: "Syncing B2B Data...",
+      pendingActions: "Pending Actions",
+      requireReview: "Review Required",
+      validatedAssets: "Validated Assets",
+      complianceSubtitle: "Compliance Protocols",
+      lastAudit: "Last Audit",
+      protocolLabel: "Vital SGQ Protocol",
+      recentHistory: "Recently Received Assets",
+      accessLibrary: "Access Library",
+      noRecent: "No recent movements in the Vault.",
+      auditAsset: "Audit Asset"
+    },
+    library: {
+      title: "Asset Library",
+      subtitle: "Technical files and industrial certificates",
+      totalAssets: "Resources: {{count}}",
+      vaultLabel: "Vital Vault"
+    }
   },
   cookie: {
     title: "Privacy & Data Protection",
@@ -264,7 +397,8 @@ export const en: typeof pt = {
     downloadButton: "Export PDF",
     selectItem: "Target {{name}}",
     noResultsFound: "No assets matched the query.",
-    typeToSearch: "Start typing to filter resources..."
+    typeToSearch: "Start typing to filter resources...",
+    traceability: "Traceability by Batch or Descriptor..."
   },
   changePassword: {
     title: "Access Security",

@@ -47,16 +47,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
+      <a href="#main-content" className="skip-link">{t('common.skipToContent') || 'Pular para o conteúdo'}</a>
       <CookieBanner />
 
-      <nav aria-label="Navegação Lateral Principal" className="shrink-0">
+      <aside aria-label="Navegação Lateral Principal" className="shrink-0 h-full">
         {role === UserRole.ADMIN && <SidebarAdmin {...commonSidebarProps} />}
         {role === UserRole.QUALITY && <SidebarQuality {...commonSidebarProps} />}
         {role === UserRole.CLIENT && <SidebarClient {...commonSidebarProps} />}
-      </nav>
+      </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <MaintenanceBanner status={system.status} isAdmin={role === UserRole.ADMIN} />
+        <div role="status" aria-live="polite" className="shrink-0">
+          <MaintenanceBanner status={system.status} isAdmin={role === UserRole.ADMIN} />
+        </div>
         
         <Header 
           title={title} 
@@ -71,10 +74,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         <main 
           id="main-content"
           role="main"
+          className="flex-1 flex flex-col min-h-0 bg-transparent p-4 md:p-6 lg:p-8 relative overflow-y-auto custom-scrollbar"
           aria-label={title}
-          className="flex-1 flex flex-col min-h-0 bg-transparent p-4 md:p-8 relative overflow-y-auto custom-scrollbar"
         >
-          <div className="w-full max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700 flex flex-col gap-8">
+          {/* h-full removido para evitar colapso; flex-1 garante que o conteúdo tome o máximo de altura possível */}
+          <div className="w-full flex-1 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-3 duration-700 min-h-full">
             {children}
           </div>
         </main>

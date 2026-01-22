@@ -1,8 +1,9 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useTranslation } from 'react-i18next';
-import { FileNode, FileType, UserRole, normalizeRole } from '../../../../types/index.ts';
+import { FileNode, FileType, UserRole } from '../../../../types/index.ts';
 import { useFileCollection } from '../../files/hooks/useFileCollection.ts';
 import { useFileOperations } from '../../files/hooks/useFileOperations.ts';
 import { FileExplorer, FileExplorerHandle } from '../../files/FileExplorer.tsx';
@@ -12,8 +13,7 @@ import { RenameModal } from '../../files/modals/RenameModal.tsx';
 import { UploadFileModal } from '../../files/modals/UploadFileModal.tsx';
 import { DeleteConfirmationModal } from '../../files/modals/DeleteConfirmationModal.tsx';
 import { PaginationControls } from '../../../common/PaginationControls.tsx';
-import { LoadingState } from '../../files/components/ExplorerStates.tsx';
-import { ProcessingOverlay } from '../components/ViewStates.tsx';
+import { QualityLoadingState, ProcessingOverlay } from '../components/ViewStates.tsx';
 import { fileService } from '../../../../lib/services/index.ts';
 import { supabase } from '../../../../lib/supabaseClient.ts';
 import { MousePointer2 } from 'lucide-react';
@@ -27,9 +27,6 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  const userRole = normalizeRole(user?.role);
-  const isClient = userRole === UserRole.CLIENT;
   
   const currentFolderId = searchParams.get('folderId');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => 
@@ -113,8 +110,9 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
     }
   };
 
+  // Drag & Drop Externo
   const onDragOver = (e: React.DragEvent) => {
-    if (isClient) return;
+    if (user?.role === UserRole.CLIENT) return;
     e.preventDefault();
     setIsDraggingExternal(true);
   };
@@ -122,7 +120,7 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
   const onDragLeave = () => setIsDraggingExternal(false);
 
   const onDrop = (e: React.DragEvent) => {
-    if (isClient) return;
+    if (user?.role === UserRole.CLIENT) return;
     e.preventDefault();
     setIsDraggingExternal(false);
     
@@ -133,11 +131,11 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
     }
   };
 
-  if (!isReady) return <LoadingState message="Acessando Protocolos..." />;
+  if (!isReady) return <QualityLoadingState message="Sincronizando Vault..." />;
 
   return (
     <div 
-        className="flex flex-col h-full bg-slate-50 overflow-hidden relative"
+        className="flex flex-col h-full bg-white overflow-hidden animate-in fade-in duration-500 relative"
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
@@ -145,18 +143,18 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
       {ops.isProcessing && (
         <ProcessingOverlay 
             message={ops.uploadProgress.total > 0 
-                ? `Sincronizando Ativos (${ops.uploadProgress.current}/${ops.uploadProgress.total})...` 
-                : "Sincronizando Ledger..."} 
+                ? `Processando Ativos (${ops.uploadProgress.current}/${ops.uploadProgress.total})...` 
+                : "Atualizando Base de Dados..."} 
         />
       )}
       
       {isDraggingExternal && (
-          <div className="absolute inset-0 z-[400] bg-blue-600/10 backdrop-blur-md border-4 border-dashed border-blue-500 m-8 rounded-[3.5rem] flex flex-col items-center justify-center animate-in zoom-in-95 pointer-events-none">
-              <div className="p-8 bg-blue-600 text-white rounded-[2rem] shadow-2xl animate-bounce mb-8">
-                  <MousePointer2 size={64} />
+          <div className="absolute inset-0 z-[400] bg-blue-600/10 backdrop-blur-md border-4 border-dashed border-blue-500 m-4 rounded-[3rem] flex flex-col items-center justify-center animate-in zoom-in-95 pointer-events-none">
+              <div className="p-6 bg-blue-600 text-white rounded-3xl shadow-2xl animate-bounce mb-6">
+                  <MousePointer2 size={48} />
               </div>
-              <h3 className="text-3xl font-black text-blue-900 uppercase tracking-[6px]">Solte para Importar</h3>
-              <p className="text-blue-700 font-bold uppercase tracking-widest mt-2">Múltiplos arquivos serão enfileirados no protocolo</p>
+              <h3 className="text-2xl font-black text-blue-900 uppercase tracking-[4px]">Solte para Iniciar Upload</h3>
+              <p className="text-blue-700 font-bold uppercase tracking-widest mt-2">Múltiplos arquivos serão enfileirados</p>
           </div>
       )}
       
@@ -173,7 +171,6 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
       <RenameModal isOpen={modals.rename} onClose={() => setModals(m => ({...m, rename: false}))} onRename={async (n) => { await ops.handleRename(fileToRename!.id, n); setModals(m => ({...m, rename: false})); }} isRenaming={ops.isProcessing} currentName={fileToRename?.name || ''} />
       <DeleteConfirmationModal isOpen={modals.delete} onClose={() => setModals(m => ({...m, delete: false}))} onConfirm={async () => { await ops.handleDelete(selectedFileIds); setModals(m => ({...m, delete: false})); setSelectedFileIds([]); }} isDeleting={ops.isProcessing} itemCount={selectedFileIds.length} hasFolder={collection.files.some(f => selectedFileIds.includes(f.id) && f.type === FileType.FOLDER)} />
 
-      {/* TÓPICO 4: Toolbar enviando estado isLive */}
       <ExplorerToolbar 
         breadcrumbs={collection.breadcrumbs} 
         onNavigate={handleNavigate} 
@@ -187,13 +184,12 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
         onDownloadSelected={async () => { if(activeSelectedFile) { const url = await fileService.getFileSignedUrl(user!, activeSelectedFile.id); window.open(url, '_blank'); } }} 
         viewMode={viewMode} 
         onViewChange={handleViewChange} 
-        userRole={userRole} 
-        selectedFilesData={collection.files.filter(f => selectedFileIds.includes(f.id))}
-        isLive={collection.isLive}
+        userRole={user?.role as UserRole} 
+        selectedFilesData={collection.files.filter(f => selectedFileIds.includes(f.id))} 
       />
 
-      <div className="flex-1 relative flex flex-col min-h-0">
-        <div className="flex-1 relative min-h-0 bg-white">
+      <div className="flex-1 relative bg-slate-50 flex flex-col min-h-0">
+        <div className="flex-1 relative min-h-0">
           <FileExplorer 
               ref={fileExplorerRef} 
               files={collection.files} 
@@ -209,12 +205,12 @@ export const FileExplorerView: React.FC<FileExplorerViewProps> = ({ orgId }) => 
               onRenameFile={(f) => { setFileToRename(f); setModals(m => ({...m, rename: true})); }} 
               onDeleteFile={(id) => { setSelectedFileIds([id]); setModals(m => ({...m, delete: true})); }} 
               viewMode={viewMode} 
-              userRole={userRole} 
+              userRole={user?.role as UserRole} 
           />
         </div>
         
-        {/* Consistência: Paginação sempre visível e no mesmo estilo */}
-        <div className="shrink-0 bg-white border-t border-slate-100 pb-20 lg:pb-0">
+        {/* pb-20 no mobile para compensar a Dock/MobileNav */}
+        <div className="shrink-0 pb-20 lg:pb-0">
             <PaginationControls 
               currentPage={collection.page}
               pageSize={collection.pageSize}

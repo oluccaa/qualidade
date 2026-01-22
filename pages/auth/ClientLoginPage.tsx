@@ -12,6 +12,7 @@ import { LoginForm } from '../../components/features/auth/login/LoginForm.tsx';
 import { LoginLanguageSelector } from '../../components/features/auth/login/LoginLanguageSelector.tsx';
 
 const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
+const CORPORATE_BLUE_FILTER = "brightness(0) saturate(100%) invert(8%) sepia(35%) saturate(5833%) hue-rotate(222deg) brightness(95%) contrast(106%)";
 
 const ClientLoginPage: React.FC = () => {
   const { login, isLoading, user } = useAuth();
@@ -88,6 +89,7 @@ const ClientLoginPage: React.FC = () => {
                 src={LOGO_URL} 
                 alt="Aços Vital" 
                 className="h-12 object-contain" 
+                style={{ filter: CORPORATE_BLUE_FILTER }}
                />
             </div>
 

@@ -94,7 +94,8 @@ const NOTIF_CONFIG: Record<string, any> = {
   ALERT: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' },
 };
 
-const NotificationItem = ({ notification, onMarkAsRead, index }: { notification: AppNotification, onMarkAsRead: () => void, index: number }) => {
+// Fix: Declaring as React.FC to correctly handle internal React props like 'key' when used in maps
+const NotificationItem: React.FC<{ notification: AppNotification, onMarkAsRead: () => void, index: number }> = ({ notification, onMarkAsRead, index }) => {
   const cfg = NOTIF_CONFIG[notification.type] || NOTIF_CONFIG.INFO;
   const Icon = cfg.icon;
 

@@ -4,6 +4,7 @@ export const es: typeof pt = {
   common: {
     welcome: "Bienvenido",
     loading: "Cargando...",
+    syncing: "Sincronizando...",
     privacy: "Privacidad",
     logout: "Cerrar sesión",
     edit: "Editar",
@@ -28,7 +29,108 @@ export const es: typeof pt = {
       es: "Español"
     },
     clear: "Limpiar",
-    moreOptions: "Más opciones"
+    moreOptions: "Más opciones",
+    skipToContent: "Saltar al contenido",
+    retry: "Reintentar",
+    success: "Éxito",
+    error: "Error"
+  },
+  loaders: {
+    preparingPortal: "Preparando el Portal de Calidad Aços Vital",
+    preparingInterface: "Preparando Interfaz Vital...",
+    validatingProtocols: "Validando Protocolos de Seguridad...",
+    syncFailure: "Fallo de Sincronización",
+    syncingModule: "Sincronizando Módulo...",
+    scanningLedger: "Escaneando Ledger...",
+    syncingVault: "Sincronizando Vault...",
+    syncingBacklog: "Sincronizando Backlog Técnico..."
+  },
+  audit: {
+    workflow: {
+      title: "Flujo Industrial de Auditoría",
+      partnerTitle: "Cumplimiento y Aceptación Técnica",
+      subtitle: "Control riguroso de veredictos industriales.",
+      partnerSubtitle: "Verificación y firma de certificados homologados.",
+      steps: {
+        step1: "1. Liberación Vital (SGC)",
+        step2: "2. Verificación de Datos",
+        step3: "3. Inspección Física",
+        step4: "4. Arbitraje Técnico",
+        step5: "5. Veredicto del Socio",
+        step6: "6. Consolidación Digital",
+        step7: "7. Protocolo Vital Certificado"
+      },
+      labels: {
+        authFlow: "Autorizar Flujo Industrial",
+        stationAnnotation: "Estación de Anotación Técnica",
+        viewNotes: "Ver Notas (Lectura)",
+        attachDocs: "Adjuntar Documentación Escaneada",
+        attachDocsDesc: "Utilice este campo si imprimió el documento para tomar notas a mano o si tiene evidencia adicional de discrepancia.",
+        auditFlags: "Marcadores de Auditoría",
+        addFlag: "Añadir marcador...",
+        reportDivergence: "Informe de Discrepancias",
+        reportDivergencePlaceholder: "Describa formalmente las observaciones técnicas sobre este documento...",
+        signValidation: "Firmar Validación de Datos",
+        galleryField: "Galería de Campo (Fotos/Documentos)",
+        galleryFieldDesc: "Adjunte aquí fotos de la carga recibida, sellos o documentos que acompañan al transporte.",
+        physicalState: "Estado Físico (Marcadores de Recepción)",
+        physicalNotes: "Observaciones de Campo",
+        physicalNotesPlaceholder: "Reporte las condiciones de recepción del material en el sitio...",
+        approveLoad: "Aprobar Carga",
+        rejectLoad: "Rechazar Carga",
+        fullCompliance: "Cumplimiento Total Detectado",
+        noDivergence: "Sin discrepancias impeditivas. Arbitraje completado automáticamente.",
+        arbitrationPlaceholder: "Describa la mediación técnica final para este lote...",
+        signArbitration: "Firmar Arbitraje Técnico",
+        vitalMediationNote: "Nota de Mediación Vital",
+        acceptBatch: "Aceptar Lote",
+        rejectBatch: "Rechazar Lote",
+        clientAcceptance: "Estado de Aceptación del Cliente",
+        homologated: "Lote Homologado",
+        refused: "Lote Rechazado",
+        repPartner: "Representante del Socio",
+        repQuality: "Analista de Calidad",
+        signDigitalSealClient: "Firmar Sello Digital (Cliente)",
+        signDigitalSealAnalyst: "Firmar Sello Digital (Analista)",
+        vitalCertification: "Certificación Vital SGQ",
+        homologatedAsset: "Activo homologado para uso industrial seguro.",
+        transmissionBlocked: "Transmisión Bloqueada",
+        rejectedByPartner: "Lote rechazado por el socio. El flujo requiere mediación técnica externa.",
+        criticalDivergence: "Discrepancia técnica crítica detectada. Espere contacto de Calidad Aços Vital.",
+        partnerContact: "Contacto del Socio (Representante)",
+        digitalSignature: "Firma Digital Auditada",
+        signed: "Firmado",
+        waiting: "Esperando...",
+        completion: "Conclusión de los 7 Pasos",
+        protocolValidated: "Protocolo Validado",
+        phaseAnalysis: "Fase en Análisis",
+        awaitingRelease: "Esperando Liberación"
+      },
+      messages: {
+        signSuccess: "Protocolo firmado con éxito.",
+        syncError: "Error de sincronización técnica.",
+        evidenceSuccess: "Evidencia archivada con éxito.",
+        noImages: "Sin Imágenes Adjuntas"
+      }
+    },
+    metrics: {
+      referenceId: "ID de Referencia",
+      assetVersion: "Versión del Activo",
+      partnerCompany: "Empresa Asociada",
+      vitalManager: "Responsable Vital",
+      clientUser: "Usuario Cliente",
+      auditWindow: "Ventana de Auditoría",
+      cycleStart: "Inicio del Ciclo",
+      techConclusion: "Conclusión Técnica"
+    }
+  },
+  settings: {
+    title: "Preferencias del Perfil",
+    subtitle: "Gestione sus pautas de seguridad y protocolos de acceso.",
+    securityCompliance: "Seguridad y Cumplimiento",
+    techId: "ID TÉCNICO",
+    changePassDesc: "Actualice su clave de autenticación periódicamente para mantener la integridad de la cuenta.",
+    privacyDesc: "Consulte cómo se procesan sus datos técnicos y registros de auditoría en el portal."
   },
   auth: {
     errors: {
@@ -128,7 +230,6 @@ export const es: typeof pt = {
     errorLoadingQualityData: "Fallo en la sincronización de indicadores de calidad.",
     noQualityLogsFound: "No se detectaron registros de auditoría técnica.",
     invalidConfirmationCredentials: "Error en la autenticación de confirmación.",
-    // Fix: Added missing properties for quality workflow
     releaseTransmission: "Liberar Transmisión",
     releaseTransmissionSuccess: "Transmisión liberada al cliente.",
     contestVerdict: "Contestar Veredicto",
@@ -147,7 +248,7 @@ export const es: typeof pt = {
   },
   roles: {
     ADMIN: "Administrador del Sistema",
-    QUALITY: "Analista de Calidad Técnica",
+    QUALITY: "Analista de Calidad Técnico",
     CLIENT: "Socio"
   },
   dashboard: {
@@ -180,6 +281,38 @@ export const es: typeof pt = {
     lastAnalysis: "Último Análisis",
     allClients: "Todos los Clientes",
     activeClients: "Clientes Activos"
+  },
+  client: {
+    home: "Inicio",
+    flux: "Flujo",
+    portal: {
+      title: "Terminal de Socio",
+      libraryTitle: "Repositorio de Ativos",
+      auditTitle: "Gestión de Cumplimiento",
+      gatewayActive: "B2B Gateway Ativo",
+      exclusiveTerminal: "Su terminal exclusivo de certificación industrial.",
+      flowTitle: "Monitoreo de Flujo",
+      flowSubtitle: "Estado de verificación física y documental en tiempo real"
+    },
+    dashboard: {
+      loading: "Sincronizando Datos B2B...",
+      pendingActions: "Acciones Pendientes",
+      requireReview: "Revisión Requerida",
+      validatedAssets: "Activos Validados",
+      complianceSubtitle: "Protocolos en Cumplimiento",
+      lastAudit: "Última Auditoría",
+      protocolLabel: "Protocolo Vital SGQ",
+      recentHistory: "Historial de Activos Recibidos",
+      accessLibrary: "Acceder a Biblioteca",
+      noRecent: "Sin movimientos recientes en el Vault.",
+      auditAsset: "Auditar Ativo"
+    },
+    library: {
+      title: "Biblioteca de Activos",
+      subtitle: "Archivos técnicos y certificados industriales",
+      totalAssets: "Recursos: {{count}}",
+      vaultLabel: "Vital Vault"
+    }
   },
   cookie: {
     title: "Privacidade y Protección de Datos",
@@ -264,7 +397,8 @@ export const es: typeof pt = {
     downloadButton: "Exportar PDF",
     selectItem: "Objetivo {{name}}",
     noResultsFound: "Ningún activo coincide con la consulta.",
-    typeToSearch: "Escriba para filtrar recursos..."
+    typeToSearch: "Escriba para filtrar recursos...",
+    traceability: "Trazabilidad por Lote o Descriptor..."
   },
   changePassword: {
     title: "Segurança de Acesso",

@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { adminService } from '../../../../lib/services/index.ts';
 import { UserRole, SystemStatus, normalizeRole } from '../../../../types/index.ts';
 import { AdminStatsData } from '../../../../lib/services/interfaces.ts';
-import { supabase } from '../../../../lib/supabaseClient.ts';
 
 export const useAdminPage = () => {
   const { user } = useAuth();
@@ -19,7 +19,6 @@ export const useAdminPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [adminStats, setAdminStats] = useState<AdminStatsData | null>(null);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const [isLive, setIsLive] = useState(false);
 
   const loadInitialData = useCallback(async () => {
     if (!user) return;
@@ -48,23 +47,6 @@ export const useAdminPage = () => {
 
   useEffect(() => {
     loadInitialData();
-
-    // TÓPICO 4: Real-time Subscription para Admin Stats
-    const channel = supabase
-      .channel('admin_dashboard_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
-          adminService.getAdminStats().then(setAdminStats);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-          adminService.getAdminStats().then(setAdminStats);
-      })
-      .subscribe((status) => {
-          setIsLive(status === 'SUBSCRIBED');
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [loadInitialData]);
 
   const changeTab = useCallback((tab: string) => {
@@ -81,7 +63,6 @@ export const useAdminPage = () => {
     systemStatus,
     setSystemStatus,
     changeTab,
-    isLive,
     refreshData: loadInitialData
   };
 };

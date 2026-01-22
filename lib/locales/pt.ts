@@ -1,8 +1,8 @@
-
 export const pt = {
   common: {
     welcome: "Bem-vindo",
     loading: "Carregando...",
+    syncing: "Sincronizando...",
     privacy: "Privacidade",
     logout: "Sair",
     edit: "Editar",
@@ -23,11 +23,112 @@ export const pt = {
     delete: "Excluir",
     language: {
       pt: "Português",
-      en: "Inglés",
+      en: "Inglês",
       es: "Espanhol"
     },
     clear: "Limpar",
-    moreOptions: "Mais opções"
+    moreOptions: "Mais opções",
+    skipToContent: "Pular para o conteúdo",
+    retry: "Tentar Novamente",
+    success: "Sucesso",
+    error: "Erro"
+  },
+  loaders: {
+    preparingPortal: "Preparando o Portal da Qualidade Aços Vital",
+    preparingInterface: "Preparando Interface Vital...",
+    validatingProtocols: "Validating Security Protocols...",
+    syncFailure: "Falha na Sincronização",
+    syncingModule: "Sincronizando Módulo...",
+    scanningLedger: "Escaneando Ledger...",
+    syncingVault: "Sincronizando Vault...",
+    syncingBacklog: "Sincronizando Backlog Técnico..."
+  },
+  audit: {
+    workflow: {
+      title: "Fluxo Industrial de Auditoria",
+      partnerTitle: "Conformidade e Aceite Técnico",
+      subtitle: "Controle rigoroso de vereditos industriais.",
+      partnerSubtitle: "Verificação e assinatura de certificados homologados.",
+      steps: {
+        step1: "1. Liberação Vital (SGQ)",
+        step2: "2. Conferência de Dados",
+        step3: "3. Vistoria de Carga",
+        step4: "4. Arbitragem Técnica",
+        step5: "5. Veredito do Parceiro",
+        step6: "6. Consolidação Digital",
+        step7: "7. Protocolo Vital Certificado"
+      },
+      labels: {
+        authFlow: "Autorizar Fluxo Industrial",
+        stationAnnotation: "Estação de Anotação Técnica",
+        viewNotes: "Visualizar Notas (Leitura)",
+        attachDocs: "Anexar Documentação Digitalizada",
+        attachDocsDesc: "Utilize este campo se imprimiu o documento para anotar à mão ou se possui um comprovante adicional de divergência.",
+        auditFlags: "Flags de Auditoria",
+        addFlag: "Adicionar marcador...",
+        reportDivergence: "Relatório de Divergências",
+        reportDivergencePlaceholder: "Descreva formalmente as observações técnicas sobre este documento...",
+        signValidation: "Assinar Validação de Dados",
+        galleryField: "Galeria de Campo (Fotos/Documentos)",
+        galleryFieldDesc: "Anexe aqui fotos da carga recebida, lacres ou documentos que acompanharam o transporte.",
+        physicalState: "Estado Físico (Flags de Recebimento)",
+        physicalNotes: "Observações de Campo",
+        physicalNotesPlaceholder: "Relate as condições de recepção do material no local...",
+        approveLoad: "Aprovar Carga",
+        rejectLoad: "Rejeitar Carga",
+        fullCompliance: "Conformidade Plena Detectada",
+        noDivergence: "Sem divergências impeditivas. Arbitragem concluída automaticamente.",
+        arbitrationPlaceholder: "Descreva a mediação técnica final para este lote...",
+        signArbitration: "Assinar Arbitragem Técnica",
+        vitalMediationNote: "Nota de Mediação Vital",
+        acceptBatch: "Aceitar Lote",
+        rejectBatch: "Rejeitar Lote",
+        clientAcceptance: "Status de Aceite do Cliente",
+        homologated: "Lote Homologado",
+        refused: "Lote Recusado",
+        repPartner: "Representante Parceiro",
+        repQuality: "Analista Qualidade",
+        signDigitalSealClient: "Assinar Selo Digital (Cliente)",
+        signDigitalSealAnalyst: "Assinar Selo Digital (Analista)",
+        vitalCertification: "Certificação Vital SGQ",
+        homologatedAsset: "Ativo homologado para uso industrial seguro.",
+        transmissionBlocked: "Transmissão Bloqueada",
+        rejectedByPartner: "Lote rejeitado pelo parceiro. O workflow exige mediação técnica externa.",
+        criticalDivergence: "Divergência técnica crítica detectada. Aguarde contato da Qualidade Aços Vital.",
+        partnerContact: "Contato do Parceiro (Representante)",
+        digitalSignature: "Assinatura Digital Auditada",
+        signed: "Assinado",
+        waiting: "Aguardando...",
+        completion: "Conclusão das 7 Etapas",
+        protocolValidated: "Protocolo Validado",
+        phaseAnalysis: "Fase em Análise",
+        awaitingRelease: "Aguardando Liberação"
+      },
+      messages: {
+        signSuccess: "Protocolo assinado com sucesso.",
+        syncError: "Erro na sincronização técnica.",
+        evidenceSuccess: "Evidência arquivada com sucesso.",
+        noImages: "Sem Imagens Anexadas"
+      }
+    },
+    metrics: {
+      referenceId: "ID de Referência",
+      assetVersion: "Versão do Ativo",
+      partnerCompany: "Empresa Parceira",
+      vitalManager: "Responsável Vital",
+      clientUser: "Usuário Cliente",
+      auditWindow: "Janela de Auditoria",
+      cycleStart: "Início do Ciclo",
+      techConclusion: "Conclusão Técnica"
+    }
+  },
+  settings: {
+    title: "Preferências do Perfil",
+    subtitle: "Gerencie suas diretrizes de segurança e protocolos de acesso.",
+    securityCompliance: "Segurança e Conformidade",
+    techId: "ID TÉCNICO",
+    changePassDesc: "Atualize seu segredo de autenticação periodicamente para manter a integridade da conta.",
+    privacyDesc: "Consulte como seus dados técnicos e registros de auditoria são processados no portal."
   },
   auth: {
     errors: {
@@ -53,7 +154,7 @@ export const pt = {
     slogan: "Aço de confiança, qualidade certificada",
     certification: "QUALIDADE TÉCNICA CERTIFICADA",
     secureData: "LINK B2B CRIPTOGRAFADO",
-    monitoring: "MONITORAMENTO DE SISTEMAS EM TEMPO REAL",
+    monitoring: "MONITOREO DE SISTEMAS EM TEMPO REAL",
     error: "Falha na autenticação do portal.",
     restrictedAccess: "Acesso Restrito",
     identifyToAccess: "Identifique-se para acessar o painel de certificados seguro.",
@@ -179,6 +280,38 @@ export const pt = {
     allClients: "Todos os Clientes",
     activeClients: "Clientes Ativos"
   },
+  client: {
+    home: "Início",
+    flux: "Fluxo",
+    portal: {
+      title: "Terminal do Parceiro",
+      libraryTitle: "Repositório de Ativos",
+      auditTitle: "Gestão de Conformidade",
+      gatewayActive: "Gateway B2B Ativo",
+      exclusiveTerminal: "Seu terminal exclusivo de certificação industrial.",
+      flowTitle: "Monitoramento de Fluxo",
+      flowSubtitle: "Status de conferência física e documental em tempo real"
+    },
+    dashboard: {
+      loading: "Sincronizando Dados B2B...",
+      pendingActions: "Ações Pendentes",
+      requireReview: "Requer Conferência",
+      validatedAssets: "Ativos Validados",
+      complianceSubtitle: "Protocolos em Conformidade",
+      lastAudit: "Última Auditoria",
+      protocolLabel: "Protocolo Vital SGQ",
+      recentHistory: "Histórico de Ativos Recebidos",
+      accessLibrary: "Acessar Biblioteca",
+      noRecent: "Sem movimentações recentes no Vault.",
+      auditAsset: "Auditar Ativo"
+    },
+    library: {
+      title: "Biblioteca de Ativos",
+      subtitle: "Arquivos técnicos e certificados industriais",
+      totalAssets: "Recursos: {{count}}",
+      vaultLabel: "Vault Vital"
+    }
+  },
   cookie: {
     title: "Privacidade e Proteção de Dados",
     text: "Utilizamos cookies essenciais para garantir a segurança da sessão e a integridade dos certificados técnicos. Ao continuar navegando no portal Aços Vital, você reconhece nossa política de governança de dados.",
@@ -192,7 +325,7 @@ export const pt = {
     qualityManagement: "Conformidade de Qualidade",
     portalName: "Portal da Qualidade",
     brand: "Aços Vital",
-    systemMonitoring: "MONITORAMENTO DE INFRAESTRUCTURA",
+    systemMonitoring: "MONITOREO DE SISTEMAS EM TEMPO REAL",
     settings: "Preferências do Perfil",
     sections: {
       main: "Navegação Principal",
@@ -262,7 +395,8 @@ export const pt = {
     downloadButton: "Exportar PDF",
     selectItem: "Alvo {{name}}",
     noResultsFound: "Nenhum ativo corresponde à consulta.",
-    typeToSearch: "Comece a digitar para filtrar recursos..."
+    typeToSearch: "Comece a digitar para filtrar recursos...",
+    traceability: "Rastreabilidade por Lote ou Descritor..."
   },
   changePassword: {
     title: "Segurança de Acesso",

@@ -1,44 +1,38 @@
 import React from 'react';
-import { CheckCircle2, Clock, AlertCircle, Send, Trash2, LucideIcon, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, Send, Trash2, LucideIcon } from 'lucide-react';
 import { QualityStatus } from '../../../../types/enums.ts';
 
 interface StatusConfig {
   icon: LucideIcon;
   color: string;
   label: string;
-  dot: string;
 }
 
 const STATUS_MAP: Record<string, StatusConfig> = {
   [QualityStatus.APPROVED]: { 
     icon: CheckCircle2, 
-    color: 'text-emerald-700 bg-emerald-50 border-emerald-200 shadow-emerald-100/50', 
-    label: 'Conforme',
-    dot: 'bg-emerald-500'
+    color: 'text-emerald-600 bg-emerald-50 border-emerald-100', 
+    label: 'Conforme' 
   },
   [QualityStatus.REJECTED]: { 
-    icon: ShieldAlert, 
-    color: 'text-red-700 bg-red-50 border-red-200 shadow-red-100/50', 
-    label: 'Divergente',
-    dot: 'bg-red-500'
+    icon: AlertCircle, 
+    color: 'text-red-600 bg-red-50 border-red-100', 
+    label: 'Rejeitado' 
   },
   [QualityStatus.SENT]: { 
     icon: Send, 
-    color: 'text-blue-700 bg-blue-50 border-blue-200 shadow-blue-100/50', 
-    label: 'Em Análise',
-    dot: 'bg-blue-500'
+    color: 'text-blue-600 bg-blue-50 border-blue-100', 
+    label: 'Enviado' 
   },
   [QualityStatus.PENDING]: { 
     icon: Clock, 
-    color: 'text-amber-700 bg-amber-50 border-amber-200 shadow-amber-100/50', 
-    label: 'Aguardando',
-    dot: 'bg-amber-500'
+    color: 'text-amber-600 bg-amber-50 border-amber-100', 
+    label: 'Triagem' 
   },
   [QualityStatus.TO_DELETE]: { 
     icon: Trash2, 
-    color: 'text-slate-600 bg-slate-100 border-slate-300 shadow-slate-100/50', 
-    label: 'Obsoleto',
-    dot: 'bg-slate-400'
+    color: 'text-slate-500 bg-slate-100 border-slate-200', 
+    label: 'Obsoleto' 
   },
 };
 
@@ -47,9 +41,8 @@ export const FileStatusBadge: React.FC<{ status?: string }> = ({ status }) => {
   const Icon = config.icon;
 
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-1.5 border rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-all hover:scale-[1.02] ${config.color}`}>
-      <div className={`w-1.5 h-1.5 rounded-full ${config.dot} animate-pulse`} />
-      <Icon size={12} strokeWidth={3} />
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm transition-all ${config.color}`}>
+      <Icon size={11} strokeWidth={3} />
       {config.label}
     </div>
   );

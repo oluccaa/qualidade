@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Bell, ArrowLeft, Menu } from 'lucide-react'; 
+import { Bell, ArrowLeft } from 'lucide-react'; 
 import { User, UserRole } from '../../types/index.ts';
 import { LanguageSelector } from '../features/auth/login/LanguageSelector.tsx'; 
 import { NotificationsDropdown } from '../features/notifications/NotificationsDropdown.tsx';
@@ -11,7 +12,7 @@ interface HeaderProps {
   title: string;
   user: User | null;
   role: UserRole;
-  unreadCount: number;
+  unreadCount: number; // Mantido por compatibilidade, mas o hook local agora tem precedência
   onLogout: () => void;
   onOpenMobileMenu: () => void; 
   onNavigateBack: () => void; 
@@ -26,25 +27,25 @@ export const Header: React.FC<HeaderProps> = ({
   const { t } = useTranslation();
   const location = useLocation();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useNotifications(); // Sincronia perfeita
 
   const isDashboard = ['/admin/dashboard', '/quality/dashboard', '/client/portal'].includes(location.pathname.split('?')[0]);
 
   return (
     <>
       <header className="hidden md:flex h-20 bg-white border-b border-slate-200 items-center justify-between px-8 shrink-0 z-50">
-        <div className="flex items-center gap-6 min-w-0">
-          <div className="space-y-0.5 truncate">
-            <h2 className="text-lg font-bold text-slate-800 tracking-tight truncate">{title}</h2>
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">
-              <span className="text-blue-600 shrink-0">{t(`roles.${role}`)}</span>
+        <div className="flex items-center gap-6">
+          <div className="space-y-0.5">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h2>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+              <span className="text-blue-600">{t(`roles.${role}`)}</span>
               <span className="opacity-30">|</span>
-              <span className="text-slate-500 font-medium truncate">{user?.organizationName}</span>
+              <span className="text-slate-500 font-medium">{user?.organizationName}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-6 lg:gap-8 shrink-0">
+        <div className="flex items-center gap-8">
           <LanguageSelector />
           
           <div className="relative">
@@ -61,26 +62,15 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </header>
 
-      {/* Mobile Header: Compact and Action-Focused */}
+      {/* Mobile Header */}
       <header className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-40 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-            {!isDashboard ? ( 
-              <button onClick={onNavigateBack} className="p-2 -ml-2 text-slate-600 active:bg-slate-100 rounded-full transition-colors" aria-label="Voltar">
-                <ArrowLeft size={20} />
-              </button>
-            ) : (
-              <button onClick={onOpenMobileMenu} className="p-2 -ml-2 text-slate-600 active:bg-slate-100 rounded-full transition-colors" aria-label="Menu">
-                <Menu size={20} />
-              </button>
-            )}
-            <div className="min-w-0">
-                <h2 className="text-sm font-bold text-slate-800 tracking-tight truncate px-1">
-                    {isDashboard ? "Portal Vital" : title}
-                </h2>
-            </div>
-        </div>
+        {!isDashboard ? ( 
+          <button onClick={onNavigateBack} className="p-2 text-slate-600"><ArrowLeft size={20} /></button>
+        ) : (
+          <img src={LOGO_URL} alt="Aços Vital" className="h-8" style={{ filter: CORPORATE_BLUE_FILTER }} />
+        )}
 
-        <div className="flex items-center gap-1 relative shrink-0">
+        <div className="flex items-center gap-1 relative">
             <NotificationTrigger count={unreadCount} active={isNotificationsOpen} onClick={() => setIsNotificationsOpen(true)} />
             <NotificationsDropdown isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
         </div>
@@ -93,7 +83,7 @@ const NotificationTrigger = ({ count, active, onClick }: any) => (
   <button 
     onClick={onClick} 
     className={`p-2.5 rounded-xl transition-all relative group overflow-visible ${
-        active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50 active:scale-95'
+        active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'
     }`}
   >
     <Bell size={20} strokeWidth={active ? 3 : 2.5} className={count > 0 && !active ? 'animate-swing' : ''} />
@@ -104,5 +94,16 @@ const NotificationTrigger = ({ count, active, onClick }: any) => (
         {count > 9 ? '9+' : count}
       </span>
     )}
+    
+    <style>{`
+        @keyframes swing {
+            0%, 100% { transform: rotate(0); }
+            20% { transform: rotate(15deg); }
+            40% { transform: rotate(-15deg); }
+            60% { transform: rotate(10deg); }
+            80% { transform: rotate(-10deg); }
+        }
+        .animate-swing { animation: swing 2s infinite ease-in-out; }
+    `}</style>
   </button>
 );

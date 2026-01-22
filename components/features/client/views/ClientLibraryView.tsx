@@ -9,8 +9,10 @@ import { fileService, partnerService } from '../../../../lib/services/index.ts';
 import { PaginationControls } from '../../../common/PaginationControls.tsx';
 import { QualityLoadingState } from '../../quality/components/ViewStates.tsx';
 import { Layers, FileCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const ClientLibraryView: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -56,7 +58,7 @@ export const ClientLibraryView: React.FC = () => {
   };
 
   if (collection.loading && collection.files.length === 0) {
-      return <QualityLoadingState message="Sincronizando Biblioteca de Ativos..." />;
+      return <QualityLoadingState message={t('client.dashboard.loading')} />;
   }
 
   return (
@@ -67,17 +69,17 @@ export const ClientLibraryView: React.FC = () => {
              <Layers size={24} className="text-blue-400" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Biblioteca de Ativos</h2>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[3px]">Arquivos técnicos e certificados industriais</p>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">{t('client.library.title')}</h2>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[3px]">{t('client.library.subtitle')}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-2 rounded-2xl shadow-sm">
-             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recursos: <span className="text-slate-900 ml-1">{collection.totalItems}</span></p>
+             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('client.library.totalAssets', { count: collection.totalItems })}</p>
              <div className="w-px h-3 bg-slate-200" />
              <div className="flex items-center gap-1.5 text-emerald-500">
                 <FileCheck size={14} />
-                <span className="text-[9px] font-black uppercase tracking-widest">Vault Vital</span>
+                <span className="text-[9px] font-black uppercase tracking-widest">{t('client.library.vaultLabel')}</span>
              </div>
         </div>
       </section>

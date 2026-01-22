@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { qualityService } from '../../../../lib/services/index.ts';
@@ -21,8 +20,6 @@ export const useQualityPortfolio = () => {
     approved: []
   });
   const [isLoading, setIsLoading] = useState(true);
-  // Fix: Added isLive state required by QualityPortfolioView
-  const [isLive, setIsLive] = useState(false);
 
   const loadQualityData = useCallback(async () => {
     if (!user) return;
@@ -76,20 +73,6 @@ export const useQualityPortfolio = () => {
 
   useEffect(() => {
     loadQualityData();
-
-    // Fix: Added real-time subscription to provide live feedback and update isLive state
-    const channel = supabase
-      .channel('quality_portfolio_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, () => {
-          loadQualityData();
-      })
-      .subscribe((status) => {
-          setIsLive(status === 'SUBSCRIBED');
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [loadQualityData]);
 
   return { 
@@ -98,8 +81,6 @@ export const useQualityPortfolio = () => {
     rejectedFiles: data.rejected, 
     approvedFiles: data.approved,
     isLoading, 
-    // Fix: Returning isLive state for the view layer
-    isLive,
     refresh: loadQualityData 
   };
 };

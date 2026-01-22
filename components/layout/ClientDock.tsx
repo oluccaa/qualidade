@@ -11,8 +11,8 @@ export const ClientDock: React.FC<ClientDockProps> = ({ activeView, onViewChange
   const { t } = useTranslation();
 
   const navItems = [
-    { id: 'home', label: t('menu.dashboard'), icon: LayoutDashboard },
-    { id: 'audit_flow', label: "Fluxo", icon: ClipboardList },
+    { id: 'home', label: t('client.home'), icon: LayoutDashboard },
+    { id: 'audit_flow', label: t('client.flux'), icon: ClipboardList },
     { id: 'library', label: t('menu.library'), icon: Library },
   ];
 
@@ -23,7 +23,7 @@ export const ClientDock: React.FC<ClientDockProps> = ({ activeView, onViewChange
                  p-2.5 rounded-full shadow-lg shadow-slate-900/10 
                  animate-in slide-in-from-bottom-6 duration-500 md:hidden"
     >
-      <nav className="flex items-center gap-2" role="navigation" aria-label="Navegação Principal do Cliente">
+      <nav className="flex items-center gap-2" role="navigation" aria-label={t('menu.sections.main')}>
         {navItems.map((item) => {
           const isActive = activeView === item.id;
           const Icon = item.icon;

@@ -1,6 +1,8 @@
+
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { AuthMiddleware } from './middlewares/AuthMiddleware.tsx';
 import { RoleMiddleware } from './middlewares/RoleMiddleware.tsx';
@@ -8,11 +10,6 @@ import { MaintenanceMiddleware } from './middlewares/MaintenanceMiddleware.tsx';
 import { useAuth } from './context/authContext.tsx';
 import { UserRole, normalizeRole } from './types/index.ts';
 import { safeLazy } from './lib/utils/safeLazy.ts';
-
-/**
- * --- ESTRUTURA DE PÁGINAS COM CARREGAMENTO RESILIENTE ---
- * O safeLazy evita o erro de 'Failed to fetch' ao trocar de aba após um deploy.
- */
 
 // Autenticação
 const ClientLoginPage = safeLazy(() => import('./pages/auth/ClientLoginPage.tsx'));
@@ -39,25 +36,33 @@ const FilePreviewPage = safeLazy(() => import('./pages/shared/FilePreviewPage.ts
 const SettingsPage = safeLazy(() => import('./pages/shared/SettingsPage.tsx'));
 const NotFoundPage = safeLazy(() => import('./pages/shared/NotFoundPage.tsx'));
 
-const PageLoader = ({ message = "Sincronizando...", onRetry }: { message?: string; onRetry?: () => void }) => (
-  <div className="h-screen w-screen bg-slate-50 flex flex-col items-center justify-center text-slate-600 font-sans">
-      <div className="relative mb-8">
-        <Loader2 size={48} className="animate-spin text-blue-600" />
-        <div className="absolute inset-0 bg-blue-500/10 blur-2xl rounded-full animate-pulse" />
-      </div>
-      <p className="text-[10px] font-black text-slate-400 tracking-[6px] uppercase animate-pulse mb-4 text-center px-6">{message}</p>
-      {onRetry && (
-        <button onClick={onRetry} className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-[#132659] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-          <RefreshCw size={16} /> Tentar Novamente
-        </button>
-      )}
-  </div>
-);
+const PageLoader = ({ message, onRetry }: { message?: string; onRetry?: () => void }) => {
+  const { t } = useTranslation();
+  const defaultMessage = t('common.syncing');
+  
+  return (
+    <div className="flex-1 w-full h-full bg-slate-50/50 flex flex-col items-center justify-center text-slate-600 font-sans min-h-screen lg:min-h-0">
+        <div className="relative mb-12">
+          <Loader2 size={64} className="animate-spin text-blue-600" />
+          <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full animate-pulse scale-150" />
+        </div>
+        <div className="text-center space-y-6 px-6 max-w-lg relative z-10">
+            <p className="text-[11px] font-black text-slate-400 tracking-[8px] uppercase animate-pulse">{message || defaultMessage}</p>
+            {onRetry && (
+              <button onClick={onRetry} className="flex items-center gap-3 px-10 py-4 bg-white border-2 border-slate-200 text-[#132659] rounded-2xl text-xs font-black uppercase tracking-widest hover:border-blue-500 transition-all active:scale-95 shadow-xl mx-auto">
+                <RefreshCw size={18} /> {t('common.retry')}
+              </button>
+            )}
+        </div>
+    </div>
+  );
+};
 
 const InitialAuthRedirect = () => {
     const { user, isLoading, error, isInitialSyncComplete, retryInitialSync } = useAuth();
-    if (isLoading || !isInitialSyncComplete) return <PageLoader message="Validando Protocolos" />;
-    if (error) return <PageLoader message="Falha na Sincronização" onRetry={retryInitialSync} />;
+    const { t } = useTranslation();
+    if (isLoading || !isInitialSyncComplete) return <PageLoader message={t('loaders.validatingProtocols')} />;
+    if (error) return <PageLoader message={t('loaders.syncFailure')} onRetry={retryInitialSync} />;
     if (user) {
         const role = normalizeRole(user.role);
         if (role === UserRole.ADMIN) return <Navigate to="/admin/dashboard" replace />;
@@ -68,8 +73,9 @@ const InitialAuthRedirect = () => {
 };
 
 export const AppRoutes: React.FC = () => {
+  const { t } = useTranslation();
   return (
-    <Suspense fallback={<PageLoader message="Preparando Interface Vital..." />}>
+    <Suspense fallback={<PageLoader message={t('loaders.preparingInterface')} />}>
       <Routes>
         <Route path="/" element={<InitialAuthRedirect />} />
         <Route path="/login" element={<ClientLoginPage />} />

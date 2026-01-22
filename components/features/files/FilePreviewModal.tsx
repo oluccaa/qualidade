@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, Download, ShieldCheck, FileText, Loader2, 
@@ -53,13 +52,13 @@ export const FilePreviewModal: React.FC<{
   return (
     <div className="fixed inset-0 z-[300] bg-[#020617] flex animate-in fade-in duration-500 overflow-hidden font-sans">
       
-      {/* Visualização Técnica com Camada de Desenho (Esquerda) */}
-      <div className="w-1/2 relative border-r border-white/5 flex flex-col bg-[#020617]">
+      {/* Visualização Técnica Maximizada (70% da tela) */}
+      <div className="flex-1 relative border-r border-white/5 flex flex-col bg-[#020617]">
         <header className="h-20 flex items-center justify-between px-8 bg-[#081437]/80 backdrop-blur-xl border-b border-white/10 z-20">
           <div className="flex items-center gap-5">
              <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400 shadow-inner"><FileText size={22} /></div>
              <div>
-                <h2 className="text-white text-xs font-black uppercase tracking-[4px] leading-tight truncate max-w-xs">{currentFile?.name}</h2>
+                <h2 className="text-white text-xs font-black uppercase tracking-[4px] leading-tight truncate max-w-sm">{currentFile?.name}</h2>
                 <div className="flex items-center gap-3 mt-1">
                    <p className="text-[9px] text-slate-500 font-mono uppercase tracking-widest flex items-center gap-2">
                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Protocolo Seguro Vital
@@ -88,7 +87,6 @@ export const FilePreviewModal: React.FC<{
                 onPdfLoad={() => {}} 
                 isHandToolActive={activeTool === 'hand'}
                 renderOverlay={(w, h) => (
-                    /* Fix: Added missing lineWidth prop required by DrawingCanvasProps */
                     <DrawingCanvas 
                         tool={activeTool} 
                         color="#ef4444" 
@@ -105,8 +103,8 @@ export const FilePreviewModal: React.FC<{
         </div>
       </div>
 
-      {/* Estação de Workflow e Decisão (Direita) */}
-      <div className="w-1/2 flex flex-col bg-white overflow-hidden shadow-[-40px_0_80px_rgba(0,0,0,0.4)]">
+      {/* Estação de Workflow Lateral (Barra Lateral 300px-400px em vez de metade da tela) */}
+      <div className="w-[450px] flex flex-col bg-white overflow-hidden shadow-[-40px_0_80px_rgba(0,0,0,0.4)] border-l border-slate-200">
         <header className="h-20 flex items-center justify-between px-10 bg-slate-50/50 border-b border-slate-100 backdrop-blur-md shrink-0">
            <div className="flex items-center gap-5">
               <div className="relative">
@@ -114,39 +112,37 @@ export const FilePreviewModal: React.FC<{
                 <div className="w-3 h-3 rounded-full bg-[#b23c0e] relative" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-[#081437] uppercase tracking-[4px]">Estação de Inspeção B2B</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Modo de Leitura de Metadados</p>
+                <h3 className="text-sm font-black text-[#081437] uppercase tracking-[4px]">Gestão Técnica</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Leitura de Metadados</p>
               </div>
            </div>
            <button onClick={onClose} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-red-600 transition-all shadow-sm hover:shadow-lg active:scale-95"><X size={24} /></button>
         </header>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-white">
-            <div className="max-w-2xl mx-auto">
-              <AuditWorkflow 
-                metadata={currentFile?.metadata} 
-                userRole={user?.role as UserRole} 
-                userName={user?.name || ''}
-                userEmail={user?.email || ''}
-                fileId={currentFile?.id || ''}
-                onUpdate={handleUpdateMetadata}
-              />
-            </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-white">
+            <AuditWorkflow 
+              metadata={currentFile?.metadata} 
+              userRole={user?.role as UserRole} 
+              userName={user?.name || ''}
+              userEmail={user?.email || ''}
+              fileId={currentFile?.id || ''}
+              onUpdate={handleUpdateMetadata}
+            />
         </div>
 
-        <footer className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+        <footer className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-4 shrink-0">
            <div className="flex items-center gap-4 text-slate-400">
               <ShieldCheck size={24} className="text-emerald-500" />
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[3px] text-slate-600">Vital Compliance SGQ</p>
-                <p className="text-[9px] font-bold uppercase text-slate-400">Rastreabilidade Digital Ativa</p>
+                <p className="text-[9px] font-bold uppercase text-slate-400">Rastreabilidade Ativa</p>
               </div>
            </div>
            <button 
               onClick={handleDownload}
-              className="px-8 py-4 bg-[#081437] text-white rounded-2xl text-[10px] font-black uppercase tracking-[3px] hover:bg-[#b23c0e] transition-all flex items-center gap-3 active:scale-95 shadow-xl"
+              className="w-full py-4 bg-[#081437] text-white rounded-2xl text-[10px] font-black uppercase tracking-[3px] hover:bg-[#b23c0e] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl"
            >
-              <Download size={16} className="text-blue-400" /> Exportar Laudo Original
+              <Download size={16} className="text-blue-400" /> Baixar Original
            </button>
         </footer>
       </div>
