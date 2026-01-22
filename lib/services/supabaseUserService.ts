@@ -1,260 +1,132 @@
 
-import { User, UserRole, AccountStatus } from '../../types/auth.ts';
-import { IUserService, RawProfile } from './interfaces.ts';
+import { UserRole, AccountStatus } from '../../types/enums.ts';
+import { IUserService } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { logAction } from './loggingService.ts';
-import { normalizeRole } from '../mappers/roleMapper.ts';
-import { withTimeout } from '../utils/apiUtils.ts';
-import { withAuditLog } from '../utils/auditLogWrapper.ts';
-import { AuthError, Session, UserResponse, PostgrestSingleResponse, PostgrestResponse } from '@supabase/supabase-js';
+import { toDomainUser } from '../mappers/userMapper.ts';
 
-const API_TIMEOUT = 8000;
-
-/**
- * Normaliza erros do provedor de autenticação para chaves i18n controladas.
- */
-const normalizeAuthError = (error: AuthError): string => {
-  const msg = error.message.toLowerCase();
+const normalizeAuthError = (error: any): string => {
+  const msg = error.message?.toLowerCase() || "";
   if (msg.includes("invalid login credentials")) return "auth.errors.invalidCredentials";
-  if (msg.includes("should be different from the old password")) return "auth.errors.samePassword";
   if (msg.includes("too many requests")) return "auth.errors.tooManyRequests";
-  if (msg.includes("password should be at least")) return "auth.errors.weakPassword";
   return "auth.errors.unexpected";
-};
-
-const toDomainUser = (row: RawProfile | null, sessionEmail?: string): User | null => {
-  if (!row) return null;
-  const orgData = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
-
-  return {
-    id: row.id,
-    name: row.full_name || 'Usuário Sem Nome',
-    email: row.email || sessionEmail || '',
-    role: normalizeRole(row.role),
-    organizationId: row.organization_id || undefined,
-    organizationName: orgData?.name || 'Aços Vital (Interno)',
-    status: (row.status as AccountStatus) || AccountStatus.ACTIVE,
-    department: row.department || undefined,
-    lastLogin: row.last_login || undefined
-  };
 };
 
 export const SupabaseUserService: IUserService = {
   authenticate: async (email, password) => {
     try {
-      const authPromise = supabase.auth.signInWithPassword({
+      const { data, error } = await (supabase.auth as any).signInWithPassword({
         email: email.trim().toLowerCase(),
         password
       });
-
-      const result: { data: { session: Session | null }; error: AuthError | null } = await withTimeout(
-        authPromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao autenticar. Verifique sua conexão."
-      );
-      const { data, error } = result;
-
-      if (error) {
-        await logAction(null, 'LOGIN_ATTEMPT_FAILED', email, 'AUTH', 'WARNING', 'FAILURE', { reason: error.message });
-        return { 
-          success: false, 
-          error: normalizeAuthError(error)
-        };
+      if (error) return { success: false, error: normalizeAuthError(error) };
+      if (data.user) {
+        await supabase.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', data.user.id);
       }
-      
       return { success: true };
-    } catch (e: any) {
+    } catch (err) {
       return { success: false, error: "auth.errors.unexpected" };
     }
   },
 
-  signUp: async (email, password, fullName, organizationId, department, role = UserRole.QUALITY) => {
-    const authPromise = supabase.auth.signUp({ 
-        email: email.trim().toLowerCase(), 
-        password 
-      });
-    // Fix: Properly typed authResult as UserResponse
-    const authResult: UserResponse = await withTimeout( 
-      authPromise as any,
-      API_TIMEOUT,
-      "Tempo esgotado ao registrar usuário."
-    );
-    const { data, error: authError } = authResult;
-    
-    if (authError) throw new Error(normalizeAuthError(authError));
+  signUp: async (email, password, fullName, organizationId, userType, role = UserRole.CLIENT) => {
+    const emailClean = email.trim().toLowerCase();
+    const validOrgId = (organizationId && organizationId.trim() !== "" && organizationId !== "null") ? organizationId : null;
 
-    // Fix: access user from data property of UserResponse
-    if (data.user) {
-      const profilePromise = Promise.resolve(supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: fullName.trim(),
-          email: email.trim().toLowerCase(),
-          organization_id: organizationId || null,
-          department: department || null,
-          role: role,
-          status: 'ACTIVE'
-        }));
-      const profileResult = await withTimeout( 
-        profilePromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao criar perfil."
-      );
-      const { error: profileError } = profileResult as PostgrestResponse<null>;
+    const { data, error: authError } = await (supabase.auth as any).signUp({
+      email: emailClean,
+      password,
+      options: { data: { full_name: fullName, user_type: userType, role: role, organization_id: validOrgId } }
+    });
 
-      if (profileError) {
-        throw new Error("Usuário criado, mas houve um erro ao configurar o perfil.");
-      }
+    if (authError) throw authError;
 
-      await logAction(null, 'USER_SIGNUP', email, 'AUTH', 'INFO', 'SUCCESS', { fullName, role });
-    }
+    // FIX: Usamos upsert em vez de insert para evitar conflito com gatilhos (triggers) de criação automática de perfil
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: data.user!.id, 
+      full_name: fullName, 
+      email: emailClean, 
+      role: role,
+      organization_id: validOrgId, 
+      department: userType, 
+      status: 'ACTIVE',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+
+    if (profileError) throw profileError;
+    await logAction(null, 'USER_REGISTERED', emailClean, 'AUTH', 'INFO', 'SUCCESS');
   },
 
   getCurrentUser: async () => {
-    try {
-      const sessionResult: { data: { session: Session | null }; error: AuthError | null } = await withTimeout( 
-        supabase.auth.getSession() as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao buscar sessão de usuário."
-      );
-      const { data: { session } } = sessionResult;
-      if (!session?.user) return null;
-
-      const profileQuery = supabase
-        .from('profiles')
-        .select('*, organizations!organization_id(name)')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      // Fix: Wrapped query in Promise.resolve to satisfy withTimeout typing
-      const profileFetchResult = await withTimeout( 
-        Promise.resolve(profileQuery) as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao buscar perfil do usuário."
-      );
-      const { data: profile, error } = profileFetchResult as PostgrestSingleResponse<RawProfile>;
-
-      if (error || !profile) return null;
-
-      return toDomainUser(profile, session.user.email);
-    } catch (e: any) {
-      return null;
-    }
-  },
-
-  logout: async () => {
-    const result: { error: AuthError | null } = await withTimeout( 
-      supabase.auth.signOut() as any,
-      API_TIMEOUT,
-      "Tempo esgotado ao fazer logout."
-    );
-    const { error } = result;
-    if (error) throw error;
-    localStorage.clear();
+    const { data: { session } } = await (supabase.auth as any).getSession();
+    if (!session?.user) return null;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*, organizations!profiles_organization_id_fkey(name)')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    return toDomainUser(profile, session.user);
   },
 
   getUsers: async () => {
-    const usersPromise = Promise.resolve(supabase
-        .from('profiles')
-        .select('*, organizations!organization_id(name)')
-        .order('full_name'));
-    const result = await withTimeout( 
-      usersPromise as any,
-      API_TIMEOUT,
-      "Tempo esgotado ao buscar usuários."
-    );
-    const { data, error } = result as PostgrestResponse<RawProfile>;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*, organizations!profiles_organization_id_fkey(name)')
+      .order('full_name');
     if (error) throw error;
-    return (data || []).map(p => toDomainUser(p) as User);
-  },
-
-  getUsersByRole: async (role) => {
-    const usersByRolePromise = Promise.resolve(supabase
-        .from('profiles')
-        .select('*, organizations!organization_id(name)')
-        .eq('role', role));
-    const result = await withTimeout( 
-      usersByRolePromise as any,
-      API_TIMEOUT,
-      `Tempo esgotado ao buscar usuários por role (${role}).`
-    );
-    const { data, error } = result as PostgrestResponse<RawProfile>;
-    if (error) throw error;
-    return (data || []).map(p => toDomainUser(p) as User);
+    return (data || []).map(p => toDomainUser(p)).filter(Boolean) as any;
   },
 
   saveUser: async (u) => {
-    const action = async () => {
-      const { error } = await supabase.from('profiles').update({
-          full_name: u.name,
-          role: u.role,
-          organization_id: u.organizationId || null,
-          status: u.status,
-          department: u.department || null,
-          updated_at: new Date().toISOString()
-      }).eq('id', u.id);
-      
-      if (error) throw error;
-    };
+    const validOrgId = (u.organizationId && String(u.organizationId).trim() !== "") ? u.organizationId : null;
 
-    await withAuditLog(null, 'USER_PROFILE_UPDATE', { 
-        target: u.id, 
-        category: 'DATA', 
-        metadata: { email: u.email, newRole: u.role } 
-    }, action);
+    const { error } = await supabase.from('profiles').update({
+      full_name: u.name, 
+      role: u.role, 
+      organization_id: validOrgId,
+      department: u.department, 
+      status: u.status, 
+      updated_at: new Date().toISOString()
+    }).eq('id', u.id);
+    if (error) throw error;
+  },
+
+  flagUserForDeletion: async (userId, adminUser) => {
+    const { error } = await supabase.from('profiles').update({ status: 'INACTIVE', department: 'PENDING_DELETION' }).eq('id', userId);
+    if (error) throw error;
+    await logAction(adminUser, 'USER_FLAGGED_DELETION', userId, 'SECURITY', 'WARNING');
+  },
+
+  logout: async () => {
+    await (supabase.auth as any).signOut();
+    localStorage.clear();
+  },
+
+  getUsersByRole: async (role) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*, organizations!profiles_organization_id_fkey(name)')
+      .eq('role', role);
+    if (error) throw error;
+    return (data || []).map(p => toDomainUser(p)).filter(Boolean) as any;
   },
 
   changePassword: async (userId, current, newPass) => {
-    const action = async () => {
-        const { error } = await supabase.auth.updateUser({ password: newPass });
-        if (error) throw new Error(normalizeAuthError(error));
-        return true;
-    };
-
-    return await withAuditLog(null, 'USER_PASSWORD_CHANGE', { 
-        target: userId, 
-        category: 'SECURITY', 
-        initialSeverity: 'WARNING' 
-    }, action);
-  },
-
-  deleteUser: async (id) => {
-    const action = async () => {
-      const { error } = await supabase.from('profiles').delete().eq('id', id);
-      if (error) throw error;
-    };
-    
-    await withAuditLog(null, 'USER_DELETION', { 
-        target: id, 
-        category: 'DATA', 
-        initialSeverity: 'CRITICAL' 
-    }, action);
-  },
-
-  blockUserById: async (admin, target, reason) => {
-    const blockUserPromise = Promise.resolve(supabase.from('profiles').update({ status: 'BLOCKED' }).eq('id', target));
-    const result = await withTimeout( 
-      blockUserPromise as any,
-      API_TIMEOUT,
-      "Tempo esgotado ao bloquear usuário."
-    );
-    const { error } = result as PostgrestResponse<null>;
+    const { error } = await (supabase.auth as any).updateUser({ password: newPass });
     if (error) throw error;
-    await logAction(admin, 'SEC_USER_BLOCKED', target, 'SECURITY', 'CRITICAL', 'SUCCESS', { reason });
+    return true;
+  },
+
+  deleteUser: async (userId) => {
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
   },
 
   getUserStats: async () => {
-    // Fix: Explicit typing for stats results and wrapping in Promise.resolve
-    const statsPromises = Promise.all([
+    const [total, active] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE')
     ]);
-    const [totalResult, activeResult] = await withTimeout( 
-      statsPromises,
-      API_TIMEOUT,
-      "Tempo esgotado ao buscar estatísticas de usuário."
-    );
-    return { total: totalResult.count || 0, active: activeResult.count || 0, clients: 0 };
-  },
-
-  generateRandomPassword: () => Math.random().toString(36).slice(-10)
+    return { total: total.count || 0, active: active.count || 0, clients: 0 };
+  }
 };

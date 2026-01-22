@@ -8,13 +8,14 @@ import { ClientFormData } from '../components/AdminModals.tsx';
 
 interface UseAdminClientProps {
   setIsSaving: (state: boolean) => void;
+  isSavingGlobal: boolean;
   qualityAnalysts: User[];
 }
 
 /**
  * Hook de Gestão de Clientes (Clean Code)
  */
-export const useAdminClientManagement = ({ setIsSaving, qualityAnalysts }: UseAdminClientProps) => {
+export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityAnalysts }: UseAdminClientProps) => {
   const { user } = useAuth();
   const { showToast } = useToast();
 
@@ -24,7 +25,6 @@ export const useAdminClientManagement = ({ setIsSaving, qualityAnalysts }: UseAd
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientOrganization | null>(null);
   
-  // Fix: Initialize status with enum value instead of string literal
   const [clientFormData, setClientFormData] = useState<ClientFormData>({
     name: '',
     cnpj: '',
@@ -38,8 +38,8 @@ export const useAdminClientManagement = ({ setIsSaving, qualityAnalysts }: UseAd
     try {
       const response = await adminService.getClients();
       setClientsList(response.items);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao carregar portfólio';
+    } catch (err: any) {
+      const msg = err?.message || err?.details || 'Erro ao carregar portfólio';
       showToast(msg, 'error');
     } finally {
       setIsLoadingClients(false);
@@ -61,13 +61,12 @@ export const useAdminClientManagement = ({ setIsSaving, qualityAnalysts }: UseAd
 
   const handleSaveClient = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || isSavingGlobal) return;
 
     setIsSaving(true);
     try {
       const analyst = qualityAnalysts.find(qa => qa.id === clientFormData.qualityAnalystId);
       
-      // Fix: Ensured payload status is compatible with ClientOrganization.status
       const payload: Partial<ClientOrganization> = {
         ...clientFormData,
         id: editingClient?.id,
@@ -78,13 +77,14 @@ export const useAdminClientManagement = ({ setIsSaving, qualityAnalysts }: UseAd
       showToast(`Empresa ${editingClient ? 'atualizada' : 'registrada'} com sucesso!`, 'success');
       setIsClientModalOpen(false);
       await loadClients();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha na persistência';
+    } catch (err: any) {
+      // FIX: Extração inteligente de mensagem de erro de objetos do Supabase
+      const msg = err?.message || err?.details || 'Falha na persistência de dados técnicos.';
       showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
-  }, [user, clientFormData, editingClient, qualityAnalysts, showToast, setIsSaving, loadClients]);
+  }, [user, clientFormData, editingClient, qualityAnalysts, showToast, setIsSaving, loadClients, isSavingGlobal]);
 
   const openClientModal = useCallback((client?: ClientOrganization) => {
     if (client) {

@@ -1,226 +1,42 @@
-
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { useAuth } from '../../context/authContext.tsx';
-import { fileService } from '../../lib/services/index.ts';
-import { DashboardStatsData } from '../../lib/services/interfaces.ts';
 import { useTranslation } from 'react-i18next';
-// Fixed: Lucide icons must be imported from 'lucide-react', not from types
-import { 
-  Clock, 
-  FileText, 
-  Loader2, 
-  ArrowUpRight, 
-  ShieldCheck, 
-  Library, 
-  Star, 
-  History,
-  MoreVertical
-} from 'lucide-react';
-import { FilePreviewModal } from '../../components/features/files/FilePreviewModal.tsx';
-import { FileNode, FileType } from '../../types/index.ts';
+import { ShieldCheck, Lock } from 'lucide-react';
+import { PartnerDashboardView } from '../../components/features/partner/views/PartnerDashboardView.tsx';
 
-// ClientDashboard (para a view 'home')
 const ClientDashboard: React.FC = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  
-  const [stats, setStats] = useState<DashboardStatsData | null>(null);
-  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [recentFiles, setRecentFiles] = useState<FileNode[]>([]);
-  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      fileService.getDashboardStats(user).then(setStats);
-      setIsLoadingRecent(true);
-      fileService.getRecentFiles(user, 4).then(files => {
-          setRecentFiles(files);
-          setIsLoadingRecent(false);
-      });
-    }
-  }, [user]);
-
-  const handleFileSelect = (file: FileNode | null) => {
-    if (file && file.type !== 'FOLDER') {
-        setSelectedFile(file);
-        setIsPreviewOpen(true);
-    }
-  };
 
   return (
-    <>
-      <FilePreviewModal 
-        initialFile={selectedFile} 
-        allFiles={recentFiles.filter(f => f.type !== FileType.FOLDER)} 
-        isOpen={isPreviewOpen} 
-        onClose={() => setIsPreviewOpen(false)} 
-        onDownloadFile={async (file: FileNode) => {
-          try {
-            const url = await fileService.getFileSignedUrl(user!, file.id);
-            window.open(url, '_blank');
-          } catch (error) {
-            console.error("Download failed:", error);
-          }
-        }}
-      />
-
-      <div className="space-y-8 pb-12 animate-in fade-in duration-700">
-        <DashboardHero name={user?.name.split(' ')[0] || ''} t={t} />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <KpiCard 
-            icon={Library} 
-            label={t('dashboard.kpi.libraryLabel')} 
-            value={stats?.subValue ?? '--'} 
-            subtext={t('dashboard.kpi.activeDocsSubtext')} 
-            color="orange-accent"
-            onClick={() => navigate('/client/dashboard?view=files')} 
-            loading={!stats}
-          />
-           <KpiCard 
-            icon={ShieldCheck} 
-            label={t('dashboard.kpi.compliance')} 
-            value={t('dashboard.kpi.assured')} 
-            subtext={t('dashboard.kpi.qualityAssured')} 
-            color="emerald" 
-            onClick={() => navigate('/client/dashboard?view=files')} 
-            loading={!stats}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-            <div className="xl:col-span-2 space-y-6">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-[3px] text-slate-400">{t('dashboard.recentCertificates')}</h3>
-                    <button onClick={() => navigate('/client/dashboard?view=files')} className="text-[10px] font-bold text-[#b23c0e] hover:text-[#8a2f0b] uppercase tracking-widest">{t('dashboard.exploreAll')}</button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {isLoadingRecent ? (
-                        Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-36 bg-white rounded-2xl animate-pulse border border-slate-100" />)
-                    ) : recentFiles.length > 0 ? (
-                        recentFiles.map(file => (
-                            <RecentFileCard key={file.id} file={file} t={t} onClick={() => handleFileSelect(file)} />
-                        ))
-                    ) : (
-                        <div className="col-span-full h-32 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center text-slate-400 text-sm italic">
-                            {t('dashboard.noRecentFiles')}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="space-y-6">
-                <h3 className="text-xs font-bold uppercase tracking-[3px] text-slate-400">{t('dashboard.complianceStatus')}</h3>
-                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-orange-50 text-[#b23c0e] rounded-2xl flex items-center justify-center">
-                            <ShieldCheck size={24} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-slate-800">{t('dashboard.certifiedOperation')}</p>
-                            <p className="text-[10px] text-[#b23c0e] font-bold uppercase tracking-widest">{t('dashboard.vitalStandard')}</p>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            <span>{t('dashboard.traceability')}</span>
-                            <span className="text-emerald-500 font-bold">100% OK</span>
-                        </div>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 w-full" />
-                        </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                        {t('dashboard.disclaimer')}
-                    </p>
-                </div>
-            </div>
+    <div className="space-y-8 pb-12 animate-in fade-in duration-1000">
+      {/* Hero Privado do Parceiro */}
+      <div className="bg-[#081437] rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#b23c0e]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+        <div className="relative z-10 space-y-6">
+          <div className="flex flex-wrap items-center gap-4">
+              <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20 text-emerald-300">
+                <ShieldCheck size={12} className="text-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Gateway B2B Ativo</span>
+              </span>
+              <span className="px-4 py-1 bg-[#b23c0e] rounded-full text-[9px] font-black uppercase tracking-[3px] border border-white/10 shadow-lg shadow-[#b23c0e]/20">{t('roles.CLIENT')}</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-tight">
+            {t('common.welcome')}, <br/>
+            <span className="text-white/60">{user?.name.split(' ')[0]}.</span>
+          </h1>
+          <div className="flex items-center gap-2 text-slate-400">
+             <Lock size={14} />
+             <p className="text-sm font-medium leading-relaxed">
+               Seu portal exclusivo de conformidade industrial.
+             </p>
+          </div>
         </div>
       </div>
-    </>
+
+      <PartnerDashboardView />
+    </div>
   );
 };
-
-/* --- Sub-componentes do Dashboard --- */
-
-const DashboardHero = ({ name, t }: { name: string, t: any }) => (
-  <div className="bg-[#081437] rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5">
-    <div className="absolute top-0 right-0 w-96 h-96 bg-[#b23c0e]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-    <div className="relative z-10 space-y-4">
-      <div className="flex flex-wrap items-center gap-2 md:gap-4">
-          <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20 text-emerald-300 shadow-lg shadow-emerald-500/10 whitespace-nowrap">
-            <ShieldCheck size={12} className="text-emerald-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{t('login.secureData')}</span>
-          </span>
-          <span className="px-4 py-1 bg-[#b23c0e] rounded-full text-[9px] font-black uppercase tracking-[3px] shadow-lg shadow-[#b23c0e]/20 whitespace-nowrap border border-white/10">{t('roles.CLIENT')}</span>
-      </div>
-      <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight max-w-xl">
-        {t('common.welcome')}, <span className="text-white/80">{name}.</span>
-      </h1>
-      <p className="text-slate-400 max-w-md text-sm font-medium leading-relaxed">
-        {t('login.heroSubtitle')}
-      </p>
-    </div>
-  </div>
-);
-
-const KpiCard = ({ icon: Icon, label, value, subtext, color, onClick, loading }: any) => (
-  <button 
-    onClick={onClick} 
-    className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm cursor-pointer hover:shadow-xl hover:border-[#b23c0e]/30 transition-all group text-left relative overflow-hidden"
-    disabled={loading}
-  >
-    <div className="flex justify-between items-start">
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
-        color === 'blue' ? 'bg-blue-50 text-blue-600' : 
-        color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-        color === 'orange-accent' ? 'bg-[#b23c0e]/10 text-[#b23c0e]' : 
-        color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
-        'bg-slate-50 text-slate-600'
-      }`}>
-        <Icon size={28} />
-      </div>
-      <ArrowUpRight size={20} className="text-slate-200 group-hover:text-[#b23c0e] transition-colors" />
-    </div>
-    <div className="space-y-1">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
-      {loading ? (
-        <div className="h-10 w-24 bg-slate-100 animate-pulse rounded-lg my-1" />
-      ) : (
-        <h3 className="text-4xl font-bold text-slate-800 tracking-tight">{value}</h3>
-      )}
-      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{subtext}</p>
-    </div>
-  </button>
-);
-
-const RecentFileCard: React.FC<{ file: FileNode; t: any; onClick: () => void }> = ({ file, t, onClick }) => (
-    <div 
-        onClick={onClick}
-        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-[#b23c0e]/20 transition-all group cursor-pointer flex flex-col justify-between h-36"
-    >
-        <div className="flex justify-between items-start">
-            <div className="p-2.5 bg-orange-50 text-[#b23c0e] rounded-xl group-hover:bg-[#b23c0e] group-hover:text-white transition-colors">
-                <FileText size={20} />
-            </div>
-            <button className="p-1.5 text-slate-300 hover:text-slate-600">
-                <MoreVertical size={16} />
-            </button>
-        </div>
-        <div>
-            <p className="text-xs font-bold text-slate-800 truncate group-hover:text-[#b23c0e] transition-colors">{file.name}</p>
-            <div className="flex items-center justify-between mt-1">
-                <p className="text-[10px] text-slate-400 font-mono">{file.size}</p>
-                <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 uppercase">
-                    <ShieldCheck size={10} /> {t('dashboard.available')}
-                </div>
-            </div>
-        </div>
-    </div>
-);
 
 export default ClientDashboard;

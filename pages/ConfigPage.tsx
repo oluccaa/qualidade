@@ -18,15 +18,9 @@ const ConfigPage: React.FC = () => {
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
-  const LayoutComponent = isClient ? ClientLayout : Layout;
-
-  const clientLayoutProps = isClient ? {
-    activeView: "settings",
-    onViewChange: () => {},
-  } : {};
-
-  return (
-    <LayoutComponent title={t('menu.settings')} {...clientLayoutProps}>
+  // Fix: Extracted content to a variable to avoid duplication in conditional layout rendering
+  const settingsContent = (
+    <>
       <ChangePasswordModal 
         isOpen={isChangePasswordModalOpen} 
         onClose={() => setIsChangePasswordModalOpen(false)} 
@@ -96,7 +90,26 @@ const ConfigPage: React.FC = () => {
             </div>
         </div>
       </div>
-    </LayoutComponent>
+    </>
+  );
+
+  // Fix: Explicitly render based on user role to satisfy TypeScript required props in ClientLayout
+  if (isClient) {
+    return (
+      <ClientLayout 
+        title={t('menu.settings')} 
+        activeView="settings"
+        onViewChange={() => {}}
+      >
+        {settingsContent}
+      </ClientLayout>
+    );
+  }
+
+  return (
+    <Layout title={t('menu.settings')}>
+      {settingsContent}
+    </Layout>
   );
 };
 

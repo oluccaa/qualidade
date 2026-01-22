@@ -1,46 +1,69 @@
-// Adicione ao seu objecto de serviço ou crie uma função isolada
+
 import { supabase } from '../supabaseClient';
-import { normalizeRole } from '../mappers/roleMapper';
+import { normalizeRole, AccountStatus, User, SystemStatus, UserRole } from '../../types';
 
+/**
+ * appService - Gestor de Contexto Vital
+ * Garante a sincronia entre Auth, Perfil e RBAC.
+ */
 export const appService = {
-  getInitialData: async () => {
+  getInitialData: async (): Promise<{ user: User | null; systemStatus: SystemStatus }> => {
     try {
-      // Chama a função SQL que criámos
-      const { data, error } = await supabase.rpc('get_initial_app_data');
+      const { data: { session } } = await (supabase.auth as any).getSession();
+
+      if (!session) {
+        return { user: null, systemStatus: { mode: 'ONLINE' as const } };
+      }
+
+      // 1. Coleta dados do metadado do JWT (Imutável e rápido)
+      const meta = session.user.user_metadata || {};
       
-      if (error) throw error;
-      if (!data) throw new Error("Dados não retornados");
+      // 2. Busca perfil para dados dinâmicos. 
+      // FIX: Especificamos !profiles_organization_id_fkey para resolver o erro PGRST201
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, organizations!profiles_organization_id_fkey(name)')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-      // Mapeamento dos dados brutos do SQL para os tipos da aplicação
-      const rawUser = data.user;
-      const rawSystem = data.systemStatus;
+      if (profileError) console.error("[Identity] Erro ao carregar perfil:", profileError);
 
-      // Converter user raw para User do domínio (igual ao toDomainUser)
-      const domainUser = rawUser ? {
-        id: rawUser.id,
-        name: rawUser.full_name || 'Usuário',
-        email: rawUser.email || '',
-        role: normalizeRole(rawUser.role),
-        organizationId: rawUser.organization_id,
-        organizationName: rawUser.organization_name || 'Aços Vital',
-        status: rawUser.status || 'ACTIVE',
-        department: rawUser.department,
-        lastLogin: rawUser.last_login
-      } : null;
+      // LÓGICA DE DETECÇÃO DE ROLE (Resolvendo o problema do CLIENT default)
+      let detectedRoleRaw = profile?.role || meta.role;
+      
+      if (!detectedRoleRaw && session.user.email?.endsWith('@acosvital.com.br')) {
+          detectedRoleRaw = UserRole.QUALITY; 
+      }
 
-      // Converter system raw (snake_case) para camelCase
-      const domainSystem = rawSystem ? {
-        mode: rawSystem.mode,
-        message: rawSystem.message,
-        scheduledStart: rawSystem.scheduled_start,
-        scheduledEnd: rawSystem.scheduled_end,
-        updatedBy: rawSystem.updated_by
-      } : null;
+      const finalRole = normalizeRole(detectedRoleRaw);
+      
+      const domainUser: User = {
+        id: session.user.id,
+        name: profile?.full_name || meta.full_name || 'Operador Vital',
+        email: session.user.email || '',
+        role: finalRole,
+        organizationId: profile?.organization_id || meta.organization_id || meta.org_id,
+        organizationName: profile?.organizations?.name || (finalRole === UserRole.CLIENT ? 'Parceiro Vital' : 'Aços Vital S.A.'),
+        status: (profile?.status as AccountStatus) || AccountStatus.ACTIVE,
+        department: profile?.department || meta.user_type,
+        lastLogin: profile?.last_login
+      };
 
-      return { user: domainUser, systemStatus: domainSystem };
+      // Carrega configurações do sistema
+      const { data: system } = await supabase.from('system_settings').select('*').eq('id', 1).maybeSingle();
+
+      return { 
+        user: domainUser, 
+        systemStatus: system ? {
+          mode: system.mode,
+          message: system.message,
+          scheduledStart: system.scheduled_start,
+          scheduledEnd: system.scheduled_end
+        } : { mode: 'ONLINE' }
+      };
     } catch (err) {
-      console.error("Falha no RPC get_initial_app_data:", err);
-      return { user: null, systemStatus: null };
+      console.error("[Auth Sync] Falha crítica:", err);
+      return { user: null, systemStatus: { mode: 'ONLINE' as const } };
     }
   }
 };

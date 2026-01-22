@@ -1,12 +1,12 @@
-
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Building2, FileWarning, ShieldCheck, Activity, ArrowUpRight, LucideIcon } from 'lucide-react';
+import { Building2, FileWarning, ShieldCheck, Activity, ArrowUpRight, LucideIcon, Info } from 'lucide-react';
 
 interface QualityOverviewCardsProps {
   totalClients: number;
   totalPendingDocs: number;
-  onChangeView: (view: string) => void;
+  complianceRate: string;
+  totalRejected: number;
+  onNavigate: (path: string) => void;
 }
 
 interface KpiConfig {
@@ -15,95 +15,116 @@ interface KpiConfig {
     value: string | number;
     subtext: string;
     icon: LucideIcon;
-    color: string;
-    view: string;
-    shadow: string;
-    accent: string;
+    variant: 'neutral' | 'urgent' | 'success' | 'alert';
+    path: string;
+    tooltip: string;
 }
 
-export const QualityOverviewCards: React.FC<QualityOverviewCardsProps> = ({ totalClients, totalPendingDocs, onChangeView }) => {
-  const { t } = useTranslation();
-
+export const QualityOverviewCards: React.FC<QualityOverviewCardsProps> = ({ 
+  totalClients, 
+  totalPendingDocs, 
+  complianceRate, 
+  totalRejected, 
+  onNavigate 
+}) => {
   const cardConfig: KpiConfig[] = useMemo(() => [
     {
-      id: 'clients',
-      label: t('quality.activePortfolio'),
-      value: totalClients,
-      subtext: "Empresas Monitoradas",
-      icon: Building2,
-      color: "bg-[#081437]",
-      shadow: "shadow-slate-900/5",
-      view: 'clients',
-      accent: "text-blue-400"
-    },
-    {
       id: 'pending',
-      label: t('quality.pendingDocs'),
+      label: "Urgência",
       value: totalPendingDocs,
-      subtext: "Urgência de Inspeção",
+      subtext: "Aguardando Triagem",
       icon: FileWarning,
-      color: "bg-[#b23c0e]",
-      shadow: "shadow-[#b23c0e]/10",
-      view: 'clients',
-      accent: "text-white"
-    },
-    {
-      id: 'compliance',
-      label: "Qualidade de Dados",
-      value: "94.2%",
-      subtext: t('quality.complianceISO'),
-      icon: ShieldCheck,
-      color: "bg-emerald-600",
-      shadow: "shadow-emerald-500/10",
-      view: 'overview',
-      accent: "text-white"
+      variant: 'urgent',
+      path: '/quality/monitor',
+      tooltip: "Prioritários para análise técnica"
     },
     {
       id: 'alerts',
-      label: "Eventos Auditados",
-      value: 12,
-      subtext: "Logs nas últimas 24h",
+      label: "Alertas",
+      value: totalRejected,
+      subtext: "Contestações",
       icon: Activity,
-      color: "bg-slate-600",
-      shadow: "shadow-slate-500/5",
-      view: 'audit-log',
-      accent: "text-white"
+      variant: 'alert',
+      path: '/quality/monitor',
+      tooltip: "Certificados com feedback negativo"
+    },
+    {
+      id: 'compliance',
+      label: "Compliance",
+      value: `${complianceRate}%`,
+      subtext: "Índice Global",
+      icon: ShieldCheck,
+      variant: 'success',
+      path: '/quality/audit',
+      tooltip: "Conformidade da operação"
+    },
+    {
+      id: 'clients',
+      label: "Portfólio",
+      value: totalClients,
+      subtext: "Empresas Ativas",
+      icon: Building2,
+      variant: 'neutral',
+      path: '/quality/portfolio',
+      tooltip: "Gestão da base de parceiros"
     }
-  ], [totalClients, totalPendingDocs, t]);
+  ], [totalClients, totalPendingDocs, complianceRate, totalRejected]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <nav className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" aria-label="Indicadores de Desempenho">
       {cardConfig.map((card) => (
         <KpiCard 
             key={card.id} 
             card={card} 
-            onClick={() => onChangeView(card.view)} 
+            onClick={() => onNavigate(card.path)} 
         />
       ))}
-    </div>
+    </nav>
   );
 };
 
 const KpiCard: React.FC<{ card: KpiConfig; onClick: () => void }> = ({ card, onClick }) => {
     const Icon = card.icon;
+    
+    const variants = {
+        urgent: 'bg-orange-600 border-orange-500 text-white shadow-orange-900/10',
+        alert: 'bg-white border-red-200 text-red-600 shadow-red-900/5',
+        success: 'bg-white border-emerald-100 text-emerald-700 shadow-emerald-900/5',
+        neutral: 'bg-[#0f172a] border-slate-800 text-white shadow-slate-900/20'
+    };
+
+    const iconColors = {
+        urgent: 'bg-white/20 text-white',
+        alert: 'bg-red-50 text-red-600',
+        success: 'bg-emerald-50 text-emerald-600',
+        neutral: 'bg-blue-500/20 text-blue-400'
+    };
+
     return (
         <button
             onClick={onClick}
-            className="group bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-left flex flex-col justify-between min-h-[160px] relative overflow-hidden"
+            className={`group p-5 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border-2 transition-all text-left flex flex-col justify-between min-h-[160px] md:min-h-[200px] relative overflow-hidden focus-visible:ring-4 outline-none ${variants[card.variant]}`}
         >
-            <div className="absolute top-0 right-0 w-20 h-20 bg-slate-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-slate-100 transition-colors" />
-            
-            <div className="flex justify-between items-start mb-4 relative z-10">
-              <div className={`p-2.5 rounded-xl ${card.color} text-white shadow-lg ${card.shadow} group-hover:scale-110 transition-transform`}>
-                <Icon size={18} className={card.accent} />
-              </div>
-              <ArrowUpRight size={16} className="text-slate-200 group-hover:text-[#b23c0e] transition-colors" />
+            <div className="relative z-10">
+                <div className="flex justify-between items-start mb-4 md:mb-6">
+                    <div className={`p-2.5 md:p-3 rounded-xl md:rounded-2xl ${iconColors[card.variant]} transition-transform group-hover:scale-110`}>
+                        <Icon size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
+                    </div>
+                    <ArrowUpRight size={16} className="opacity-40 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform md:w-5 md:h-5" />
+                </div>
+                
+                <p className={`text-[8px] md:text-[10px] font-black uppercase tracking-[2px] mb-1 opacity-70`}>{card.label}</p>
+                <h3 className="text-3xl md:text-4xl font-black tracking-tighter leading-none">{card.value}</h3>
             </div>
 
-            <div className="relative z-10">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{card.label}</p>
-              <h3 className="text-3xl font-bold text-[#081437] tracking-tight">{card.value}</h3>
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide mt-1 opacity-80">{card.subtext}</p>
+            <div className="relative z-10 mt-3 md:mt-4 pt-3 md:pt-4 border-t border-current border-opacity-10">
+                <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-wider opacity-80 flex items-center gap-2">
+                    <Info size={12} className="md:w-[14px]" /> <span className="truncate">{card.subtext}</span>
+                </p>
+            </div>
+            
+            <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12 group-hover:scale-110 transition-transform hidden xs:block">
+                <Icon size={120} />
             </div>
         </button>
     );

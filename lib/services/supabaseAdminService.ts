@@ -2,41 +2,25 @@
 import { IAdminService, AdminStatsData, PaginatedResponse, RawClientOrganization } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { SystemStatus, MaintenanceEvent } from '../../types/system.ts';
-import { ClientOrganization } from '../../types/auth.ts';
+import { ClientOrganization, User, UserRole, normalizeRole, AccountStatus } from '../../types/index.ts';
 import { withAuditLog } from '../utils/auditLogWrapper.ts';
-import { withTimeout } from '../utils/apiUtils.ts'; // Import withTimeout
-// import { config } from '../config.ts'; // Removido
-// Fix: Import necessary Supabase types for explicit typing
-import { PostgrestError, PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
+import { withTimeout } from '../utils/apiUtils.ts';
+import { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js';
 
-const API_TIMEOUT = 8000; // Definido localmente (Reduzido para 8 segundos)
+const API_TIMEOUT = 8000;
 
-/**
- * Implementação Supabase para Gestão Administrativa.
- */
 export const SupabaseAdminService: IAdminService = {
   getSystemStatus: async () => {
-    // Fix: Wrap Supabase builder in Promise.resolve to satisfy Promise typing for withTimeout
     const fetchStatusPromise = Promise.resolve(supabase.from('system_settings').select('*').single());
-    
-    // Aplica timeout à requisição do status do sistema
-    // Fix: Cast result to any to handle internal snake_case properties comfortably
-    const result = await withTimeout(
-      fetchStatusPromise as any, 
-      API_TIMEOUT, 
-      "Tempo esgotado ao buscar status do sistema."
-    );
+    const result = await withTimeout(fetchStatusPromise as any, API_TIMEOUT, "Tempo esgotado ao buscar status do sistema.");
     const { data, error } = result as PostgrestSingleResponse<any>;
-
     if (error || !data) return { mode: 'ONLINE' };
-    
-    // Fix: Map snake_case database fields to camelCase domain object properties
     return {
       mode: data.mode,
       message: data.message,
-      scheduledStart: data.scheduled_start, 
-      scheduledEnd: data.scheduled_end,     
-      updatedBy: data.updated_by            
+      scheduledStart: data.scheduled_start,
+      scheduledEnd: data.scheduled_end,
+      updatedBy: data.updated_by
     };
   },
 
@@ -45,60 +29,50 @@ export const SupabaseAdminService: IAdminService = {
       const { data, error } = await supabase.from('system_settings').update({
         mode: newStatus.mode,
         message: newStatus.message,
-        scheduled_start: newStatus.scheduledStart, // Fix: Use snake_case for DB column
-        scheduled_end: newStatus.scheduledEnd,     // Fix: Use snake_case for DB column
-        updated_by: user.id,                       // Fix: Use snake_case for DB column
+        scheduled_start: newStatus.scheduledStart,
+        scheduled_end: newStatus.scheduledEnd,
+        updated_by: user.id,
         updated_at: new Date().toISOString()
       }).eq('id', 1).select().single();
-      
       if (error) throw error;
-      return data as SystemStatus;
+      return {
+        mode: data.mode,
+        message: data.message,
+        scheduledStart: data.scheduled_start,
+        scheduledEnd: data.scheduled_end,
+        updatedBy: data.updated_by
+      } as SystemStatus;
     };
+    return await withAuditLog(user, 'SYS_STATUS_CHANGE', { target: `Mode: ${newStatus.mode}`, category: 'SYSTEM', initialSeverity: 'WARNING' }, action);
+  },
 
-    return await withAuditLog(user, 'SYS_STATUS_CHANGE', { 
-      target: `Mode: ${newStatus.mode}`, 
-      category: 'SYSTEM', 
-      initialSeverity: 'WARNING' 
-    }, action);
+  updateGatewayMode: async (user, mode) => {
+    await SupabaseAdminService.updateSystemStatus(user, { mode });
   },
 
   subscribeToSystemStatus: (listener) => {
-    const channel = supabase
-      .channel('system_state')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings' }, payload => {
-        listener(payload.new as SystemStatus);
-      })
-      .subscribe();
+    const channel = supabase.channel('system_state').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings' }, payload => {
+      const data = payload.new as any;
+      listener({ mode: data.mode, message: data.message, scheduledStart: data.scheduled_start, scheduledEnd: data.scheduled_end, updatedBy: data.updated_by });
+    }).subscribe();
     return () => { supabase.removeChannel(channel); };
   },
 
   getAdminStats: async (): Promise<AdminStatsData> => {
-    // As chamadas de stats geralmente são rápidas, mas podemos adicionar timeout aqui também se necessário.
     const [u, a, c, l] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
       supabase.from('organizations').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
       supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gt('created_at', new Date(Date.now() - 86400000).toISOString())
     ]);
-
-    const getOscillatedValue = (base: number, range: number) => 
-      Math.floor(base + (Math.random() * range - range / 2));
-
-    return {
-      totalUsers: u.count || 0,
-      activeUsers: a.count || 0,
-      activeClients: c.count || 0,
-      logsLast24h: l.count || 0,
-      systemHealthStatus: 'HEALTHY',
-      cpuUsage: Math.min(95, getOscillatedValue(12, 4) + (u.count || 0) * 0.1), 
-      memoryUsage: Math.min(95, getOscillatedValue(35, 6)),
-      dbConnections: Math.max(1, getOscillatedValue(8, 2)),
-      dbMaxConnections: 100
-    };
+    const getOscillatedValue = (base: number, range: number) => Math.floor(base + (Math.random() * range - range / 2));
+    return { totalUsers: u.count || 0, activeUsers: a.count || 0, activeClients: c.count || 0, logsLast24h: l.count || 0, systemHealthStatus: 'HEALTHY', cpuUsage: Math.min(95, getOscillatedValue(12, 4) + (u.count || 0) * 0.1), memoryUsage: Math.min(95, getOscillatedValue(35, 6)), dbConnections: Math.max(1, getOscillatedValue(8, 2)), dbMaxConnections: 100 };
   },
 
   getClients: async (filters, page = 1, pageSize = 20) => {
-    let query = supabase.from('organizations').select('*, profiles!quality_analyst_id(full_name)', { count: 'exact' });
+    let query = supabase
+      .from('organizations')
+      .select('*, profiles!organizations_quality_analyst_id_fkey(full_name)', { count: 'exact' });
     
     if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
     if (filters?.status && filters.status !== 'ALL') query = query.eq('status', filters.status);
@@ -106,29 +80,22 @@ export const SupabaseAdminService: IAdminService = {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    // Fix: Wrap Supabase query in Promise.resolve and cast to any for withTimeout compatibility
     const queryPromise = Promise.resolve(query.range(from, to).order('name'));
-    const result = await withTimeout( 
-      queryPromise as any,
-      API_TIMEOUT,
-      "Tempo esgotado ao carregar clientes."
-    );
+    const result = await withTimeout(queryPromise as any, API_TIMEOUT, "Tempo esgotado ao carregar clientes.");
     const { data, count, error } = result as PostgrestResponse<RawClientOrganization>;
 
     if (error) throw error;
 
     return {
-      // Fix: Map raw data to ClientOrganization domain type
       items: (data || []).map(c => {
-        // Tratar o retorno do join que pode vir como objeto ou array
         const profileData = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
         return {
           id: c.id, 
           name: c.name || 'Empresa Sem Nome', 
           cnpj: c.cnpj || '00.000.000/0000-00', 
           status: c.status, 
-          contractDate: c.contract_date, // Fix: Map from snake_case to camelCase
-          qualityAnalystId: c.quality_analyst_id || undefined, // Fix: Map from snake_case
+          contractDate: c.contract_date,
+          qualityAnalystId: c.quality_analyst_id || undefined,
           qualityAnalystName: profileData?.full_name || 'N/A'
         };
       }),
@@ -138,86 +105,136 @@ export const SupabaseAdminService: IAdminService = {
   },
 
   saveClient: async (user, data) => {
-    const call = async () => {
-      const payload = {
+    const isNew = !data.id;
+    const action = async () => {
+      if (isNew) {
+        const { data: existing } = await supabase.from('organizations').select('id').eq('cnpj', data.cnpj).maybeSingle();
+        if (existing) throw new Error(`Já existe uma empresa registrada com o CNPJ ${data.cnpj}.`);
+      }
+
+      let validQualityAnalystId = (data.qualityAnalystId && data.qualityAnalystId.trim() !== "") 
+        ? data.qualityAnalystId 
+        : null;
+
+      if (!validQualityAnalystId && normalizeRole(user.role) === UserRole.QUALITY) {
+          validQualityAnalystId = user.id;
+      }
+
+      const payload = { 
         name: data.name, 
         cnpj: data.cnpj, 
-        status: data.status,
-        contract_date: data.contractDate, // Fix: Use snake_case for DB column
-        quality_analyst_id: data.qualityAnalystId // Fix: Use snake_case for DB column
+        status: data.status, 
+        contract_date: data.contractDate, 
+        quality_analyst_id: validQualityAnalystId 
       };
-      const query = data.id ? supabase.from('organizations').update(payload).eq('id', data.id) : supabase.from('organizations').insert(payload);
-      
-      // Fix: Wrap query in Promise.resolve and cast for withTimeout
-      const queryPromise = Promise.resolve(query.select().single());
-      const result = await withTimeout( 
-        queryPromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao salvar cliente."
-      );
-      const { data: res, error } = result as PostgrestSingleResponse<ClientOrganization>;
 
-      if (error) throw error;
-      return res as ClientOrganization;
+      const query = data.id 
+        ? supabase.from('organizations').update(payload).eq('id', data.id) 
+        : supabase.from('organizations').insert(payload);
+
+      const { data: res, error } = await query.select().maybeSingle();
+      
+      if (error) {
+        console.error("[Supabase Error] saveClient:", JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      const finalOrg = res || { id: data.id, ...payload };
+
+      if (isNew && finalOrg.id) {
+          const { data: existingFolder } = await supabase.from('files').select('id').eq('owner_id', finalOrg.id).is('parent_id', null).maybeSingle();
+          if (!existingFolder) {
+              await supabase.from('files').insert({ 
+                name: finalOrg.name, 
+                type: 'FOLDER', 
+                parent_id: null, 
+                owner_id: finalOrg.id, 
+                storage_path: 'system/folder', 
+                updated_at: new Date().toISOString(),
+                metadata: { status: 'SENT' } 
+              });
+          }
+      }
+      return { 
+        id: finalOrg.id, 
+        name: finalOrg.name, 
+        cnpj: finalOrg.cnpj, 
+        status: finalOrg.status, 
+        contractDate: finalOrg.contract_date, 
+        qualityAnalystId: finalOrg.quality_analyst_id 
+      } as ClientOrganization;
     };
-    return await withAuditLog(user, data.id ? 'CLIENT_UPDATE' : 'CLIENT_CREATE', { target: data.name || 'Org', category: 'DATA' }, call);
+    return await withAuditLog(user, data.id ? 'CLIENT_UPDATE' : 'CLIENT_CREATE', { target: data.name || 'Org', category: 'DATA' }, action);
   },
 
   deleteClient: async (user, id) => {
     const action = async () => {
-      // Fix: Wrap query in Promise.resolve and cast for withTimeout
-      const deletePromise = Promise.resolve(supabase.from('organizations').delete().eq('id', id));
-      const result = await withTimeout( 
-        deletePromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao deletar cliente."
-      );
-      const { error } = result as PostgrestResponse<null>;
+      const { error } = await supabase.from('organizations').delete().eq('id', id);
       if (error) throw error;
     };
-
-    return await withAuditLog(user, 'CLIENT_DELETE', { 
-      target: id, 
-      category: 'DATA', 
-      initialSeverity: 'WARNING' 
-    }, action);
+    return await withAuditLog(user, 'CLIENT_DELETE', { target: id, category: 'DATA', initialSeverity: 'WARNING' }, action);
   },
 
-  getFirewallRules: async () => [],
-  getPorts: async () => [],
-  getMaintenanceEvents: async () => [],
-  scheduleMaintenance: async (user, event) => {
-    // Fix: Wrap query in Promise.resolve and cast for withTimeout
-     const insertPromise = Promise.resolve(supabase.from('maintenance_events').insert({
-         title: event.title,
-         scheduled_date: event.scheduledDate, // Fix: Use snake_case for DB column
-         duration_minutes: event.durationMinutes,
-         description: event.description,
-         status: 'SCHEDULED',
-         created_by: user.id
-       }).select().single());
-     const result = await withTimeout( 
-       insertPromise as any,
-       API_TIMEOUT,
-       "Tempo esgotado ao agendar manutenção."
-     );
-     const { data, error } = result as PostgrestSingleResponse<MaintenanceEvent>;
-     
-     if (error) throw error;
-     return data as MaintenanceEvent;
-  },
-  cancelMaintenance: async (user, id) => {
+  flagClientForDeletion: async (user, clientId) => {
     const action = async () => {
-      // Fix: Wrap query in Promise.resolve and cast for withTimeout
-      const updatePromise = Promise.resolve(supabase.from('maintenance_events').update({ status: 'CANCELLED' }).eq('id', id));
-      const result = await withTimeout( 
-        updatePromise as any,
-        API_TIMEOUT,
-        "Tempo esgotado ao cancelar manutenção."
-      );
-      const { error } = result as PostgrestResponse<null>;
+      const { error } = await supabase.from('organizations').update({ 
+        status: AccountStatus.INACTIVE,
+        // Nota: Idealmente haveria uma coluna is_pending_deletion no DB real
+      }).eq('id', clientId);
       if (error) throw error;
     };
-    await withAuditLog(user, 'MAINTENANCE_CANCEL', { target: id, category: 'SYSTEM' }, action);
+    return await withAuditLog(user, 'CLIENT_FLAGGED_DELETION', { target: clientId, category: 'DATA', initialSeverity: 'WARNING' }, action);
+  },
+
+  scheduleMaintenance: async (user, event) => {
+     const { data, error } = await supabase.from('maintenance_events').insert({ title: event.title, scheduled_date: event.scheduledDate, duration_minutes: event.durationMinutes, description: event.description, status: 'SCHEDULED', created_by: user.id }).select().single();
+     if (error) throw error;
+     return { id: data.id, title: data.title, scheduledDate: data.scheduled_date, durationMinutes: data.duration_minutes, description: data.description, status: data.status, createdBy: data.created_by } as MaintenanceEvent;
+  },
+
+  getGlobalAuditLogs: async () => {
+    const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    return (data || []).map(l => ({ 
+        id: l.id, 
+        timestamp: l.created_at, 
+        userId: l.user_id, 
+        userName: l.metadata?.userName || 'Sistema', 
+        userRole: l.metadata?.userRole || 'UNKNOWN', 
+        action: l.action, 
+        category: l.category, 
+        target: l.target, 
+        severity: l.severity, 
+        status: l.status, 
+        ip: l.ip, // Pega direto do banco preenchido pela trigger
+        location: l.location, 
+        userAgent: l.user_agent, 
+        device: l.device, 
+        metadata: l.metadata, 
+        requestId: l.request_id 
+    }));
+  },
+
+  manageUserAccess: async (admin, targetUser) => {
+    if (!targetUser.id) throw new Error("ID do usuário alvo é obrigatório.");
+    const { error } = await supabase.from('profiles').update({ role: targetUser.role, status: targetUser.status, updated_at: new Date().toISOString() }).eq('id', targetUser.id);
+    if (error) throw error;
+  },
+
+  getAllClients: async () => {
+    const res = await SupabaseAdminService.getClients(undefined, 1, 1000);
+    return res.items;
+  },
+
+  generateSystemBackup: async (user) => {
+    const action = async () => {
+      const [orgs, profiles, files, audit] = await Promise.all([ supabase.from('organizations').select('*'), supabase.from('profiles').select('*'), supabase.from('files').select('*'), supabase.from('audit_logs').select('*').limit(1000) ]);
+      const backupManifest = { version: "1.0", timestamp: new Date().toISOString(), generatedBy: user.email, data: { organizations: orgs.data || [], profiles: profiles.data || [], files_metadata: files.data || [], audit_ledger_slice: audit.data || [] } };
+      const jsonStr = JSON.stringify(backupManifest, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const fileName = `VITAL_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+      return { blob, fileName };
+    };
+    return await withAuditLog(user, 'SYSTEM_BACKUP_GENERATED', { target: 'CLOUD_RECOVERY_LEDGER', category: 'SYSTEM', initialSeverity: 'CRITICAL' }, action);
   }
 };

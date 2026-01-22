@@ -2,12 +2,13 @@ import React, { Suspense } from 'react';
 import { Layout } from '../components/layout/MainLayout.tsx';
 import { useAdminPage } from '../components/features/admin/hooks/useAdminPage.ts';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Users, Activity, Settings, LayoutDashboard } from 'lucide-react';
+import { Loader2, Users, Activity, Settings, LayoutDashboard, Database } from 'lucide-react';
 
 const AdminOverview = React.lazy(() => import('../components/features/admin/views/AdminOverview.tsx').then(m => ({ default: m.AdminOverview })));
 const AdminUsers = React.lazy(() => import('../components/features/admin/views/AdminUsers.tsx').then(m => ({ default: m.AdminUsers })));
 const AdminLogs = React.lazy(() => import('../components/features/admin/views/AdminLogs.tsx').then(m => ({ default: m.AdminLogs })));
 const AdminSettings = React.lazy(() => import('../components/features/admin/views/AdminSettings.tsx').then(m => ({ default: m.AdminSettings })));
+const AdminBackup = React.lazy(() => import('../components/features/admin/views/AdminBackup.tsx').then(m => ({ default: m.AdminBackup })));
 
 const AdminPage: React.FC = () => {
   const { t } = useTranslation();
@@ -17,6 +18,7 @@ const AdminPage: React.FC = () => {
     { id: 'overview', label: t('admin.tabs.overview'), icon: LayoutDashboard },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
     { id: 'logs', label: t('admin.tabs.logs'), icon: Activity },
+    { id: 'backup', label: "Backup", icon: Database },
     { id: 'settings', label: t('admin.tabs.settings'), icon: Settings },
   ];
 
@@ -34,8 +36,9 @@ const AdminPage: React.FC = () => {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Suspense fallback={<TabLoadingIndicator />}>
             {activeTab === 'overview' && <AdminOverview stats={adminStats} />}
-            {activeTab === 'users' && <AdminUsers setIsSaving={setIsSaving} />}
+            {activeTab === 'users' && <AdminUsers setIsSaving={setIsSaving} isSaving={isSaving} />}
             {activeTab === 'logs' && <AdminLogs />}
+            {activeTab === 'backup' && <AdminBackup />}
             {activeTab === 'settings' && systemStatus && (
               <AdminSettings 
                 systemStatus={systemStatus} 

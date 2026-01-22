@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientHub } from '../components/ClientHub.tsx';
-import { UserModal, ClientModal } from '../../admin/components/AdminModals.tsx';
+import { ClientModal } from '../../admin/components/AdminModals.tsx';
 import { ClientListToolbar, ClientListFilters } from '../components/ClientListControls.tsx';
 import { ProcessingOverlay } from '../components/ViewStates.tsx';
+import { PaginationControls } from '../../../common/PaginationControls.tsx';
 import { useQualityClientManagement } from '../hooks/useQualityClientManagement.ts';
 import { ClientOrganization } from '../../../../types/index.ts';
 
@@ -19,26 +20,19 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
 
   const {
     sortedClients, clientSearch, setClientSearch, clientStatus, setClientStatus,
-    isLoadingClients, isLoadingMoreClients, hasMoreClients, handleLoadMoreClients,
-    isProcessing, qualityAnalysts, userModal, clientModal
+    isLoadingClients, isProcessing, qualityAnalysts, clientModal,
+    page, setPage, pageSize, setPageSize, totalItems
   } = useQualityClientManagement(0);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <UserModal
-        isOpen={userModal.isOpen}
-        onClose={() => userModal.setOpen(false)}
-        onSave={userModal.save}
-        editingUser={userModal.editing}
-        formData={userModal.data}
-        setFormData={userModal.setData}
-        organizations={sortedClients}
-      />
+    <div className="w-full flex flex-col space-y-6 animate-in fade-in duration-500">
+      {isProcessing && <ProcessingOverlay message="Atualizando Base de Dados..." />}
 
       <ClientModal
         isOpen={clientModal.isOpen}
         onClose={() => clientModal.setOpen(false)}
         onSave={clientModal.save}
+        onFlagDeletion={clientModal.flagDeletion}
         editingClient={clientModal.editing}
         clientFormData={clientModal.data}
         setClientFormData={clientModal.setData}
@@ -46,36 +40,48 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
         requiresConfirmation={true}
       />
 
-      {isProcessing && <ProcessingOverlay message={t('common.updatingDatabase')} />}
+      <div className="shrink-0 space-y-4">
+        <ClientListToolbar 
+          search={clientSearch}
+          onSearchChange={setClientSearch}
+          onAddCompany={() => clientModal.open()}
+          isLoading={isLoadingClients}
+          t={t}
+        />
 
-      <ClientListToolbar 
-        search={clientSearch}
-        onSearchChange={setClientSearch}
-        onAddUser={() => userModal.open()}
-        onAddCompany={() => clientModal.open()}
-        t={t}
-      />
+        <ClientListFilters 
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          sortKey={sortKey}
+          onSortChange={setSortKey}
+          status={clientStatus}
+          onStatusChange={setClientStatus}
+          t={t}
+        />
+      </div>
 
-      <ClientListFilters 
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        sortKey={sortKey}
-        onSortChange={setSortKey}
-        status={clientStatus}
-        onStatusChange={setClientStatus}
-        t={t}
-      />
-
-      <ClientHub
-        clients={sortedClients}
-        onSelectClient={onSelectClient}
-        isLoading={isLoadingClients}
-        isLoadingMore={isLoadingMoreClients}
-        hasMore={hasMoreClients}
-        onLoadMore={handleLoadMoreClients}
-        viewMode={viewMode}
-        sortKey={sortKey}
-      />
+      <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <ClientHub
+          clients={sortedClients}
+          onSelectClient={onSelectClient}
+          onEditClient={(client) => clientModal.open(client)}
+          isLoading={isLoadingClients}
+          isLoadingMore={false}
+          hasMore={false}
+          onLoadMore={() => {}}
+          viewMode={viewMode}
+          sortKey={sortKey}
+        />
+        
+        <PaginationControls 
+          currentPage={page}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          isLoading={isLoadingClients}
+        />
+      </div>
     </div>
   );
 };

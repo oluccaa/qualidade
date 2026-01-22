@@ -1,23 +1,19 @@
-
 import { 
-  Home, 
-  Library, 
-  Star, 
-  History, 
-  ShieldCheck, 
   Users, 
-  Activity, 
-  LogOut,
-  Lock,
-  FileText,
+  ShieldCheck, 
   LayoutDashboard,
-  ShieldAlert,
-  Clock,
-  Settings, 
-  BarChart3, 
-  Bell 
+  Building2,
+  History,
+  UserCheck,
+  Library,
+  FolderTree,
+  Settings,
+  LogOut,
+  Database,
+  Terminal,
+  ClipboardList
 } from 'lucide-react';
-import { User, UserRole, normalizeRole } from '../types/index.ts';
+import { UserRole } from '../types/index.ts';
 
 export interface NavItem {
   label: string;
@@ -25,7 +21,6 @@ export interface NavItem {
   icon: any;
   exact?: boolean;
   subItems?: NavItem[]; 
-  onClick?: () => void; 
 }
 
 export interface NavSection {
@@ -33,95 +28,106 @@ export interface NavSection {
   items: NavItem[];
 }
 
-const getAdminNavigation = (t: any): NavSection[] => [
+/**
+ * Menu exclusivo para o perfil ADMINISTRADOR
+ */
+export const getAdminMenuConfig = (t: any): NavSection[] => [
   {
-    title: t('menu.sections.operational'),
+    title: "Governança Master",
     items: [
-      { label: "Command Center", path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
-      { label: t('admin.tabs.users'), path: '/admin?tab=users', icon: Users },
+      { label: "Painel de Controle", path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
+      { label: "Gestão Master", path: '/admin/console', icon: Terminal },
     ]
   },
   {
-    title: t('menu.sections.governance'),
+    title: "Auditoria Industrial",
     items: [
-      { label: t('admin.tabs.logs'), path: '/admin?tab=logs', icon: ShieldAlert },
-      { label: t('admin.tabs.settings'), path: '/admin?tab=settings', icon: ShieldCheck },
+      { label: "Fluxo de Auditoria", path: '/quality/monitor', icon: ClipboardList },
+      { label: "Gestão de Clientes", path: '/quality/portfolio', icon: Building2 },
+      { label: "Logs Forenses", path: '/quality/audit', icon: History }
     ]
   }
 ];
 
-const getQualityNavigation = (t: any): NavSection[] => [
+/**
+ * Menu exclusivo para o perfil QUALIDADE
+ */
+export const getQualityMenuConfig = (t: any): NavSection[] => [
   {
-    title: t('menu.sections.operational'),
+    title: "Operação Técnica",
     items: [
-      { label: t('quality.overview'), path: '/quality/dashboard', icon: Activity, exact: true },
+      { label: "Visão Geral", path: '/quality/dashboard', icon: LayoutDashboard, exact: true },
+      { label: "Fluxo de Auditoria", path: '/quality/monitor', icon: ClipboardList },
+      { label: "Gestão de Clientes", path: '/quality/portfolio', icon: Building2 },
     ]
   },
   {
-    title: t('menu.sections.governance'),
+    title: "Documentação Vital",
     items: [
-      { label: t('quality.myAuditLog'), path: '/quality?view=audit-log', icon: FileText }
+      { label: "Cloud de Arquivos", path: '/quality/explorer', icon: FolderTree },
+      { label: "Acessos Parceiros", path: '/quality/users', icon: UserCheck },
+      { label: "Log de Vereditos", path: '/quality/audit', icon: History }
     ]
   }
 ];
 
-export const getClientSidebarMenuConfig = (t: any): NavSection[] => [
+/**
+ * Menu exclusivo para o perfil CLIENTE
+ */
+export const getClientMenuConfig = (t: any): NavSection[] => [
   {
-    title: t('menu.sections.main'),
+    title: "Terminal B2B",
     items: [
-      { label: t('menu.dashboard'), path: '/client/dashboard', icon: LayoutDashboard, exact: true },
+      { label: "Início", path: '/client/portal', icon: LayoutDashboard, exact: true },
+      { label: "Arquivos", path: '/client/portal?view=library', icon: Library },
+      { label: "Fluxo de Auditoria", path: '/client/portal?view=audit_flow', icon: ClipboardList },
     ]
-  },
-  {
-    title: t('menu.sections.documents'),
-    items: [
-      {
-        label: t('menu.certificates'), 
-        icon: Library,
-        path: '/client/dashboard?view=files', 
-        subItems: [
-          { label: t('menu.library'), path: '/client/dashboard?view=files', icon: Library, exact: false },
-        ],
-      },
-    ]
-  },
+  }
 ];
 
+export const getClientSidebarMenuConfig = (t: any): NavSection[] => getClientMenuConfig(t);
 
-export const getMenuConfig = (user: User | null, t: any): NavSection[] => {
+export const getMenuConfig = (user: any, t: any): NavSection[] => {
   if (!user) return [];
-  const role = normalizeRole(user.role);
-  const navigationMap: Record<UserRole, (t: any) => NavSection[]> = {
-    [UserRole.ADMIN]: getAdminNavigation,
-    [UserRole.QUALITY]: getQualityNavigation,
-    [UserRole.CLIENT]: getClientSidebarMenuConfig, 
-  };
-  return navigationMap[role]?.(t) || [];
+  const role = user.role;
+  if (role === UserRole.ADMIN) return getAdminMenuConfig(t);
+  if (role === UserRole.QUALITY) return getQualityMenuConfig(t);
+  if (role === UserRole.CLIENT) return getClientMenuConfig(t);
+  return [];
 };
 
-export const getBottomNavItems = (user: User | null, t: any): NavItem[] => {
+export const getUserMenuItems = (t: any, callbacks: { onLogout: () => void, onNavigateToSettings: () => void }) => [
+  { label: t('menu.settings'), icon: Settings, onClick: callbacks.onNavigateToSettings },
+  { label: t('common.logout'), icon: LogOut, onClick: callbacks.onLogout }
+];
+
+export const getBottomNavItems = (user: any, t: any): NavItem[] => {
   if (!user) return [];
-  const role = normalizeRole(user.role);
+  const role = user.role;
 
   if (role === UserRole.ADMIN) {
     return [
-      { label: "Dash", path: '/admin/dashboard', icon: LayoutDashboard, exact: true },
-      { label: t('admin.tabs.users'), path: '/admin?tab=users', icon: Users },
-      { label: t('admin.tabs.logs'), path: '/admin?tab=logs', icon: ShieldAlert },
+      { label: "Home", path: '/admin/dashboard', icon: LayoutDashboard },
+      { label: "Fluxo", path: '/quality/monitor', icon: ClipboardList },
+      { label: "Consola", path: '/admin/console', icon: Terminal },
     ];
   }
 
-  if (role === UserRole.CLIENT) {
-    return []; 
+  if (role === UserRole.QUALITY) {
+    return [
+      { label: "Home", path: '/quality/dashboard', icon: LayoutDashboard },
+      { label: "Fluxo", path: '/quality/monitor', icon: ClipboardList },
+      { label: "Clientes", path: '/quality/portfolio', icon: Building2 },
+    ];
   }
   
-  return [
-      { label: t('quality.overview'), path: '/quality/dashboard', icon: Activity, exact: true },
-      { label: "Auditoria", path: '/quality?view=audit-log', icon: FileText },
-  ];
-};
+  if (role === UserRole.CLIENT) {
+    return [
+        { label: "Início", path: '/client/portal', icon: LayoutDashboard },
+        { label: "Fluxo", path: '/client/portal?view=audit_flow', icon: ClipboardList },
+        { label: "Arquivos", path: '/client/portal?view=library', icon: Library },
+    ];
+  }
 
-export const getUserMenuItems = (t: any, hooks: { onLogout: () => void, onNavigateToSettings: () => void }) => [
-  { label: t('menu.settings'), icon: Settings, onClick: hooks.onNavigateToSettings },
-  { label: t('common.logout'), icon: LogOut, onClick: hooks.onLogout },
-];
+  return [];
+};

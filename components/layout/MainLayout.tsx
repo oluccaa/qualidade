@@ -3,7 +3,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/authContext.tsx';
-import { Sidebar } from './Sidebar.tsx';
+import { SidebarQuality } from './SidebarQuality.tsx';
+import { SidebarAdmin } from './SidebarAdmin.tsx';
+import { SidebarClient } from './SidebarClient.tsx';
 import { Header } from './Header.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
 import { CookieBanner } from '../common/CookieBanner.tsx';
@@ -17,10 +19,6 @@ interface LayoutProps {
   title: string;
 }
 
-/**
- * MainLayout (Standard Viewport)
- * Layout robusto para usuários administrativos e analistas.
- */
 export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout, systemStatus: authSystemStatus } = useAuth();
   const { t } = useTranslation();
@@ -38,16 +36,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     navigate('/settings');
   };
 
+  const commonSidebarProps = {
+    user,
+    role,
+    isCollapsed: layout.sidebarCollapsed,
+    onToggle: layout.toggleSidebar,
+    onLogout: logout,
+    onNavigateToSettings: handleNavigateToSettingsPage,
+  };
+
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
       <CookieBanner />
 
-      <Sidebar 
-        user={user} 
-        role={role} 
-        isCollapsed={layout.sidebarCollapsed} 
-        onToggle={layout.toggleSidebar} 
-      />
+      <nav aria-label="Navegação Lateral Principal" className="shrink-0">
+        {role === UserRole.ADMIN && <SidebarAdmin {...commonSidebarProps} />}
+        {role === UserRole.QUALITY && <SidebarQuality {...commonSidebarProps} />}
+        {role === UserRole.CLIENT && <SidebarClient {...commonSidebarProps} />}
+      </nav>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <MaintenanceBanner status={system.status} isAdmin={role === UserRole.ADMIN} />
@@ -62,22 +68,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           onNavigateBack={handleNavigateBack}
         />
 
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 custom-scrollbar relative flex flex-col">
-          <div className="max-w-[1400px] w-full mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500 flex-1">
+        <main 
+          id="main-content"
+          role="main"
+          aria-label={title}
+          className="flex-1 flex flex-col min-h-0 bg-transparent p-4 md:p-8 relative overflow-y-auto custom-scrollbar"
+        >
+          <div className="w-full max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700 flex flex-col gap-8">
             {children}
           </div>
-
-          <footer className="max-w-[1400px] w-full mx-auto mt-12 mb-4 px-4 py-10 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-start gap-8 sm:gap-16 opacity-50">
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span className="text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] font-black uppercase tracking-[4px] text-slate-500">
-                  {t('login.monitoring')}
-                </span>
-              </div>
-              <div className="text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] font-black uppercase tracking-[4px] text-slate-500">
-                © {new Date().getFullYear()} {t('menu.brand').toUpperCase()}
-              </div>
-          </footer>
         </main>
 
         <MobileNavigation 

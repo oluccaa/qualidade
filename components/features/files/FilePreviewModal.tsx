@@ -1,400 +1,179 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  X, Download, Loader2, FileText, AlertCircle, 
-  ChevronLeft, ChevronRight, Calendar, User, 
-  HardDrive, Maximize2, Minimize2, ZoomIn, ZoomOut, 
-  RotateCcw, ShieldCheck, Tag, Info, ExternalLink,
-  ChevronUp, ChevronDown
+  X, Download, ShieldCheck, FileText, Loader2, 
+  Pencil, Highlighter, Square, Circle, Eraser, Save, 
+  Hand, History
 } from 'lucide-react';
-import { FileNode, FileType } from '../../../types/index.ts';
-import { fileService } from '../../../lib/services/index.ts';
+import { FileNode, UserRole, SteelBatchMetadata, DocumentAnnotations, AnnotationItem } from '../../../types/index.ts';
 import { useAuth } from '../../../context/authContext.tsx';
-import { useTranslation } from 'react-i18next';
-import { FileStatusBadge } from './components/FileStatusBadge.tsx';
-import { QualityStatus } from '../../../types/metallurgy.ts';
+import { AuditWorkflow } from '../quality/components/AuditWorkflow.tsx';
+import { PdfViewport } from './components/PdfViewport.tsx';
+import { DrawingCanvas, DrawingTool } from './components/DrawingCanvas.tsx';
+import { useFilePreview } from './hooks/useFilePreview.ts';
 
-// Configuração do Worker do PDF.js para processamento paralelo
-if (typeof window !== 'undefined' && (window as any).pdfjsLib) {
-  (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
-}
-
-interface FilePreviewModalProps {
-  initialFile: FileNode | null;
-  allFiles: FileNode[];
-  isOpen: boolean;
-  onClose: () => void;
-  onDownloadFile: (file: FileNode) => void;
-}
-
-export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ 
-  initialFile, 
-  allFiles, 
-  isOpen, 
-  onClose, 
-  onDownloadFile 
-}) => {
-  const { t } = useTranslation();
+export const FilePreviewModal: React.FC<{ 
+  initialFile: FileNode | null; 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onDownloadFile?: (file: FileNode) => void;
+}> = ({ initialFile, isOpen, onClose }) => {
   const { user } = useAuth();
-  const modalRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const [currentFile, setCurrentFile] = useState<FileNode | null>(initialFile);
-  const [currentIndex, setCurrentIndex] = useState<number>(-1);
-  const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<DrawingTool>('hand');
+  const [annotations, setAnnotations] = useState<DocumentAnnotations>({});
   
-  // PDF Document States
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
-  const [pageNum, setPageNum] = useState(1);
-  const [numPages, setNumPages] = useState(0);
-  const [isRendering, setIsRendering] = useState(false);
-  
-  // Viewer States - MVO: Iniciar sempre em 50%
-  const [zoom, setZoom] = useState(0.5); 
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const {
+    currentFile,
+    url,
+    isSyncing,
+    pageNum,
+    setPageNum,
+    zoom,
+    setZoom,
+    handleUpdateMetadata,
+    handleDownload
+  } = useFilePreview(user, initialFile);
 
-  // Sincronização inicial e controle de índice
   useEffect(() => {
-    if (isOpen && initialFile) {
-      const idx = allFiles.findIndex(f => f.id === initialFile.id);
-      setCurrentIndex(idx);
-      setCurrentFile(initialFile);
-      setZoom(0.5); // Garante 50% no início
-      setPageNum(1);
-    }
-  }, [isOpen, initialFile, allFiles]);
-
-  // Carregamento de URL e Documento PDF
-  useEffect(() => {
-    if (currentFile && user && isOpen) {
-      setLoading(true);
-      setError(null);
-      setPdfDoc(null);
-      
-      fileService.getFileSignedUrl(user, currentFile.id)
-        .then(async (signedUrl) => {
-          setUrl(signedUrl);
-          
-          if (currentFile.type === FileType.PDF || currentFile.name.toLowerCase().endsWith('.pdf')) {
-            try {
-              const loadingTask = (window as any).pdfjsLib.getDocument(signedUrl);
-              const pdf = await loadingTask.promise;
-              setPdfDoc(pdf);
-              setNumPages(pdf.numPages);
-              setPageNum(1);
-            } catch (err) {
-              console.error("PDF Load Error:", err);
-              setError(t('files.errorLoadingDocument'));
-            }
-          }
-        })
-        .catch(() => setError(t('files.errorLoadingDocument')))
-        .finally(() => setLoading(false));
-    }
-  }, [currentFile, user, isOpen, t]);
-
-  // Renderização de Página no Canvas
-  const renderPage = useCallback(async (num: number, scale: number) => {
-    if (!pdfDoc || !canvasRef.current) return;
-    
-    setIsRendering(true);
-    try {
-      const page = await pdfDoc.getPage(num);
-      const viewport = page.getViewport({ scale });
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-
-      const outputScale = window.devicePixelRatio || 1;
-      canvas.width = Math.floor(viewport.width * outputScale);
-      canvas.height = Math.floor(viewport.height * outputScale);
-      canvas.style.width = Math.floor(viewport.width) + "px";
-      canvas.style.height = Math.floor(viewport.height) + "px";
-
-      const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
-
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport,
-        transform: transform
-      };
-
-      await page.render(renderContext).promise;
-    } catch (err) {
-      console.error("Render error:", err);
-    } finally {
-      setIsRendering(false);
-    }
-  }, [pdfDoc]);
-
-  // Re-renderizar quando página ou zoom mudar
-  useEffect(() => {
-    if (pdfDoc) {
-      renderPage(pageNum, zoom);
-    }
-  }, [pageNum, zoom, pdfDoc, renderPage]);
-
-  // Navegação sequencial entre arquivos
-  const navigateFile = useCallback((direction: 'next' | 'prev') => {
-    if (allFiles.length <= 1) return;
-    
-    let newIndex = direction === 'next' 
-      ? (currentIndex + 1) % allFiles.length 
-      : (currentIndex - 1 + allFiles.length) % allFiles.length;
-    
-    setCurrentIndex(newIndex);
-    setCurrentFile(allFiles[newIndex]);
-    setZoom(0.5); // Reset zoom para 50% conforme requisito MVO
-    setPageNum(1);
-  }, [allFiles, currentIndex]);
-
-  // Zoom Handlers
-  const handleZoom = (type: 'in' | 'out' | 'reset') => {
-    if (type === 'in') setZoom(prev => Math.min(prev + 0.25, 4));
-    else if (type === 'out') setZoom(prev => Math.max(prev - 0.25, 0.25));
-    else setZoom(0.5);
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      modalRef.current?.requestFullscreen();
-      setIsFullscreen(true);
+    if (currentFile?.metadata?.documentalDrawings) {
+      try {
+        const saved = JSON.parse(currentFile.metadata.documentalDrawings);
+        setAnnotations(saved);
+      } catch (e) {
+        console.error("Falha ao analisar anotações salvas no modal:", e);
+        setAnnotations({});
+      }
     } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+        setAnnotations({});
     }
-  };
+  }, [currentFile?.id, currentFile?.metadata?.documentalDrawings]);
 
-  if (!isOpen || !currentFile) return null;
-
-  const isImage = currentFile.type === FileType.IMAGE || currentFile.name.match(/\.(jpg|jpeg|png|webp)$/i);
-  const isPDF = currentFile.type === FileType.PDF || currentFile.name.toLowerCase().endsWith('.pdf');
+  if (!isOpen) return null;
 
   return (
-    <div 
-      ref={modalRef}
-      className="fixed inset-0 z-[200] bg-[#020617] flex flex-col animate-in fade-in duration-300"
-      role="dialog"
-      aria-modal="true"
-    >
-      {/* Top Header Refinado */}
-      <header className="h-16 shrink-0 bg-slate-900/90 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-6 z-50">
-        <div className="flex items-center gap-4">
-          <div className="p-2.5 bg-blue-500/20 rounded-xl border border-blue-500/30">
-             {isImage ? <Tag className="text-blue-400" size={18} /> : <FileText className="text-blue-400" size={18} />}
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-white font-bold text-sm truncate max-w-[200px] md:max-w-md tracking-tight leading-none">
-              {currentFile.name}
-            </h2>
-            <p className="text-slate-500 text-[9px] uppercase font-black tracking-widest mt-1">
-              Terminal de Visualização Aços Vital • {currentIndex + 1} de {allFiles.length}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 md:gap-3">
-          {isPDF && numPages > 1 && (
-            <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-white/5 mr-4 shadow-inner">
-               <button 
-                onClick={() => setPageNum(p => Math.max(1, p - 1))}
-                disabled={pageNum <= 1}
-                className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
-               >
-                 <ChevronUp size={16} />
-               </button>
-               <div className="px-3 text-[10px] font-black text-white border-x border-white/5 min-w-[60px] text-center">
-                 Pág {pageNum} / {numPages}
-               </div>
-               <button 
-                onClick={() => setPageNum(p => Math.min(numPages, p + 1))}
-                disabled={pageNum >= numPages}
-                className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
-               >
-                 <ChevronDown size={16} />
-               </button>
-            </div>
-          )}
-
-          <ViewerButton onClick={() => onDownloadFile(currentFile)} icon={Download} title="Baixar Original" />
-          <div className="w-px h-6 bg-white/10 mx-1" />
-          <ViewerButton onClick={() => setShowSidebar(!showSidebar)} icon={showSidebar ? Minimize2 : Info} title="Dados Técnicos" active={showSidebar} />
-          <ViewerButton onClick={toggleFullscreen} icon={isFullscreen ? Minimize2 : Maximize2} title="Tela Cheia" />
-          <button 
-            onClick={onClose}
-            className="ml-2 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-all"
-          >
-            <X size={24} />
-          </button>
-        </div>
-      </header>
-
-      <div className="flex-1 flex overflow-hidden relative bg-[#0f172a]">
-        
-        {/* Setas Laterais de Navegação (Requisito PO) */}
-        {allFiles.length > 1 && (
-          <>
-            <NavArrow direction="left" onClick={() => navigateFile('prev')} />
-            <NavArrow direction="right" onClick={() => navigateFile('next')} />
-          </>
-        )}
-
-        {/* Floating Tool Bar */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl shadow-2xl z-40 transition-opacity hover:opacity-100 opacity-60">
-          <ViewerButton onClick={() => handleZoom('out')} icon={ZoomOut} title="Zoom Out" />
-          <div className="px-3 text-[10px] font-black text-slate-400 w-14 text-center">
-            {Math.round(zoom * 100)}%
-          </div>
-          <ViewerButton onClick={() => handleZoom('in')} icon={ZoomIn} title="Zoom In" />
-          <div className="w-px h-4 bg-white/10 mx-1" />
-          <ViewerButton onClick={() => handleZoom('reset')} icon={RotateCcw} title="Reset 50%" />
-        </div>
-
-        {/* Área de Renderização */}
-        <main className="flex-1 overflow-auto custom-scrollbar flex items-start justify-center p-4 md:p-8">
-          <div className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)]">
-            {loading && (
-              <div className="flex flex-col items-center gap-4 text-slate-500 py-32">
-                <Loader2 size={48} className="animate-spin text-blue-500" />
-                <p className="text-[10px] font-black uppercase tracking-[4px]">Carregando Recurso...</p>
-              </div>
-            )}
-            
-            {error && (
-              <div className="text-center p-20 max-w-sm bg-slate-800/50 rounded-3xl border border-white/5 backdrop-blur-xl">
-                <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                  <AlertCircle size={40} />
+    <div className="fixed inset-0 z-[300] bg-[#020617] flex animate-in fade-in duration-500 overflow-hidden font-sans">
+      
+      {/* Visualização Técnica com Camada de Desenho (Esquerda) */}
+      <div className="w-1/2 relative border-r border-white/5 flex flex-col bg-[#020617]">
+        <header className="h-20 flex items-center justify-between px-8 bg-[#081437]/80 backdrop-blur-xl border-b border-white/10 z-20">
+          <div className="flex items-center gap-5">
+             <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400 shadow-inner"><FileText size={22} /></div>
+             <div>
+                <h2 className="text-white text-xs font-black uppercase tracking-[4px] leading-tight truncate max-w-xs">{currentFile?.name}</h2>
+                <div className="flex items-center gap-3 mt-1">
+                   <p className="text-[9px] text-slate-500 font-mono uppercase tracking-widest flex items-center gap-2">
+                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Protocolo Seguro Vital
+                   </p>
+                   <span className="text-[8px] font-black bg-blue-600 text-white px-1.5 py-0.5 rounded">v{currentFile?.versionNumber || 1}</span>
                 </div>
-                <h3 className="text-white font-bold text-lg mb-2">{error}</h3>
-                <button 
-                  onClick={() => url && window.open(url, '_blank')}
-                  className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
-                >
-                  <ExternalLink size={18} /> Abrir em Nova Aba
-                </button>
-              </div>
-            )}
+             </div>
+          </div>
+          
+          <div className="flex items-center gap-1.5 bg-black/40 p-1.5 rounded-2xl border border-white/5">
+            <ToolButton icon={Hand} active={activeTool === 'hand'} onClick={() => setActiveTool('hand')} label="Pan" />
+            <div className="w-px h-6 bg-white/10 mx-1" />
+            <ToolButton icon={Pencil} active={activeTool === 'pencil'} onClick={() => setActiveTool('pencil')} label="Lápis" />
+            <ToolButton icon={Highlighter} active={activeTool === 'marker'} onClick={() => setActiveTool('marker')} label="Marcador" />
+            <ToolButton icon={Square} active={activeTool === 'rect'} onClick={() => setActiveTool('rect')} label="Retângulo" />
+            <ToolButton icon={Circle} active={activeTool === 'circle'} onClick={() => setActiveTool('circle')} label="Círculo" />
+            <ToolButton icon={Eraser} active={activeTool === 'eraser'} onClick={() => setActiveTool('eraser')} label="Borracha" />
+          </div>
+        </header>
 
-            {isPDF && pdfDoc && (
-              <div className={`relative bg-white rounded shadow-2xl transition-opacity duration-300 ${isRendering ? 'opacity-50' : 'opacity-100'}`}>
-                {isRendering && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-100/20 backdrop-blur-[2px]">
-                    <Loader2 size={32} className="animate-spin text-blue-600" />
-                  </div>
+        <div className="flex-1 relative overflow-hidden bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#020617] to-black">
+            <PdfViewport 
+                url={url} 
+                pageNum={pageNum} 
+                zoom={zoom} 
+                onPdfLoad={() => {}} 
+                isHandToolActive={activeTool === 'hand'}
+                renderOverlay={(w, h) => (
+                    /* Fix: Added missing lineWidth prop required by DrawingCanvasProps */
+                    <DrawingCanvas 
+                        tool={activeTool} 
+                        color="#ef4444" 
+                        lineWidth={5}
+                        width={w} 
+                        height={h} 
+                        pageAnnotations={annotations[pageNum] || []}
+                        onAnnotationsChange={(newItems) => {
+                            setAnnotations(prev => ({ ...prev, [pageNum]: newItems }));
+                        }}
+                    />
                 )}
-                <canvas ref={canvasRef} className="max-w-none bg-white rounded" />
-              </div>
-            )}
-
-            {isImage && url && (
-              <img 
-                src={url} 
-                alt={currentFile.name} 
-                style={{ transform: `scale(${zoom / 0.5})`, transformOrigin: 'top center' }}
-                className="max-w-[95vw] shadow-2xl rounded-lg transition-transform duration-200"
-              />
-            )}
-          </div>
-        </main>
-
-        {/* Metadata Sidebar */}
-        {showSidebar && (
-          <aside className="w-80 shrink-0 bg-white border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-300 z-50">
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-              <div>
-                <h3 className="text-slate-900 text-xl font-black tracking-tighter leading-tight mb-6">
-                  {currentFile.name}
-                </h3>
-                
-                <div className="space-y-6">
-                  <MetadataRow icon={FileText} label="MIME Type" value={currentFile.mimeType || 'N/A'} />
-                  <MetadataRow icon={HardDrive} label="Tamanho" value={currentFile.size || 'N/A'} />
-                  <MetadataRow icon={Calendar} label="Data de Registro" value={new Date(currentFile.updatedAt).toLocaleDateString('pt-BR')} />
-                </div>
-              </div>
-
-              <div className="pt-8 border-t border-slate-100">
-                <h4 className="text-[10px] font-black uppercase tracking-[3px] text-slate-400 mb-4">Status da Qualidade</h4>
-                <FileStatusBadge status={currentFile.metadata?.status} />
-              </div>
-
-              {currentFile.metadata?.status === QualityStatus.REJECTED && (
-                <div className="p-4 bg-red-50 rounded-2xl border border-red-100 space-y-2">
-                   <p className="text-[10px] font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
-                    <AlertCircle size={14} /> Motivo da Recusa
-                   </p>
-                   <p className="text-xs text-red-900 italic font-medium leading-relaxed">
-                     "{currentFile.metadata.rejectionReason}"
-                   </p>
-                </div>
-              )}
-
-              {(currentFile.metadata?.inspectedBy || currentFile.metadata?.inspectedAt) && (
-                <div className="pt-8 border-t border-slate-100 space-y-6">
-                   <MetadataRow 
-                      icon={User} 
-                      label="Analista Auditor" 
-                      value={currentFile.metadata.inspectedBy || 'N/A'} 
-                   />
-                   <MetadataRow 
-                      icon={ShieldCheck} 
-                      label="Veredito em" 
-                      value={currentFile.metadata.inspectedAt ? new Date(currentFile.metadata.inspectedAt).toLocaleDateString('pt-BR') : 'N/A'} 
-                   />
-                </div>
-              )}
-            </div>
-            
-            <div className="p-4 bg-slate-50 border-t border-slate-200">
-                <p className="text-[9px] text-slate-400 font-bold uppercase text-center tracking-widest">
-                  ID UNÍVOCO: {currentFile.id.split('-')[0].toUpperCase()}
-                </p>
-            </div>
-          </aside>
-        )}
+            />
+        </div>
       </div>
+
+      {/* Estação de Workflow e Decisão (Direita) */}
+      <div className="w-1/2 flex flex-col bg-white overflow-hidden shadow-[-40px_0_80px_rgba(0,0,0,0.4)]">
+        <header className="h-20 flex items-center justify-between px-10 bg-slate-50/50 border-b border-slate-100 backdrop-blur-md shrink-0">
+           <div className="flex items-center gap-5">
+              <div className="relative">
+                <div className="w-3 h-3 rounded-full bg-[#b23c0e] animate-ping absolute inset-0 opacity-40" />
+                <div className="w-3 h-3 rounded-full bg-[#b23c0e] relative" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-[#081437] uppercase tracking-[4px]">Estação de Inspeção B2B</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Modo de Leitura de Metadados</p>
+              </div>
+           </div>
+           <button onClick={onClose} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-red-600 transition-all shadow-sm hover:shadow-lg active:scale-95"><X size={24} /></button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-white">
+            <div className="max-w-2xl mx-auto">
+              <AuditWorkflow 
+                metadata={currentFile?.metadata} 
+                userRole={user?.role as UserRole} 
+                userName={user?.name || ''}
+                userEmail={user?.email || ''}
+                fileId={currentFile?.id || ''}
+                onUpdate={handleUpdateMetadata}
+              />
+            </div>
+        </div>
+
+        <footer className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+           <div className="flex items-center gap-4 text-slate-400">
+              <ShieldCheck size={24} className="text-emerald-500" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[3px] text-slate-600">Vital Compliance SGQ</p>
+                <p className="text-[9px] font-bold uppercase text-slate-400">Rastreabilidade Digital Ativa</p>
+              </div>
+           </div>
+           <button 
+              onClick={handleDownload}
+              className="px-8 py-4 bg-[#081437] text-white rounded-2xl text-[10px] font-black uppercase tracking-[3px] hover:bg-[#b23c0e] transition-all flex items-center gap-3 active:scale-95 shadow-xl"
+           >
+              <Download size={16} className="text-blue-400" /> Exportar Laudo Original
+           </button>
+        </footer>
+      </div>
+      
+      {isSyncing && (
+          <div className="fixed inset-0 z-[400] bg-[#081437]/60 backdrop-blur-md flex flex-col items-center justify-center text-white">
+              <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
+              <p className="text-[11px] font-black uppercase tracking-[6px]">Sincronizando Ledger Vital...</p>
+          </div>
+      )}
     </div>
   );
 };
 
-const ViewerButton = ({ onClick, icon: Icon, title, active = false }: any) => (
+const ToolButton = ({ icon: Icon, active, onClick, label }: any) => (
   <button 
     onClick={onClick}
-    className={`p-2 rounded-xl transition-all flex flex-col items-center gap-1 group
-      ${active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-    title={title}
+    title={label}
+    className={`p-3 rounded-xl transition-all relative group flex items-center justify-center ${
+        active 
+        ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' 
+        : 'text-slate-400 hover:text-white hover:bg-white/10'
+    }`}
   >
-    <Icon size={18} className="group-active:scale-90 transition-transform" />
-  </button>
-);
-
-const NavArrow = ({ direction, onClick }: { direction: 'left' | 'right', onClick: () => void }) => (
-  <button 
-    onClick={(e) => { e.stopPropagation(); onClick(); }}
-    className={`absolute ${direction === 'left' ? 'left-6' : 'right-6'} top-1/2 -translate-y-1/2 
-                w-12 h-12 bg-slate-900/60 backdrop-blur-md text-white rounded-full 
-                flex items-center justify-center hover:bg-[#b23c0e] transition-all 
-                border border-white/10 shadow-2xl z-[60] group active:scale-95`}
-    aria-label={direction === 'left' ? "Arquivo Anterior" : "Próximo Arquivo"}
-  >
-    {direction === 'left' ? (
-      <ChevronLeft size={28} className="group-hover:-translate-x-1 transition-transform" />
-    ) : (
-      <ChevronRight size={28} className="group-hover:translate-x-1 transition-transform" />
+    <Icon size={18} strokeWidth={active ? 3 : 2} />
+    {active && (
+        <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full" />
     )}
   </button>
-);
-
-const MetadataRow = ({ icon: Icon, label, value }: { icon: any, label: string, value: string }) => (
-  <div className="flex gap-4">
-    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0 border border-slate-100">
-      <Icon size={18} />
-    </div>
-    <div className="min-w-0">
-      <p className="text-[10px] font-black uppercase text-slate-400 tracking-[1.5px] mb-0.5">{label}</p>
-      <p className="text-sm font-bold text-slate-700 truncate">{value}</p>
-    </div>
-  </div>
 );

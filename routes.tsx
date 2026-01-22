@@ -1,118 +1,105 @@
-
-import React, { Suspense, useMemo, useState, useEffect, useRef } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import React, { Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2, RefreshCw } from 'lucide-react';
 
 import { AuthMiddleware } from './middlewares/AuthMiddleware.tsx';
 import { RoleMiddleware } from './middlewares/RoleMiddleware.tsx';
 import { MaintenanceMiddleware } from './middlewares/MaintenanceMiddleware.tsx';
 import { useAuth } from './context/authContext.tsx';
 import { UserRole, normalizeRole } from './types/index.ts';
-import { ClientLayout } from './components/layout/ClientLayout.tsx'; // Importa ClientLayout
-
-// Lazy loading das páginas
-const ClientLoginPage = React.lazy(() => import('./pages/ClientLoginPage.tsx'));
-
-const AdminDashboard = React.lazy(() => import('./pages/dashboards/AdminDashboard.tsx'));
-const QualityDashboard = React.lazy(() => import('./pages/dashboards/QualityDashboard.tsx'));
-const ClientPage = React.lazy(() => import('./pages/ClientPage.tsx'));
-const QualityPage = React.lazy(() => import('./pages/QualityPage.tsx'));
-const AdminPage = React.lazy(() => import('./pages/AdminPage.tsx'));
-const ConfigPage = React.lazy(() => import('./pages/ConfigPage.tsx')); // Lazy load ConfigPage
-const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage.tsx'));
-const FileInspection = React.lazy(() => import('./components/features/quality/views/FileInspection.tsx').then(m => ({ default: m.FileInspection })));
+import { safeLazy } from './lib/utils/safeLazy.ts';
 
 /**
- * Loader minimalista para transições de módulos, agora com opção de retry.
+ * --- ESTRUTURA DE PÁGINAS COM CARREGAMENTO RESILIENTE ---
+ * O safeLazy evita o erro de 'Failed to fetch' ao trocar de aba após um deploy.
  */
-const PageLoader = ({ message = "Carregando...", onRetry }: { message?: string; onRetry?: () => void }) => (
-  <div className="h-screen w-screen bg-white flex flex-col items-center justify-center text-[#081437]">
-      <Loader2 size={32} className="animate-spin text-blue-500 mb-6" />
-      <p className="text-[10px] font-black text-slate-400 tracking-[6px] uppercase animate-pulse mb-4">{message}</p>
+
+// Autenticação
+const ClientLoginPage = safeLazy(() => import('./pages/auth/ClientLoginPage.tsx'));
+const StaffLoginPage = safeLazy(() => import('./pages/auth/StaffLoginPage.tsx'));
+
+// Domínio Administrador
+const AdminDashboard = safeLazy(() => import('./pages/admin/AdminDashboard.tsx'));
+const AdminConsole = safeLazy(() => import('./pages/admin/AdminConsole.tsx'));
+
+// Domínio Qualidade
+const QualityDashboard = safeLazy(() => import('./pages/quality/QualityDashboard.tsx'));
+const QualityMonitor = safeLazy(() => import('./pages/quality/QualityMonitor.tsx'));
+const QualityPortfolio = safeLazy(() => import('./pages/quality/QualityPortfolio.tsx'));
+const QualityAuditHistory = safeLazy(() => import('./pages/quality/QualityAuditHistory.tsx'));
+const QualityUserManagement = safeLazy(() => import('./pages/quality/QualityUserManagement.tsx'));
+const QualityExplorer = safeLazy(() => import('./pages/quality/QualityExplorer.tsx'));
+const FileInspection = safeLazy(() => import('./components/features/quality/views/FileInspection.tsx').then(m => ({ default: m.FileInspection })));
+
+// Domínio Cliente
+const ClientPortal = safeLazy(() => import('./pages/client/ClientPortal.tsx'));
+
+// Domínio Compartilhado
+const FilePreviewPage = safeLazy(() => import('./pages/shared/FilePreviewPage.tsx'));
+const SettingsPage = safeLazy(() => import('./pages/shared/SettingsPage.tsx'));
+const NotFoundPage = safeLazy(() => import('./pages/shared/NotFoundPage.tsx'));
+
+const PageLoader = ({ message = "Sincronizando...", onRetry }: { message?: string; onRetry?: () => void }) => (
+  <div className="h-screen w-screen bg-slate-50 flex flex-col items-center justify-center text-slate-600 font-sans">
+      <div className="relative mb-8">
+        <Loader2 size={48} className="animate-spin text-blue-600" />
+        <div className="absolute inset-0 bg-blue-500/10 blur-2xl rounded-full animate-pulse" />
+      </div>
+      <p className="text-[10px] font-black text-slate-400 tracking-[6px] uppercase animate-pulse mb-4 text-center px-6">{message}</p>
       {onRetry && (
-        <button 
-          onClick={onRetry} 
-          className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
-        >
+        <button onClick={onRetry} className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-[#132659] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
           <RefreshCw size={16} /> Tentar Novamente
         </button>
       )}
   </div>
 );
 
-/**
- * Componente que lida com a lógica inicial de autenticação, carregamento, erros e redirecionamentos.
- */
 const InitialAuthRedirect = () => {
-    const { user, systemStatus, isLoading, error: authError, isInitialSyncComplete, retryInitialSync } = useAuth();
-    const { t } = useTranslation();
-    const location = useLocation();
-
-    if (isLoading) {
-        return <PageLoader message="Conectando ao sistema Vital" />;
-    }
-
-    if (isInitialSyncComplete && authError) {
-        console.error("Erro no AuthContext após sincronização inicial:", authError);
-        // Resolve a chave de erro através do i18n
-        return <PageLoader message={`${t('auth.errors.unexpected')}: ${t(authError)}`} onRetry={retryInitialSync} />;
-    }
-    
-    if (user && !systemStatus) {
-        return <PageLoader message="Verificando a segurança do sistema" />;
-    }
-
+    const { user, isLoading, error, isInitialSyncComplete, retryInitialSync } = useAuth();
+    if (isLoading || !isInitialSyncComplete) return <PageLoader message="Validando Protocolos" />;
+    if (error) return <PageLoader message="Falha na Sincronização" onRetry={retryInitialSync} />;
     if (user) {
-        if (location.pathname === '/') {
-            const role = normalizeRole(user.role);
-            const roleRoutes: Record<UserRole, string> = {
-                [UserRole.ADMIN]: '/admin/dashboard',
-                [UserRole.QUALITY]: '/quality/dashboard',
-                [UserRole.CLIENT]: '/client/dashboard'
-            };
-            return <Navigate to={roleRoutes[role] || '/'} replace />;
-        }
-        return null;
+        const role = normalizeRole(user.role);
+        if (role === UserRole.ADMIN) return <Navigate to="/admin/dashboard" replace />;
+        if (role === UserRole.QUALITY) return <Navigate to="/quality/dashboard" replace />;
+        if (role === UserRole.CLIENT) return <Navigate to="/client/portal" replace />;
     }
-
-    if (!user && location.pathname === '/') {
-      return <Navigate to="/login" replace />;
-    }
-
-    return null;
+    return <Navigate to="/login" replace />;
 };
 
 export const AppRoutes: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-
   return (
-    <Suspense fallback={<PageLoader message="Finalizando carregamento" />}>
+    <Suspense fallback={<PageLoader message="Preparando Interface Vital..." />}>
       <Routes>
         <Route path="/" element={<InitialAuthRedirect />} />
         <Route path="/login" element={<ClientLoginPage />} />
+        <Route path="/staff/login" element={<StaffLoginPage />} />
 
         <Route element={<MaintenanceMiddleware />}> 
             <Route element={<AuthMiddleware />}>
-                <Route path="/settings" element={<ConfigPage />} /> 
+                <Route path="/settings" element={<SettingsPage />} /> 
+                <Route path="/preview/:fileId" element={<FilePreviewPage />} />
+                
+                <Route element={<RoleMiddleware allowedRoles={[UserRole.QUALITY, UserRole.CLIENT]} />}>
+                    <Route path="/quality/inspection/:fileId" element={<FileInspection />} />
+                </Route>
 
                 <Route element={<RoleMiddleware allowedRoles={[UserRole.ADMIN]} />}>
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                    <Route path="/admin" element={<AdminPage />} /> 
+                    <Route path="/admin/console" element={<AdminConsole />} /> 
                 </Route>
 
-                <Route element={<RoleMiddleware allowedRoles={[UserRole.QUALITY, UserRole.ADMIN]} />}>
+                <Route element={<RoleMiddleware allowedRoles={[UserRole.QUALITY]} />}>
                     <Route path="/quality/dashboard" element={<QualityDashboard />} />
-                    <Route path="/quality" element={<QualityPage />} />
-                    <Route path="/quality/files/:fileId" element={<FileInspection />} />
+                    <Route path="/quality/monitor" element={<QualityMonitor />} />
+                    <Route path="/quality/portfolio" element={<QualityPortfolio />} />
+                    <Route path="/quality/users" element={<QualityUserManagement />} />
+                    <Route path="/quality/explorer" element={<QualityExplorer />} />
+                    <Route path="/quality/audit" element={<QualityAuditHistory />} />
                 </Route>
 
-                <Route element={<RoleMiddleware allowedRoles={[UserRole.CLIENT, UserRole.ADMIN]} />}>
-                    <Route 
-                      path="/client/dashboard" 
-                      element={<ClientPage />} 
-                    />
+                <Route element={<RoleMiddleware allowedRoles={[UserRole.CLIENT]} />}>
+                    <Route path="/client/portal" element={<ClientPortal />} />
                 </Route>
             </Route>
         </Route>
