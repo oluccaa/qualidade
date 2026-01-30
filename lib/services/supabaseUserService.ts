@@ -1,4 +1,3 @@
-
 import { UserRole, AccountStatus } from '../../types/enums.ts';
 import { IUserService } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
@@ -41,7 +40,6 @@ export const SupabaseUserService: IUserService = {
 
     if (authError) throw authError;
 
-    // FIX: Usamos upsert em vez de insert para evitar conflito com gatilhos (triggers) de criação automática de perfil
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user!.id, 
       full_name: fullName, 
@@ -92,7 +90,12 @@ export const SupabaseUserService: IUserService = {
   },
 
   flagUserForDeletion: async (userId, adminUser) => {
-    const { error } = await supabase.from('profiles').update({ status: 'INACTIVE', department: 'PENDING_DELETION' }).eq('id', userId);
+    // REGRA DE NEGÓCIO: Sinalização de exclusão = Inatividade Imediata
+    const { error } = await supabase.from('profiles').update({ 
+      status: AccountStatus.INACTIVE, 
+      department: 'PENDING_DELETION' 
+    }).eq('id', userId);
+    
     if (error) throw error;
     await logAction(adminUser, 'USER_FLAGGED_DELETION', userId, 'SECURITY', 'WARNING');
   },

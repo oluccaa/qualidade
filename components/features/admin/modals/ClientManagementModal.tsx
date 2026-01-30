@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { X, UserCheck, Loader2, Save, Info, ShieldAlert, Trash2 } from 'lucide-react';
-import { User, ClientOrganization, AccountStatus } from '../../../../types/index.ts';
+import { User, ClientOrganization, AccountStatus, UserRole, normalizeRole } from '../../../../types/index.ts';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../../../context/authContext.tsx';
 
 export interface ClientFormData {
   name: string;
@@ -29,8 +30,11 @@ export const ClientManagementModal: React.FC<ClientManagementModalProps> = ({
   isOpen, onClose, onSave, onFlagDeletion, editingClient, clientFormData, setClientFormData, qualityAnalysts, requiresConfirmation = false, isSaving = false
 }) => {
   const { t } = useTranslation();
+  const { user: operator } = useAuth();
   const [confirmEmail, setConfirmEmail] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const isRoot = normalizeRole(operator?.role) === UserRole.ADMIN;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,21 +121,21 @@ export const ClientManagementModal: React.FC<ClientManagementModalProps> = ({
               </select>
             </div>
 
-            {editingClient && onFlagDeletion && (
-               <div className="mx-8 mt-6 p-4 bg-red-50 rounded-2xl border border-red-200 space-y-3">
+            {editingClient && onFlagDeletion && isRoot && (
+               <div className="mx-8 mt-6 p-4 bg-red-50 rounded-2xl border-2 border-red-100 space-y-3">
                   <p className="text-[10px] font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
-                    <ShieldAlert size={14} /> Zona de Governança
+                    <ShieldAlert size={14} /> Protocolo ROOT Ativo
                   </p>
                   <p className="text-xs text-red-800 font-medium leading-relaxed">
-                    A exclusão definitiva exige auditoria Master. Sinalizar esta empresa interromperá os acessos.
+                    A exclusão definitiva removerá permanentemente a organização, todos os seus usuários vinculados e arquivos do Vault.
                   </p>
                   <button 
                     type="button"
                     disabled={isSaving}
                     onClick={() => onFlagDeletion(editingClient.id)}
-                    className="w-full py-2 bg-red-100 hover:bg-red-200 text-red-900 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
                   >
-                    <Trash2 size={14} /> Sinalizar para Exclusão
+                    <Trash2 size={14} /> Expurgar Organização
                   </button>
                </div>
             )}

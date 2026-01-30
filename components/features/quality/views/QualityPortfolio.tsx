@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Layout } from '../../components/layout/MainLayout.tsx';
 import { ClientList } from '../../components/features/quality/views/ClientList.tsx';
@@ -21,7 +22,7 @@ const QualityPortfolio: React.FC = () => {
 
   return (
     <Layout title={orgId ? "Explorar Cliente" : "Gestão de Clientes"}>
-      <div className="flex flex-col flex-1 h-full overflow-hidden animate-in fade-in duration-700 px-6 md:px-10 pt-4 md:pt-8">
+      <div className="flex flex-col flex-1 h-full overflow-hidden animate-in fade-in duration-700">
         {isProcessing && <ProcessingOverlay message="Sincronizando protocolos..." />}
         
         <ClientManagementModal
@@ -37,6 +38,7 @@ const QualityPortfolio: React.FC = () => {
           isSaving={isProcessing}
         />
 
+        {/* Header Padronizado (Estilo Overview) */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 shrink-0">
             <div className="flex items-center gap-4">
                 {orgId ? (
@@ -76,11 +78,16 @@ const QualityPortfolio: React.FC = () => {
             )}
         </header>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        {/* Conteúdo com scroll independente */}
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             {!orgId ? (
-                <ClientList onSelectClient={(c) => navigate(`/quality/portfolio?orgId=${c.id}`)} />
+                <div className="h-full flex flex-col">
+                    <ClientList onSelectClient={(c) => navigate(`/quality/portfolio?orgId=${c.id}`)} />
+                </div>
             ) : (
-                <FileExplorerView orgId={orgId} />
+                <div className="h-full">
+                    <FileExplorerView orgId={orgId} />
+                </div>
             )}
         </div>
       </div>

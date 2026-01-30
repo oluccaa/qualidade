@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { X, UserCheck, Loader2, Save, ShieldAlert } from 'lucide-react';
-import { User, ClientOrganization, UserRole, AccountStatus } from '../../../../types/index.ts';
+import { X, UserCheck, Loader2, Save, ShieldAlert, Trash2 } from 'lucide-react';
+import { User, ClientOrganization, UserRole, AccountStatus, normalizeRole } from '../../../../types/index.ts';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../../../context/authContext.tsx';
 
 export interface UserFormData {
   name: string;
@@ -18,7 +19,7 @@ interface UserManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (e: React.FormEvent) => Promise<void>;
-  onFlagDeletion?: (userId: string) => Promise<void>;
+  onFlagDeletion?: (userId: string) => Promise<void>; // Prop mantida por compatibilidade mas redirecionada internamente
   editingUser: User | null;
   formData: UserFormData;
   setFormData: (data: UserFormData) => void;
@@ -30,6 +31,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   isOpen, onClose, onSave, onFlagDeletion, editingUser, formData, setFormData, organizations, isSaving = false 
 }) => {
   const { t } = useTranslation();
+  const { user: operator } = useAuth();
+  const isRoot = normalizeRole(operator?.role) === UserRole.ADMIN;
 
   if (!isOpen) return null;
 
@@ -135,21 +138,21 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               </select>
             </div>
 
-            {editingUser && (
-               <div className="mx-8 mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-3">
-                  <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
-                    <ShieldAlert size={14} /> Zona de Governança
+            {editingUser && isRoot && (
+               <div className="mx-8 mt-6 p-4 bg-red-50 rounded-2xl border-2 border-red-100 space-y-3">
+                  <p className="text-[10px] font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
+                    <ShieldAlert size={14} /> Poder de Nível ROOT Ativo
                   </p>
-                  <p className="text-xs text-amber-800 font-medium leading-relaxed">
-                    A exclusão é desativada por auditoria. Você pode sinalizar o usuário para desligamento.
+                  <p className="text-xs text-red-800 font-medium leading-relaxed">
+                    Você tem permissão para <b>excluir permanentemente</b> esta identidade do banco de dados industrial. Esta ação é irreversível.
                   </p>
                   <button 
                     type="button"
                     disabled={isSaving}
                     onClick={() => onFlagDeletion && onFlagDeletion(editingUser.id)}
-                    className="w-full py-2 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all disabled:opacity-50"
+                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
                   >
-                    Sinalizar para Exclusão
+                    <Trash2 size={14} /> Remover Definitivamente
                   </button>
                </div>
             )}

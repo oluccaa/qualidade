@@ -5,7 +5,7 @@ import {
   ArrowLeft, Hand, Pencil, Highlighter, Eraser, 
   Download, Loader2, ChevronLeft, ChevronRight, 
   Plus, Save, ZoomIn, ZoomOut, Columns, 
-  ShieldCheck, FileText, PenTool, X, Info
+  ShieldCheck, FileText, PenTool, X, Info, Zap
 } from 'lucide-react';
 import { useAuth } from '../../context/authContext.tsx';
 import { useFilePreview } from '../../components/features/files/hooks/useFilePreview.ts';
@@ -134,12 +134,14 @@ export const FilePreviewPage: React.FC = () => {
   } = useFilePreview(user, initialFileStub);
 
   const role = normalizeRole(user?.role);
+  const isRoot = role === UserRole.ADMIN;
   const isAuditMode = searchParams.get('mode') === 'audit';
   const isStep2Active = currentFile?.metadata?.currentStep === 2;
   const isStep2Finished = !!currentFile?.metadata?.signatures?.step2_documental;
   
-  const showEditTools = role === UserRole.CLIENT ? isAuditMode : true;
-  const canAnnotate = role === UserRole.CLIENT ? (isAuditMode && isStep2Active && !isStep2Finished) : true;
+  // PODER ROOT: Admin sempre pode editar e anotar
+  const showEditTools = isRoot ? true : (role === UserRole.CLIENT ? isAuditMode : true);
+  const canAnnotate = isRoot ? true : (role === UserRole.CLIENT ? (isAuditMode && isStep2Active && !isStep2Finished) : true);
 
   const handleBack = useCallback(() => {
     if (isAuditMode) {
@@ -156,7 +158,7 @@ export const FilePreviewPage: React.FC = () => {
   const [pdfInstance, setPdfInstance] = useState<any>(null);
   const [annotations, setAnnotations] = useState<DocumentAnnotations>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [workflowOpen, setWorkflowOpen] = useState(isAuditMode);
+  const [workflowOpen, setWorkflowOpen] = useState(isAuditMode || isRoot);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
 
   const annCacheKey = `vital_ann_draft_${fileId}`;
@@ -204,14 +206,18 @@ export const FilePreviewPage: React.FC = () => {
 
   return (
     <div className="h-screen w-screen bg-[#020617] flex flex-col overflow-hidden font-sans text-slate-200">
-      <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-[#0f172a] border-b border-white/5 z-[60] shadow-2xl shrink-0">
+      <header className={`h-16 flex items-center justify-between px-4 md:px-6 border-b z-[60] shadow-2xl shrink-0 transition-colors ${isRoot ? 'bg-indigo-950 border-indigo-500/30' : 'bg-[#0f172a] border-white/5'}`}>
         <div className="flex items-center gap-2 md:gap-6">
           <button onClick={handleBack} className="p-2 md:p-2.5 hover:bg-blue-600/20 rounded-xl transition-all text-slate-400 hover:text-white border border-transparent hover:border-blue-500/30 active:scale-90" title="Voltar"><ArrowLeft size={20} /></button>
           <div className="flex items-center gap-3 min-w-0">
-             <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg hidden xs:flex"><FileText size={18}/></div>
+             <div className={`p-2 rounded-xl text-white shadow-lg hidden xs:flex ${isRoot ? 'bg-indigo-600' : 'bg-blue-600'}`}><FileText size={18}/></div>
              <div className="min-w-0">
                 <h2 className="text-[10px] md:text-xs font-black uppercase tracking-[2px] md:tracking-[3px] truncate max-w-[120px] md:max-w-[280px] leading-none">{currentFile?.name || "Certificado"}</h2>
-                <p className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase mt-1 flex items-center gap-1.5 truncate"><ShieldCheck size={10} className="text-emerald-500 shrink-0" />v{currentFile?.metadata?.currentVersion || 1}.0 Vital Ledger</p>
+                <p className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase mt-1 flex items-center gap-1.5 truncate">
+                   {isRoot && <Zap size={10} className="text-amber-400" />}
+                   <ShieldCheck size={10} className={`${isRoot ? 'text-indigo-400' : 'text-emerald-500'} shrink-0`} />
+                   v{currentFile?.metadata?.currentVersion || 1}.0 Vital Ledger {isRoot && " (Root Access)"}
+                </p>
              </div>
           </div>
         </div>
@@ -226,7 +232,7 @@ export const FilePreviewPage: React.FC = () => {
               </div>
             )}
             {showEditTools && canAnnotate && (
-                <button onClick={handlePersistChanges} disabled={isSyncing} className="p-2.5 md:px-6 md:py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] flex items-center gap-2 shadow-xl active:scale-95 transition-all">
+                <button onClick={handlePersistChanges} disabled={isSyncing} className={`p-2.5 md:px-6 md:py-3 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] flex items-center gap-2 shadow-xl active:scale-95 transition-all ${isRoot ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
                     {isSyncing ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />} 
                     <span className="hidden md:inline">Gravar</span>
                 </button>
@@ -260,12 +266,25 @@ export const FilePreviewPage: React.FC = () => {
         </main>
 
         <aside className={`bg-white text-slate-900 border-l border-slate-200 transition-all duration-500 flex flex-col shrink-0 shadow-2xl z-[160] fixed md:relative right-0 h-full ${workflowOpen ? 'w-full md:w-[420px] translate-x-0' : 'w-0 translate-x-full md:translate-x-0'}`}>
-            <header className="h-16 flex items-center justify-between px-8 border-b border-slate-100 shrink-0 bg-slate-50/80 backdrop-blur-md"><div className="flex items-center gap-3"><div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg"><ShieldCheck size={20} strokeWidth={3} /></div><span className="text-[11px] font-black uppercase tracking-[3px] text-slate-800">Workflow Técnico</span></div><button onClick={() => setWorkflowOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-all active:rotate-90 duration-300"><Plus size={24} className="rotate-45" /></button></header>
+            <header className={`h-16 flex items-center justify-between px-8 border-b shrink-0 bg-slate-50/80 backdrop-blur-md ${isRoot ? 'border-indigo-100' : 'border-slate-100'}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${isRoot ? 'bg-indigo-500/10 text-indigo-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+                        <ShieldCheck size={20} strokeWidth={3} />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-[3px] text-slate-800">Workflow {isRoot ? "Master" : "Técnico"}</span>
+                </div>
+                <button onClick={() => setWorkflowOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-all active:rotate-90 duration-300"><Plus size={24} className="rotate-45" /></button>
+            </header>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
-                {role === UserRole.CLIENT && !isAuditMode && (
+                {isRoot ? (
+                    <div className="mb-6 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-start gap-4 animate-pulse">
+                        <Zap size={18} className="text-indigo-600 mt-0.5 shrink-0" />
+                        <p className="text-[10px] font-bold text-indigo-800 uppercase leading-relaxed">Poder Root Ativo: Todas as travas de conformidade foram desativadas para seu terminal.</p>
+                    </div>
+                ) : (role === UserRole.CLIENT && !isAuditMode) && (
                     <div className="mb-6 p-5 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-4"><Info size={18} className="text-blue-600 mt-0.5 shrink-0" /><p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed">Modo Leitura: Para interagir com este certificado, utilize a aba "Fluxo de Auditoria" no portal.</p></div>
                 )}
-                <AuditWorkflow metadata={currentFile?.metadata} userRole={user?.role as UserRole} userName={user?.name || ''} userEmail={user?.email || ''} fileId={currentFile?.id || ''} onUpdate={handleUpdateMetadata} forceReadOnly={role === UserRole.CLIENT && !isAuditMode} />
+                <AuditWorkflow metadata={currentFile?.metadata} userRole={user?.role as UserRole} userName={user?.name || ''} userEmail={user?.email || ''} fileId={currentFile?.id || ''} onUpdate={handleUpdateMetadata} forceReadOnly={isRoot ? false : (role === UserRole.CLIENT && !isAuditMode)} />
                 <div className="h-32 md:hidden" />
             </div>
         </aside>

@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Building2, FileWarning, ShieldCheck, Activity, ArrowUpRight, LucideIcon } from 'lucide-react';
 
@@ -106,25 +105,25 @@ const KpiCard: React.FC<{ card: KpiConfig; onClick: () => void }> = ({ card, onC
         <div
             role="button"
             onClick={onClick}
-            className={`group p-6 rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between min-h-[180px] relative overflow-hidden ${themes[card.theme]} ${card.span}`}
+            className={`group p-5 md:p-6 rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between min-h-[160px] md:min-h-[180px] relative overflow-hidden ${themes[card.theme]} ${card.span}`}
         >
             <div className="flex justify-between items-start z-10 relative">
-              <div className={`p-3 rounded-2xl ${iconThemes[card.theme]} transition-transform group-hover:scale-110`}>
-                <Icon size={24} strokeWidth={2.5} />
+              <div className={`p-2.5 md:p-3 rounded-xl md:rounded-2xl ${iconThemes[card.theme]} transition-transform group-hover:scale-110`}>
+                <Icon size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
               </div>
-              <ArrowUpRight size={20} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+              <ArrowUpRight size={18} className="opacity-50 group-hover:opacity-100 transition-opacity" />
             </div>
 
-            <div className="z-10 relative mt-4">
-              <span className="text-4xl font-black tracking-tighter leading-none block">{card.value}</span>
-              <p className="text-[10px] font-black uppercase tracking-[2px] mt-2 opacity-70">{card.label}</p>
-              <p className="text-[9px] font-bold uppercase tracking-widest mt-1 opacity-90 border-t border-current/10 pt-2 inline-block">
+            <div className="z-10 relative mt-3 md:mt-4">
+              <span className="text-3xl md:text-4xl font-black tracking-tighter leading-none block">{card.value}</span>
+              <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[2px] mt-1.5 md:mt-2 opacity-70">{card.label}</p>
+              <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest mt-1 opacity-90 border-t border-current/10 pt-2 inline-block">
                   {card.subtext}
               </p>
             </div>
 
             {/* Background Decoration */}
-            <Icon size={100} className="absolute -right-4 -bottom-6 opacity-[0.07] rotate-12 pointer-events-none" />
+            <Icon size={100} className="absolute -right-4 -bottom-6 opacity-[0.05] md:opacity-[0.07] rotate-12 pointer-events-none" />
         </div>
     );
 };

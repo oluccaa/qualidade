@@ -6,7 +6,7 @@ import { UserList } from '../components/UserList.tsx';
 import { UserManagementModal } from '../modals/UserManagementModal.tsx';
 import { PaginationControls } from '../../../common/PaginationControls.tsx';
 import { useUserCollection } from '../hooks/useUserCollection.ts';
-import { useUserFormState } from '../hooks/useUserFormState.ts';
+import { useAdminUserManagement } from '../hooks/useAdminUserManagement.ts';
 import { adminService } from '../../../../lib/services/index.ts';
 import { UserRole, ClientOrganization } from '../../../../types/index.ts';
 
@@ -19,29 +19,31 @@ interface AdminUsersProps {
 export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, isSaving = false, restrictedToRole }) => {
   const { t } = useTranslation();
   const collection = useUserCollection(restrictedToRole);
-  const form = useUserFormState(collection.refresh);
+  
+  const management = useAdminUserManagement({
+    setIsSaving,
+    isSavingGlobal: isSaving,
+    restrictedToRole
+  });
+
   const [orgs, setOrgs] = useState<ClientOrganization[]>([]);
 
   useEffect(() => {
     adminService.getClients({ status: 'ACTIVE' }, 1, 1000).then(res => setOrgs(res.items));
   }, []);
 
-  useEffect(() => {
-    if (form.isProcessing !== isSaving) setIsSaving(form.isProcessing);
-  }, [form.isProcessing, isSaving, setIsSaving]);
-
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4">
       <UserManagementModal
-        isOpen={form.isOpen}
-        onClose={() => form.setIsOpen(false)}
-        onSave={form.handleSave}
-        onFlagDeletion={form.handleFlagDeletion}
-        editingUser={form.editingUser}
-        formData={form.formData}
-        setFormData={form.setFormData}
+        isOpen={management.isUserModalOpen}
+        onClose={() => management.setIsUserModalOpen(false)}
+        onSave={management.handleSaveUser}
+        onFlagDeletion={management.handleDeleteUser}
+        editingUser={management.editingUser}
+        formData={management.formData}
+        setFormData={management.setFormData}
         organizations={orgs}
-        isSaving={form.isProcessing}
+        isSaving={isSaving}
       />
 
       <div className="bg-white p-3 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col gap-3 w-full shrink-0">
@@ -73,7 +75,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, isSaving = 
             </div>
           )}
           <button 
-            onClick={() => form.openModal(undefined, restrictedToRole)}
+            onClick={() => management.openUserModal()}
             className="bg-[#081437] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[2px] flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-slate-800"
           >
             <UserPlus size={16} className="text-blue-400" /> Criar Parceiro
@@ -89,7 +91,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, isSaving = 
         ) : (
           <>
             <div className="flex-1 overflow-auto">
-              <UserList users={collection.filteredUsers} onEdit={form.openModal} />
+              <UserList users={collection.filteredUsers} onEdit={management.openUserModal} />
             </div>
             <PaginationControls 
               currentPage={collection.page}

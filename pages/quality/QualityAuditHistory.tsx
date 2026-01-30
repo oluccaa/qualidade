@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Layout } from '../../components/layout/MainLayout.tsx';
 import { QualityAuditLog } from '../../components/features/quality/views/QualityAuditLog.tsx';
@@ -7,7 +6,7 @@ import { History, Database } from 'lucide-react';
 const QualityAuditHistory: React.FC = () => {
   return (
     <Layout title="Logs de Auditoria B2B">
-      <div className="flex flex-col flex-1 h-full overflow-hidden animate-in fade-in duration-700">
+      <div className="flex flex-col flex-1 h-full overflow-hidden animate-in fade-in duration-700 px-6 md:px-10 pt-4 md:pt-8">
         
         {/* Header Padronizado (Estilo Overview) */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 shrink-0">

@@ -1,4 +1,3 @@
-
 import { IAdminService, AdminStatsData, PaginatedResponse, RawClientOrganization } from './interfaces.ts';
 import { supabase } from '../supabaseClient.ts';
 import { SystemStatus, MaintenanceEvent } from '../../types/system.ts';
@@ -177,9 +176,9 @@ export const SupabaseAdminService: IAdminService = {
 
   flagClientForDeletion: async (user, clientId) => {
     const action = async () => {
+      // REGRA MASTER: Sinalizar para exclusão coloca a empresa em estado INACTIVE imediatamente
       const { error } = await supabase.from('organizations').update({ 
-        status: AccountStatus.INACTIVE,
-        // Nota: Idealmente haveria uma coluna is_pending_deletion no DB real
+        status: AccountStatus.INACTIVE
       }).eq('id', clientId);
       if (error) throw error;
     };
@@ -206,7 +205,7 @@ export const SupabaseAdminService: IAdminService = {
         target: l.target, 
         severity: l.severity, 
         status: l.status, 
-        ip: l.ip, // Pega direto do banco preenchido pela trigger
+        ip: l.ip,
         location: l.location, 
         userAgent: l.user_agent, 
         device: l.device, 

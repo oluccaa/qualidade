@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '../../components/layout/MainLayout.tsx';
 import { AdminUsers } from '../../components/features/admin/views/AdminUsers.tsx';
@@ -10,7 +9,7 @@ const QualityUserManagement: React.FC = () => {
 
   return (
     <Layout title="Gestão de Parceiros">
-      <div className="flex flex-col flex-1 h-full overflow-hidden animate-in fade-in duration-700">
+      <div className="flex flex-col flex-1 h-full overflow-hidden animate-in fade-in duration-700 px-6 md:px-10 pt-4 md:pt-8">
         {isSaving && (
           <div className="fixed top-24 right-1/2 translate-x-1/2 z-[110] bg-[#081437] text-white px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-3 text-[10px] font-black uppercase tracking-widest animate-in fade-in duration-300">
             <Loader2 size={14} className="animate-spin text-blue-400" /> Sincronizando...

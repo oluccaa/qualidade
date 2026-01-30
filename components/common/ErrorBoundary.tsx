@@ -1,3 +1,4 @@
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, ShieldAlert, Copy, ChevronDown, ChevronUp, DatabaseZap } from 'lucide-react';
 
@@ -17,7 +18,7 @@ interface State {
  * Proteção de última instância para falhas catastróficas.
  * Projetado para funcionar mesmo se o sistema de estilos ou tradução falhar.
  */
-// Use Component for robust inheritance and visibility of setState/props in TypeScript
+// Use named import for Component to ensure base class properties are correctly typed
 export class ErrorBoundary extends Component<Props, State> {
   // State initialization following standard class component pattern
   public state: State = {
@@ -32,6 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  // Explicitly using React.Component's lifecycle method
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log forense para auditoria
     console.error('[FATAL_SYSTEM_CRASH]', {
@@ -41,12 +43,12 @@ export class ErrorBoundary extends Component<Props, State> {
       timestamp: new Date().toISOString()
     });
     
-    // Correctly using this.setState from the React.Component base class
+    // Fix: Access setState from the inherited Component class to resolve type recognition error
     this.setState({ errorInfo });
   }
 
   private handleSoftReset = () => {
-    // Correctly using this.setState from the React.Component base class to reset error state
+    // Fix: Access setState from the inherited Component class within arrow function context
     this.setState({ hasError: false, error: null, errorInfo: null });
     window.location.href = '/';
   };
@@ -116,7 +118,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
 
                 <div className="w-full pt-6 border-t border-white/5">
                   <button 
-                    // Correctly using this.setState to toggle visibility
+                    // Fix: Access setState through Component inheritance in arrow function callback
                     onClick={() => this.setState({ showDetails: !this.state.showDetails })}
                     className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[3px] text-slate-500 hover:text-slate-300 transition-colors mx-auto"
                   >
@@ -165,7 +167,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
       );
     }
 
-    // Accessing props.children correctly from the React.Component base class
+    // Fix: Correctly access props member inherited from Component base class
     return this.props.children;
   }
 }

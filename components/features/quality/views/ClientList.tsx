@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientHub } from '../components/ClientHub.tsx';
@@ -65,6 +64,7 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
           clients={sortedClients}
           onSelectClient={onSelectClient}
           onEditClient={(client) => clientModal.open(client)}
+          onFlagDeletion={(clientId) => clientModal.flagDeletion(clientId)}
           isLoading={isLoadingClients}
           isLoadingMore={false}
           hasMore={false}

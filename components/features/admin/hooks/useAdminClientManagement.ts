@@ -83,6 +83,25 @@ export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityA
     }
   }, [user, clientFormData, editingClient, qualityAnalysts, showToast, setIsSaving, loadClients, isSavingGlobal]);
 
+  const handleDeleteClient = useCallback(async (clientId: string) => {
+    if (!user || isSavingGlobal) return;
+
+    const confirmDelete = window.confirm("PODER ROOT DETECTADO: Excluir esta empresa removerá todos os seus arquivos, certificados e vínculos de usuário de forma IRREVERSÍVEL. Confirmar?");
+    if (!confirmDelete) return;
+
+    setIsSaving(true);
+    try {
+        await adminService.deleteClient(user, clientId);
+        showToast("Organização expurgada do Vault com sucesso.", 'success');
+        setIsClientModalOpen(false);
+        await loadClients();
+    } catch (err: any) {
+        showToast(`Erro na exclusão ROOT: ${err.message}`, 'error');
+    } finally {
+        setIsSaving(false);
+    }
+  }, [user, isSavingGlobal, setIsSaving, showToast, loadClients]);
+
   const openClientModal = useCallback((client?: ClientOrganization) => {
     if (client) {
       setEditingClient(client);
@@ -121,6 +140,7 @@ export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityA
     editingClient,
     openClientModal,
     handleSaveClient,
+    handleDeleteClient,
     clientFormData,
     setClientFormData,
   };

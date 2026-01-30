@@ -63,7 +63,7 @@ export const useAdminUserManagement = ({ setIsSaving, isSavingGlobal, restricted
     const search = searchTerm.toLowerCase();
 
     return usersList.filter(u => {
-      const isArchived = u.department === 'PENDING_DELETION';
+      const isArchived = u.department === 'PENDING_DELETION' || u.isPendingDeletion;
       if (viewMode === 'ACTIVE' && isArchived) return false;
       if (viewMode === 'ARCHIVED' && !isArchived) return false;
 
@@ -117,20 +117,24 @@ export const useAdminUserManagement = ({ setIsSaving, isSavingGlobal, restricted
     }
   }, [editingUser, formData, showToast, setIsSaving, loadData, isSavingGlobal]);
 
-  const handleFlagDeletion = useCallback(async (userId: string) => {
+  const handleDeleteUser = useCallback(async (userId: string) => {
     if (!currentUser || isSavingGlobal) return;
+    
+    const confirmDelete = window.confirm("PODER ROOT DETECTADO: Esta ação excluirá PERMANENTEMENTE o usuário e todos os seus registros de acesso. Deseja prosseguir?");
+    if (!confirmDelete) return;
+
     setIsSaving(true);
     try {
-        await userService.flagUserForDeletion(userId, currentUser);
-        showToast("Usuário sinalizado para auditoria de exclusão.", 'info');
+        await userService.deleteUser(userId);
+        showToast("Usuário expurgado do sistema com sucesso.", 'success');
         setIsUserModalOpen(false);
         await loadData();
     } catch (err: any) {
-        showToast(err.message, 'error');
+        showToast(`Erro ao excluir: ${err.message}`, 'error');
     } finally {
         setIsSaving(false);
     }
-  }, [currentUser, setIsSaving, showToast, loadData, isSavingGlobal]);
+  }, [currentUser, isSavingGlobal, setIsSaving, showToast, loadData]);
 
   const openUserModal = useCallback((target?: User) => {
     if (target) {
@@ -170,7 +174,7 @@ export const useAdminUserManagement = ({ setIsSaving, isSavingGlobal, restricted
     editingUser,
     openUserModal,
     handleSaveUser,
-    handleFlagDeletion,
+    handleDeleteUser,
     formData,
     setFormData,
     clientsList: clientsList
