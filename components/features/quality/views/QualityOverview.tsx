@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../../../lib/services/index.ts';
 import { supabase } from '../../../../lib/supabaseClient.ts';
@@ -8,7 +7,7 @@ import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { QualityLoadingState } from '../components/ViewStates.tsx';
 import { QualityOverviewCards } from '../components/QualityOverviewCards.tsx';
-import { ArrowRight, FileWarning, History } from 'lucide-react';
+import { FileText, Send } from 'lucide-react';
 import { QualityStatus } from '../../../../types/enums.ts';
 
 export const QualityOverview: React.FC = () => {
@@ -23,7 +22,6 @@ export const QualityOverview: React.FC = () => {
     const loadStats = async () => {
       if (!user) return;
       try {
-        // Busca multicritério para dados reais em tempo real
         const [activeClientsRes, pendingRes, rejectedRes, totalRes, approvedRes] = await Promise.all([
           adminService.getClients({ status: 'ACTIVE' }, 1, 1),
           supabase.from('files').select('*', { count: 'exact', head: true }).eq('metadata->>status', QualityStatus.PENDING).neq('type', 'FOLDER'),
@@ -52,11 +50,38 @@ export const QualityOverview: React.FC = () => {
     loadStats();
   }, [user]);
 
-  if (isLoading) return <QualityLoadingState message="Sincronizando Central de Comando..." />;
+  if (isLoading) return <QualityLoadingState message="Sincronizando Lab..." />;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* KPIs Dinâmicos com Navegação Direta para Páginas */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-500 pb-20 px-6 md:px-8">
+      
+      {/* Hero Action Block (2x2) */}
+      <div className="col-span-1 md:col-span-2 row-span-2 bg-[#132659] text-white rounded-[2.5rem] p-8 relative overflow-hidden shadow-2xl group flex flex-col justify-between">
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/20 transition-all" />
+          
+          <div className="relative z-10 space-y-6">
+             <div className="flex items-center gap-3">
+                <span className="px-3 py-1 bg-blue-600 rounded-lg text-[9px] font-black uppercase tracking-[3px] border border-blue-500/50">Lab Central</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+             </div>
+             <h2 className="text-4xl lg:text-5xl font-black tracking-tighter leading-[0.9]">
+               Emissão de<br/>
+               <span className="text-blue-400">Laudos Técnicos.</span>
+             </h2>
+             <p className="text-slate-400 max-w-sm text-sm font-medium leading-relaxed border-l-2 border-white/10 pl-4">
+               Inicie o fluxo de auditoria selecionando um cliente para envio de novos certificados ou análise de backlog.
+             </p>
+          </div>
+
+          <button 
+            onClick={() => navigate('/quality/portfolio')}
+            className="w-fit mt-8 bg-white text-[#132659] px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[3px] shadow-lg hover:shadow-xl hover:bg-blue-50 transition-all active:scale-95 flex items-center gap-3"
+          >
+            <Send size={16} /> Acessar Carteira
+          </button>
+      </div>
+
+      {/* KPI Blocks (Managed by QualityOverviewCards) */}
       <QualityOverviewCards
         totalClients={stats?.totalActiveClients || 0}
         totalPendingDocs={stats?.pendingDocs || 0}
@@ -65,70 +90,26 @@ export const QualityOverview: React.FC = () => {
         onNavigate={(path) => navigate(path)}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-[#132659] rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl border border-white/5 group">
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-600/20 transition-all" />
-          
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div className="space-y-4">
-               <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 bg-blue-600 rounded-lg text-[9px] font-black uppercase tracking-[3px]">Protocolo de Saída</span>
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-               </div>
-               <h2 className="text-4xl font-black tracking-tighter leading-tight">
-                 Emissão de<br/>
-                 <span className="text-blue-400">Laudos Técnicos.</span>
-               </h2>
-               <p className="text-slate-400 max-w-sm text-sm font-medium leading-relaxed">
-                 Inicie o fluxo de auditoria selecionando um cliente para envio de novos certificados.
+      {/* Rastreabilidade Block (Horizontal Long) */}
+      <div className="col-span-1 md:col-span-2 lg:col-span-4 bg-white border border-slate-200 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+         <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
+                <FileText size={32} strokeWidth={1.5} />
+            </div>
+            <div>
+               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Rastreabilidade Total</h3>
+               <p className="text-xs text-slate-500 font-medium mt-1">
+                  Atualmente processando <b>{stats?.totalFiles || 0}</b> ativos no cluster Vital Cloud.
                </p>
             </div>
-
-            <button 
-              onClick={() => navigate('/quality/portfolio')}
-              className="bg-white text-[#132659] px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[3px] shadow-xl hover:bg-blue-50 transition-all active:scale-95 flex items-center gap-3"
-            >
-              Acessar Carteira
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[2.5rem] border-2 border-red-100 p-8 flex flex-col justify-between shadow-sm group hover:border-red-500 transition-all">
-          <div className="space-y-4">
-             <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                <FileWarning size={28} />
-             </div>
-             <div>
-                <h4 className="font-black text-slate-800 uppercase tracking-tight text-lg">Contestações</h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Feedback Crítico</p>
-             </div>
-             <p className="text-4xl font-black text-red-600 tracking-tighter">{stats?.rejectedByClient || 0}</p>
-             <p className="text-xs text-slate-500 font-medium leading-relaxed italic">
-               Certificados recusados que exigem retificação ou mediação imediata no fluxo.
-             </p>
-          </div>
-          
-          <button 
-            onClick={() => navigate('/quality/monitor')}
-            className="w-full mt-6 py-4 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-700 transition-all shadow-lg"
-          >
-            Ver Alertas <ArrowRight size={14} />
-          </button>
-        </div>
-      </div>
-
-      <section className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-         <header className="px-8 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <div className="flex items-center gap-3 text-slate-400">
-               <History size={16} />
-               <h3 className="text-[10px] font-black uppercase tracking-[3px]">Rastreabilidade do Ledger</h3>
-            </div>
-            <button onClick={() => navigate('/quality/audit')} className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:underline">Ver Log Completo</button>
-         </header>
-         <div className="p-12 text-center text-slate-400 italic text-sm">
-            Total de {stats?.totalFiles || 0} ativos processados no cluster Vital Cloud.
          </div>
-      </section>
+         <button 
+            onClick={() => navigate('/quality/audit')} 
+            className="px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+         >
+            Consultar Logs
+         </button>
+      </div>
     </div>
   );
 };

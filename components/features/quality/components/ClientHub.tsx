@@ -22,10 +22,9 @@ export const ClientHub: React.FC<ClientHubProps> = ({
   if (isLoading) return <LoadingPortfolio />;
 
   return (
-    <div className="w-full animate-in fade-in duration-500">
+    <div className="flex-1 w-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
       {viewMode === 'list' ? (
-        <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="overflow-x-auto">
+        <div className="flex-1 overflow-x-auto custom-scrollbar">
             <table className="w-full text-left table-auto">
               <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                 <tr>
@@ -47,11 +46,10 @@ export const ClientHub: React.FC<ClientHubProps> = ({
                 ))}
               </tbody>
             </table>
-          </div>
           {hasMore && <LoadMoreButton loading={isLoadingMore} onClick={onLoadMore} />}
         </div>
       ) : (
-        <div className="w-full">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12">
             {clients.map(client => (
               <ClientCard 
@@ -158,7 +156,7 @@ const StatusBadge: React.FC<{ count: number }> = ({ count }) => (
 );
 
 const LoadingPortfolio = () => (
-  <div className="w-full flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-dashed border-slate-200 animate-pulse">
+  <div className="flex-1 w-full min-h-[400px] flex flex-col items-center justify-center bg-white rounded-3xl border border-dashed border-slate-200 animate-pulse">
     <Loader2 size={32} className="text-blue-500 animate-spin mb-4" />
     <p className="text-[10px] font-black uppercase tracking-[4px] text-slate-400">Sincronizando Portfólio...</p>
   </div>

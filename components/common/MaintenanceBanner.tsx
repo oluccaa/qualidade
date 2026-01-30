@@ -8,19 +8,20 @@ interface MaintenanceBannerProps {
     isAdmin: boolean;
 }
 
-/**
- * Utilitário de formatação de janela de tempo.
- */
 const formatMaintenanceWindow = (start?: string, end?: string) => {
-    if (!start) return { date: '', start: '', end: '' };
-    const startDate = new Date(start);
-    const endDate = end ? new Date(end) : null;
-    
-    return {
-        date: startDate.toLocaleDateString('pt-BR'),
-        start: startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        end: endDate ? endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '...'
-    };
+    if (!start) return null;
+    try {
+        const startDate = new Date(start);
+        const endDate = end ? new Date(end) : null;
+        
+        return {
+            date: startDate.toLocaleDateString('pt-BR'),
+            start: startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            end: endDate ? endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '...'
+        };
+    } catch {
+        return null;
+    }
 };
 
 export const MaintenanceBanner: React.FC<MaintenanceBannerProps> = ({ status, isAdmin }) => {
@@ -28,8 +29,8 @@ export const MaintenanceBanner: React.FC<MaintenanceBannerProps> = ({ status, is
 
     if (status.mode === 'ONLINE' || !isVisible) return null;
 
-    if (status.mode === 'MAINTENANCE') {
-        return isAdmin ? <CriticalBanner onClose={() => setIsVisible(false)} /> : null;
+    if (status.mode === 'MAINTENANCE' && isAdmin) {
+        return <CriticalBanner onClose={() => setIsVisible(false)} />;
     }
 
     if (status.mode === 'SCHEDULED') {
@@ -39,36 +40,37 @@ export const MaintenanceBanner: React.FC<MaintenanceBannerProps> = ({ status, is
     return null;
 };
 
-/* --- Sub-componentes Especializados (SRP) --- */
-
 const CriticalBanner = ({ onClose }: { onClose: () => void }) => (
-    <div className="top-0 left-0 right-0 rounded-b-xl relative z-30 overflow-hidden shadow-lg shadow-red-500/20 animate-in slide-in-from-top-4">
-        <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-700 opacity-90" />
-        <div className="relative px-4 py-2 flex items-center justify-between backdrop-blur-md">
-            <div className="flex items-center gap-3 text-white">
+    <div className="bg-red-600 text-white relative z-30 shadow-lg shadow-red-500/20 animate-in slide-in-from-top-4">
+        <div className="px-4 py-2 flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center gap-3">
                 <Hammer size={16} className="animate-bounce" />
-                <span className="text-xs font-black uppercase tracking-widest">MODO DE MANUTENÇÃO ATIVO (ADMIN)</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Modo de Manutenção Ativo (Acesso Admin)</span>
             </div>
-            <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={14} /></button>
+            <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/20 transition-colors">
+                <X size={14} />
+            </button>
         </div>
     </div>
 );
 
 const ScheduledBanner = ({ status, onClose }: { status: SystemStatus, onClose: () => void }) => {
     const window = formatMaintenanceWindow(status.scheduledStart, status.scheduledEnd);
+    if (!window) return null;
     
     return (
-        <div className="top-0 left-0 right-0 rounded-b-xl relative z-30 overflow-hidden shadow-lg shadow-orange-500/20 animate-in slide-in-from-top-4">
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-600 opacity-95" />
-            <div className="relative px-4 py-2 flex items-center justify-between backdrop-blur-md">
-                <div className="flex items-center gap-3 text-white">
+        <div className="bg-gradient-to-r from-orange-500 to-amber-600 text-white relative z-30 shadow-lg shadow-orange-500/20 animate-in slide-in-from-top-4">
+            <div className="px-4 py-2 flex items-center justify-between max-w-7xl mx-auto">
+                <div className="flex items-center gap-3">
                     <CalendarClock size={16} />
                     <div className="flex flex-col sm:flex-row sm:gap-2 items-start sm:items-center">
-                        <span className="text-[10px] font-black uppercase bg-black/20 px-1.5 rounded">AVISO</span>
+                        <span className="text-[9px] font-black uppercase bg-black/20 px-2 py-0.5 rounded tracking-widest">Aviso</span>
                         <span className="text-xs font-bold">Manutenção Programada: {window.date} ({window.start} - {window.end})</span>
                     </div>
                 </div>
-                <button onClick={onClose} className="text-white/80 hover:text-white p-1"><X size={14} /></button>
+                <button onClick={onClose} className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/20 transition-colors">
+                    <X size={14} />
+                </button>
             </div>
         </div>
     );

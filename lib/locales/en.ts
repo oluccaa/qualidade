@@ -1,6 +1,5 @@
-import { pt } from './pt.ts';
 
-export const en: typeof pt = {
+export const en = {
   common: {
     welcome: "Welcome",
     loading: "Loading...",
@@ -39,7 +38,7 @@ export const en: typeof pt = {
     preparingPortal: "Preparing Aços Vital Quality Portal",
     preparingInterface: "Preparing Vital Interface...",
     validatingProtocols: "Validating Security Protocols...",
-    syncFailure: "Sync Failure",
+    syncFailure: "Synchronization Failure",
     syncingModule: "Syncing Module...",
     scanningLedger: "Scanning Ledger...",
     syncingVault: "Syncing Vault...",
@@ -49,12 +48,12 @@ export const en: typeof pt = {
     workflow: {
       title: "Industrial Audit Flow",
       partnerTitle: "Compliance and Technical Acceptance",
-      subtitle: "Rigorous control of industrial verdicts.",
-      partnerSubtitle: "Verification and signature of approved certificates.",
+      subtitle: "Strict control of industrial verdicts.",
+      partnerSubtitle: "Verification and signing of homologated certificates.",
       steps: {
-        step1: "1. Vital Release (QMS)",
+        step1: "1. Initial Screening (QMS)",
         step2: "2. Data Verification",
-        step3: "3. Physical Inspection",
+        step3: "3. Cargo Inspection",
         step4: "4. Technical Arbitration",
         step5: "5. Partner Verdict",
         step6: "6. Digital Consolidation",
@@ -63,39 +62,39 @@ export const en: typeof pt = {
       labels: {
         authFlow: "Authorize Industrial Flow",
         stationAnnotation: "Technical Annotation Station",
-        viewNotes: "View Notes (Read Only)",
+        viewNotes: "View Notes (Read-only)",
         attachDocs: "Attach Scanned Documentation",
-        attachDocsDesc: "Use this field if you printed the document to take notes by hand or if you have additional evidence of discrepancy.",
+        attachDocsDesc: "Use this field if you printed the document to annotate by hand or if you have additional proof of discrepancy.",
         auditFlags: "Audit Flags",
-        addFlag: "Add marker...",
+        addFlag: "Add flag...",
         reportDivergence: "Discrepancy Report",
-        reportDivergencePlaceholder: "Formally describe technical observations on this document...",
+        reportDivergencePlaceholder: "Formally describe the technical observations regarding this document...",
         signValidation: "Sign Data Validation",
-        galleryField: "Field Gallery (Photos/Docs)",
-        galleryFieldDesc: "Attach here photos of the received load, seals, or documents accompanying transport.",
-        physicalState: "Physical Condition (Receiving Flags)",
+        galleryField: "Field Gallery (Photos/Documents)",
+        galleryFieldDesc: "Attach photos of the received cargo, seals, or documents that accompanied the transport here.",
+        physicalState: "Physical State (Receiving Flags)",
         physicalNotes: "Field Observations",
-        physicalNotesPlaceholder: "Report material reception conditions at the site...",
-        approveLoad: "Approve Load",
-        rejectLoad: "Reject Load",
+        physicalNotesPlaceholder: "Report the material reception conditions on site...",
+        approveLoad: "Approve Cargo",
+        rejectLoad: "Reject Cargo",
         fullCompliance: "Full Compliance Detected",
-        noDivergence: "No disqualifying discrepancies. Arbitration completed automatically.",
-        arbitrationPlaceholder: "Describe final technical mediation for this batch...",
+        noDivergence: "No impeding discrepancies. Arbitration completed automatically.",
+        arbitrationPlaceholder: "Describe the final technical mediation for this batch...",
         signArbitration: "Sign Technical Arbitration",
         vitalMediationNote: "Vital Mediation Note",
         acceptBatch: "Accept Batch",
         rejectBatch: "Reject Batch",
         clientAcceptance: "Client Acceptance Status",
-        homologated: "Batch Homologated",
-        refused: "Batch Refused",
+        homologated: "Homologated Batch",
+        refused: "Refused Batch",
         repPartner: "Partner Representative",
         repQuality: "Quality Analyst",
         signDigitalSealClient: "Sign Digital Seal (Client)",
         signDigitalSealAnalyst: "Sign Digital Seal (Analyst)",
-        vitalCertification: "Vital SGQ Certification",
+        vitalCertification: "Vital QMS Certification",
         homologatedAsset: "Asset homologated for safe industrial use.",
         transmissionBlocked: "Transmission Blocked",
-        rejectedByPartner: "Batch rejected by the partner. Workflow requires external technical mediation.",
+        rejectedByPartner: "Batch rejected by partner. Workflow requires external technical mediation.",
         criticalDivergence: "Critical technical discrepancy detected. Await contact from Aços Vital Quality.",
         partnerContact: "Partner Contact (Representative)",
         digitalSignature: "Audited Digital Signature",
@@ -103,11 +102,11 @@ export const en: typeof pt = {
         waiting: "Waiting...",
         completion: "Completion of 7 Steps",
         protocolValidated: "Protocol Validated",
-        phaseAnalysis: "Phase in Analysis",
+        phaseAnalysis: "Phase under Analysis",
         awaitingRelease: "Awaiting Release"
       },
       messages: {
-        signSuccess: "Protocol successfully signed.",
+        signSuccess: "Protocol signed successfully.",
         syncError: "Technical synchronization error.",
         evidenceSuccess: "Evidence archived successfully.",
         noImages: "No Images Attached"
@@ -117,7 +116,7 @@ export const en: typeof pt = {
       referenceId: "Reference ID",
       assetVersion: "Asset Version",
       partnerCompany: "Partner Company",
-      vitalManager: "Vital Manager",
+      vitalManager: "Vital Supervisor",
       clientUser: "Client User",
       auditWindow: "Audit Window",
       cycleStart: "Cycle Start",
@@ -127,19 +126,19 @@ export const en: typeof pt = {
   settings: {
     title: "Profile Preferences",
     subtitle: "Manage your security guidelines and access protocols.",
-    securityCompliance: "Security & Compliance",
-    techId: "TECH ID",
+    securityCompliance: "Security and Compliance",
+    techId: "TECHNICAL ID",
     changePassDesc: "Update your authentication secret periodically to maintain account integrity.",
     privacyDesc: "Consult how your technical data and audit records are processed in the portal."
   },
   auth: {
     errors: {
       invalidCredentials: "Invalid email or password.",
-      samePassword: "New password should be different from the old password.",
+      samePassword: "The new password must be different from the old password.",
       weakPassword: "The provided password does not meet complexity requirements.",
       tooManyRequests: "Too many login attempts. Please try again in a few moments.",
       unexpected: "An unexpected technical error occurred.",
-      sessionExpired: "Your session has expired. Please authenticate again."
+      sessionExpired: "Your session has expired. Please log in again."
     }
   },
   login: {
@@ -150,20 +149,20 @@ export const en: typeof pt = {
     forgotPassword: "Forgot password?",
     authenticate: "Secure Authentication",
     authenticateAccess: "Secure Authentication",
-    enterCredentials: "Use your corporate credentials authorized by Aços Vital.",
+    enterCredentials: "Use your authorized corporate credentials by Aços Vital.",
     heroSubtitle: "Centralized repository for technical documentation and quality certificates. Industrial precision in every record.",
     footerNote: "MONITORED SYSTEMS • PRIVACY COMPLIANCE • © 2026 AÇOS VITAL",
     slogan: "Steel you can trust, certified quality",
-    certification: "TECHNICAL QUALITY CERTIFIED",
+    certification: "CERTIFIED TECHNICAL QUALITY",
     secureData: "ENCRYPTED B2B LINK",
     monitoring: "REAL-TIME SYSTEM MONITORING",
-    error: "Portal authentication failed.",
+    error: "Portal authentication failure.",
     restrictedAccess: "Restricted Access",
-    identifyToAccess: "Identify yourself to access the secure certificate panel.",
+    identifyToAccess: "Identify yourself to access the secure certificate dashboard.",
     accessManagedByVital: "Aços Vital manages your access governance internally.",
     successTitle: "Access Granted!",
-    successSubtitle: "Redirecting to Security Gateway...",
-    connectionError: "Security server connection failure."
+    successSubtitle: "Redirecting to the Security Gateway...",
+    connectionError: "Connection failure with the security server."
   },
   signup: {
     passwordPlaceholder: "Min. 8 characters"
@@ -180,12 +179,12 @@ export const en: typeof pt = {
       organizations: "Active Partners",
       activities: "Operations (24h)",
       activeClientsSummary: "{{count}} companies in portfolio",
-      logsLast24hSummary: "{{count}} registered events",
+      logsLast24hSummary: "{{count}} events recorded",
       headers: {
         timestamp: "Date/Time",
         user: "Operator",
         action: "Operation",
-        target: "Resource",
+        target: "Summary",
         ip: "Source IP",
         severity: "Level"
       }
@@ -193,11 +192,11 @@ export const en: typeof pt = {
     users: {
       identity: "Identity",
       role: "Privileges",
-      roleLabel: "Access Tier",
+      roleLabel: "Access Level",
       department: "Unit",
       createTitle: "New Access Credentials",
       editTitle: "Modify Profile",
-      name: "Full Legal Name",
+      name: "Legal Full Name",
       email: "Corporate Identity",
       org: "Partner Entity",
       filters: "Filter by"
@@ -220,21 +219,21 @@ export const en: typeof pt = {
     overview: "Insight Center",
     myAuditLog: "Forensic Audit Log",
     activePortfolio: "Active Portfolio",
-    pendingDocs: "Pending Inspection",
-    complianceISO: "Technical Compliance Index",
+    pendingDocs: "Technical Urgency",
+    complianceISO: "Vital Compliance Index",
     searchClient: "Search entity by name or Tax ID...",
     newClientUser: "New Partner Identity",
     newCompany: "New Partner Entity",
-    allActivities: "Search logs by user, action or IP...",
+    allActivities: "Search logs by user, action, or IP...",
     errorLoadingClients: "Failed to retrieve portfolio data.",
     errorLoadingQualityData: "Quality indicator synchronization failed.",
     noQualityLogsFound: "No technical audit logs detected.",
-    invalidConfirmationCredentials: "Authentication for confirmation failed.",
-    releaseTransmission: "Release Transmission",
-    releaseTransmissionSuccess: "Transmission released to client.",
-    contestVerdict: "Contest Verdict",
-    contestVerdictSuccess: "Contest sent to client.",
-    contestedBanner: "Verdict under contest. Contact the analyst via email.",
+    invalidConfirmationCredentials: "Authentication failed for confirmation.",
+    releaseTransmission: "Authorize Transmission",
+    releaseTransmissionSuccess: "Vital Protocol activated for the client.",
+    contestVerdict: "Technical Argumentation",
+    contestVerdictSuccess: "Contestation sent to client.",
+    contestedBanner: "Verdict under contestation. Contact the analyst via email.",
     releasedBy: "Released by",
     documentalCheck: "Documental Check",
     physicalCheck: "Physical Check",
@@ -244,7 +243,7 @@ export const en: typeof pt = {
     reject: "Reject",
     uploadEvidence: "Upload Evidence",
     dragAndDrop: "Drag and drop evidence images here",
-    inspectionLocked: "Awaiting Quality release"
+    inspectionLocked: "Phase blocked by flow dependency"
   },
   roles: {
     ADMIN: "System Administrator",
@@ -267,14 +266,14 @@ export const en: typeof pt = {
     exploreAll: "Expand Portfolio",
     fileStatusTimeline: "Asset Compliance Lifecycle",
     organization: "Corporate Entity",
-    fiscalID: "Tax Identification",
+    fiscalID: "Tax ID",
     contractDate: "Lifecycle Start",
     recentCertificates: "Recent Certificates",
     complianceStatus: "Compliance Status",
     certifiedOperation: "Certified Operation",
     vitalStandard: "AÇOS VITAL STANDARD",
     traceability: "Traceability",
-    disclaimer: "All certificates displayed on this portal have been validated by Aços Vital's technical laboratory.",
+    disclaimer: "All certificates displayed in this portal were validated by the Aços Vital technical laboratory.",
     available: "Available",
     noRecentFiles: "No recent files found.",
     criticalPendencies: "Critical Pendencies",
@@ -292,17 +291,17 @@ export const en: typeof pt = {
       gatewayActive: "B2B Gateway Active",
       exclusiveTerminal: "Your exclusive industrial certification terminal.",
       flowTitle: "Flow Monitoring",
-      flowSubtitle: "Real-time physical and documentary verification status"
+      flowSubtitle: "Real-time physical and documental verification status"
     },
     dashboard: {
       loading: "Syncing B2B Data...",
       pendingActions: "Pending Actions",
-      requireReview: "Review Required",
+      requireReview: "Requires Verification",
       validatedAssets: "Validated Assets",
-      complianceSubtitle: "Compliance Protocols",
+      complianceSubtitle: "Compliant Protocols",
       lastAudit: "Last Audit",
-      protocolLabel: "Vital SGQ Protocol",
-      recentHistory: "Recently Received Assets",
+      protocolLabel: "Vital QMS Protocol",
+      recentHistory: "Received Assets History",
       accessLibrary: "Access Library",
       noRecent: "No recent movements in the Vault.",
       auditAsset: "Audit Asset"
@@ -315,25 +314,25 @@ export const en: typeof pt = {
     }
   },
   cookie: {
-    title: "Privacy & Data Protection",
-    text: "We utilize essential cookies to ensure session security and the integrity of technical certificates. By continuing to navigate the Aços Vital portal, you acknowledge our data governance policy.",
-    accept: "Acknowledge & Continue"
+    title: "Privacy and Data Protection",
+    text: "We use essential cookies to ensure session security and the integrity of technical certificates. By continuing to browse the Aços Vital portal, you acknowledge our data governance policy.",
+    accept: "Acknowledge and Continue"
   },
   menu: {
     dashboard: "Home",
-    library: "Asset Library",
+    library: "File Library",
     certificates: "Certificates",
     management: "Access Governance",
     qualityManagement: "Quality Compliance",
     portalName: "Quality Portal",
     brand: "Aços Vital",
-    systemMonitoring: "INFRASTRUCTURE MONITORING",
+    systemMonitoring: "REAL-TIME SYSTEM MONITORING",
     settings: "Profile Preferences",
     sections: {
       main: "Main Navigation",
       documents: "Document Management",
       operational: "Operational Modules",
-      governance: "Security & Governance"
+      governance: "Security and Governance"
     }
   },
   files: {
@@ -351,7 +350,7 @@ export const en: typeof pt = {
     sort: {
       nameAsc: "Lexicographical (A-Z)"
     },
-    searchPlaceholder: "Search certificates, batches or folders...",
+    searchPlaceholder: "Search certificates, batches, or folders...",
     listView: "Detailed List",
     gridView: "Icon Grid",
     itemSelected: "resource identified",
@@ -360,33 +359,33 @@ export const en: typeof pt = {
     upload: {
       title: "Secure Upload",
       button: "Import",
-      selectFile: "Select technical resource",
+      selectFile: "Select the technical resource",
       chooseFile: "Browse files",
       fileName: "Resource descriptor",
       fileNamePlaceholder: "Ex: Material_Spec_Batch123.pdf",
       uploadButton: "Initialize Upload",
       noFileSelected: "No resource identified.",
       fileNameRequired: "Descriptor is mandatory for traceability.",
-      success: "Resource successfully synchronized!",
-      noOrgLinked: "Orphaned user. Resource import disabled."
+      success: "Resource synced successfully!",
+      noOrgLinked: "Orphan user. Resource importation disabled."
     },
     createFolder: {
       title: "New Structural Directory",
       button: "New Directory",
       folderName: "Directory descriptor",
-      folderNamePlaceholder: "Ex: Batch_Records_2024",
+      folderNamePlaceholder: "Ex: Records_Batch_2024",
       createButton: "Initialize Directory",
-      nameRequired: "Directory descriptor is mandatory.",
-      success: "Directory successfully initialized!",
-      noOrgLinked: "Orphaned user. Directory creation disabled."
+      nameRequired: "Directory descriptor is required.",
+      success: "Directory initialized successfully!",
+      noOrgLinked: "Orphan user. Directory creation disabled."
     },
     rename: {
       title: "Modify Descriptor",
       newName: "New descriptor",
-      newNamePlaceholder: "Enter new value",
+      newNamePlaceholder: "Enter the new value",
       renameButton: "Apply Changes",
-      nameRequired: "Descriptor value is mandatory.",
-      success: "Resource successfully updated!"
+      nameRequired: "Descriptor value is required.",
+      success: "Resource updated successfully!"
     },
     delete: {
       confirmTitle: "Resource Removal",
@@ -396,7 +395,7 @@ export const en: typeof pt = {
     },
     downloadButton: "Export PDF",
     selectItem: "Target {{name}}",
-    noResultsFound: "No assets matched the query.",
+    noResultsFound: "No assets match the query.",
     typeToSearch: "Start typing to filter resources...",
     traceability: "Traceability by Batch or Descriptor..."
   },
@@ -407,8 +406,8 @@ export const en: typeof pt = {
     new: "New Technical Secret",
     confirm: "Validate New Secret",
     matchError: "Credentials do not match.",
-    success: "Password successfully updated!",
-    errorUpdatingPassword: "Fault in credential update service.",
+    success: "Password updated successfully!",
+    errorUpdatingPassword: "Credential update service failure.",
     submit: "Apply Security Policy",
     requirements: {
       length: "At least 8 characters",
@@ -418,36 +417,36 @@ export const en: typeof pt = {
     }
   },
   privacy: {
-    title: "Data Governance & Privacy",
-    subtitle: "Regulatory Compliance & Security Framework",
+    title: "Data Governance and Privacy",
+    subtitle: "Regulatory Compliance and Security Framework",
     close: "Acknowledged",
     viewPolicy: "View Policy",
     section1: "Platform Scope",
-    section1_content: "The Aços Vital Quality Portal is a B2B platform for technical document and quality certificate management. This policy clarifies compliance with Technical Standards and current data protection laws (LGPD/GDPR).",
+    section1_content: "The Aços Vital Quality Portal is a B2B platform for technical document management and quality certificates. This policy clarifies compliance with Technical Standards and current data protection laws (LGPD/GDPR).",
     section2: "Collected Data",
     section2_item1: "Identification: Name and corporate email.",
-    section2_item2: "Corporate: Tax ID (CNPJ) and contract history.",
+    section2_item2: "Corporate: Tax ID and contract history.",
     section2_item3: "Audit: IP logs and user actions (view/download).",
-    section3: "Encryption & Storage",
-    section3_content: "We use TLS 1.2+ encryption and strict organization-level segregation (Multi-tenant). Your documents are never accessible to other companies in the portfolio."
+    section3: "Encryption and Storage",
+    section3_content: "We use TLS 1.2+ encryption and strict organization segregation (Multi-tenant). Your documents are never accessible by other companies in the portfolio."
   },
   notifications: {
     title: "Operational Alerts",
-    markAllAsRead: "Flush all alerts",
+    markAllAsRead: "Clear all alerts",
     markedAsRead: "Alert archived.",
     markedAllAsRead: "Alert queue cleared.",
     emptyState: "System status: Nominal. No alerts.",
-    loading: "Synchronizing alerts...",
+    loading: "Syncing alerts...",
     errorLoading: "Alert synchronization failure: {{message}}",
-    errorMarkingAsRead: "Failure to archive alert: {{message}}",
-    errorMarkingAllAsRead: "Failure to flush alerts: {{message}}",
+    errorMarkingAsRead: "Failed to archive alert: {{message}}",
+    errorMarkingAllAsRead: "Failed to clear alerts: {{message}}",
   },
   maintenance: {
     title: "System Maintenance",
-    message: "Security gateway is undergoing planned technical updates to improve certificate viewing performance.",
+    message: "The security gateway is undergoing planned technical updates to improve certificate viewing performance.",
     returnEstimate: "Estimated Return",
     todayAt: "Today at {{time}}",
-    soon: "Soon",
+    soon: "Coming soon",
     retry: "Retry Connection",
     contact: "Contact Support",
     systemId: "Vital Cloud Engine v2.4.0"
@@ -456,10 +455,10 @@ export const en: typeof pt = {
     title: "Schedule Maintenance",
     eventTitle: "Event Description",
     eventTitlePlaceholder: "Ex: File Cluster Upgrade",
-    date: "Target Date",
+    date: "Scheduled Date",
     time: "Start Time",
-    duration: "Estimated Downtime (mins)",
-    customMessage: "User Announcement",
+    duration: "Estimated Downtime (min)",
+    customMessage: "Announcement to Users",
     scheduleButton: "Confirm Window",
     scheduledSuccess: "Maintenance '{{title}}' scheduled successfully.",
     scheduledError: "Scheduling failure: {{message}}"

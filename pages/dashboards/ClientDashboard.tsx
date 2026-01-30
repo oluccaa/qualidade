@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { useAuth } from '../../context/authContext.tsx';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Lock } from 'lucide-react';
-import { PartnerDashboardView } from '../../components/features/partner/views/PartnerDashboardView.tsx';
+import { ClientDashboardView } from '../../components/features/client/views/ClientDashboardView.tsx';
 
 const ClientDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -34,7 +35,7 @@ const ClientDashboard: React.FC = () => {
         </div>
       </div>
 
-      <PartnerDashboardView />
+      <ClientDashboardView />
     </div>
   );
 };

@@ -1,19 +1,18 @@
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, Loader2, Search, X, Activity } from 'lucide-react';
 import { AuditLogsTable } from '../components/AuditLogsTable.tsx';
+import { PaginationControls } from '../../../common/PaginationControls.tsx';
 import { useAdminAuditLogs } from '../hooks/useAdminAuditLogs.ts';
 import { AuditLog } from '../../../../types/index.ts';
 
-/**
- * AdminLogs View (Orchestrator)
- */
 export const AdminLogs: React.FC = () => {
   const { t } = useTranslation();
   const logsContext = useAdminAuditLogs();
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 flex flex-col min-h-0 space-y-6">
       <LogInvestigationModal 
         isOpen={logsContext.isInvestigationModalOpen}
         onClose={() => logsContext.setIsInvestigationModalOpen(false)}
@@ -29,25 +28,37 @@ export const AdminLogs: React.FC = () => {
         t={t}
       />
 
-      {logsContext.isLoadingLogs ? (
-        <LoadingLogsState t={t} />
-      ) : (
-        // Fix: Wrapped state setter in arrow function and cast value to satisfy union type requirements from AuditLogsTable
-        <AuditLogsTable 
-          logs={logsContext.filteredLogs} 
-          severityFilter={logsContext.severityFilter} 
-          onSeverityChange={(sev) => logsContext.setSeverityFilter(sev as any)} 
-          onInvestigate={logsContext.handleOpenInvestigation} 
-        />
-      )}
+      <div className="flex-1 min-h-0 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        {logsContext.isLoadingLogs ? (
+          <LoadingLogsState t={t} />
+        ) : (
+          <>
+            <div className="flex-1 overflow-auto custom-scrollbar">
+               <AuditLogsTable 
+                logs={logsContext.filteredLogs} 
+                severityFilter={logsContext.severityFilter} 
+                onSeverityChange={(sev) => logsContext.setSeverityFilter(sev as any)} 
+                onInvestigate={logsContext.handleOpenInvestigation} 
+              />
+            </div>
+            
+            <PaginationControls 
+                currentPage={logsContext.page}
+                pageSize={logsContext.pageSize}
+                totalItems={logsContext.totalItems}
+                onPageChange={logsContext.setPage}
+                onPageSizeChange={logsContext.setPageSize}
+                isLoading={logsContext.isLoadingLogs}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 };
 
-/* --- Sub-componentes Especializados (SRP) --- */
-
 const LogsToolbar = ({ searchTerm, onSearchChange, severityFilter, onSeverityChange, t }: any) => (
-  <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border border-slate-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4 rounded-2xl shadow-sm">
+  <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4 rounded-2xl shadow-sm shrink-0">
     <div className="relative group w-full md:w-auto flex-1 max-w-lg">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-detail-blue)] transition-colors" size={16} />
       <input 
@@ -58,7 +69,7 @@ const LogsToolbar = ({ searchTerm, onSearchChange, severityFilter, onSeverityCha
         onChange={e => onSearchChange(e.target.value)} 
       />
     </div>
-    <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto overflow-x-auto">
+    <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto overflow-x-auto no-scrollbar">
       {(['ALL', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] as const).map(sev => (
         <button
           key={sev}
@@ -93,7 +104,7 @@ const LogInvestigationModal = ({ isOpen, onClose, data, t }: { isOpen: boolean, 
           <div className="grid grid-cols-2 gap-6">
             <InfoBlock label="Usuário" value={`${log.userName} (${log.userRole})`} />
             <InfoBlock label="Ação" value={log.action} />
-            <InfoBlock label="Endereço IP" value={log.ip} />
+            <InfoBlock label="Endereço IP" value={log.ip || 'N/A'} />
             <InfoBlock label="Data/Hora" value={new Date(log.timestamp).toLocaleString()} />
           </div>
 
@@ -124,7 +135,7 @@ const InfoBlock = ({ label, value }: { label: string, value: string }) => (
 );
 
 const LoadingLogsState = ({ t }: any) => (
-  <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl border border-slate-200 shadow-inner" role="status">
+  <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] bg-white" role="status">
     <Loader2 size={40} className="animate-spin text-[var(--color-detail-blue)]" aria-hidden="true" />
     <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-[4px]">{t('common.loading')}</p>
   </div>

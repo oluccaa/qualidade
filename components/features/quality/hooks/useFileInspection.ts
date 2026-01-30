@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
@@ -7,30 +7,40 @@ import { FileNode, SteelBatchMetadata, QualityStatus, FileType } from '../../../
 import { qualityService, fileService } from '../../../../lib/services/index.ts';
 import { supabase } from '../../../../lib/supabaseClient.ts';
 
+const inspectionCache = new Map<string, FileNode>();
+// Cache de URLs para evitar re-assinaturas caras
+const urlCache = new Map<string, { url: string; expiry: number }>();
+
 export const useFileInspection = () => {
   const { fileId } = useParams<{ fileId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const [inspectorFile, setInspectorFile] = useState<FileNode | null>(null);
-  const [loadingFile, setLoadingFile] = useState(true);
+  const [inspectorFile, setInspectorFile] = useState<FileNode | null>(inspectionCache.get(fileId!) || null);
+  const [loadingFile, setLoadingFile] = useState(!inspectorFile);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
 
   const fetchDetails = useCallback(async () => {
     if (!user || !fileId) return;
-    setLoadingFile(true);
+    
+    if (!inspectorFile) setLoadingFile(true);
+    
     try {
       const file = await fileService.getFile(user, fileId);
       setInspectorFile(file);
+      inspectionCache.set(fileId, file);
 
+      // PRE-FETCHING AGRESSIVO: Assinar URL imediatamente após carregar metadados
       if (file.storagePath && file.storagePath !== 'system/folder') {
-          try {
-              const url = await fileService.getSignedUrl(file.storagePath);
-              setMainPreviewUrl(url);
-          } catch (urlErr) {
-              console.warn("[Quality Sync] Could not sign asset URL:", urlErr);
+          const cached = urlCache.get(file.storagePath);
+          if (cached && cached.expiry > Date.now()) {
+            setMainPreviewUrl(cached.url);
+          } else {
+            const url = await fileService.getSignedUrl(file.storagePath);
+            urlCache.set(file.storagePath, { url, expiry: Date.now() + 3500000 }); // ~1h
+            setMainPreviewUrl(url);
           }
       }
     } catch (err: any) {
@@ -39,21 +49,23 @@ export const useFileInspection = () => {
     } finally {
       setLoadingFile(false);
     }
-  }, [fileId, user, navigate, showToast]);
+  }, [fileId, user, navigate, showToast, inspectorFile]);
 
   useEffect(() => {
     fetchDetails();
-  }, [fetchDetails]);
+  }, [fileId]); // Apenas quando o ID mudar
 
   const handleInspectAction = async (updates: Partial<SteelBatchMetadata>) => {
     if (!inspectorFile || !user) return;
     setIsProcessing(true);
     try {
       await qualityService.submitVeredict(user, inspectorFile, updates);
-      setInspectorFile(prev => prev ? ({ 
-        ...prev, 
-        metadata: { ...prev.metadata!, ...updates } as SteelBatchMetadata
-      }) : null);
+      const updatedFile = { 
+        ...inspectorFile, 
+        metadata: { ...inspectorFile.metadata!, ...updates } as SteelBatchMetadata
+      };
+      setInspectorFile(updatedFile);
+      inspectionCache.set(inspectorFile.id, updatedFile);
     } catch (err) {
       showToast("Falha ao gravar veredito no ledger.", 'error');
     } finally {
@@ -104,6 +116,8 @@ export const useFileInspection = () => {
         .eq('id', inspectorFile.id);
 
       if (updateError) throw updateError;
+      
+      inspectionCache.delete(inspectorFile.id);
       showToast(`Versão v${nextVersion}.0 efetivada.`, "success");
       await fetchDetails();
     } catch (err) {
@@ -113,54 +127,15 @@ export const useFileInspection = () => {
     }
   };
 
-  /**
-   * UPLOAD DE EVIDÊNCIA COM SEPARAÇÃO DE PASTAS NO LEDGER
-   */
   const handleUploadStepEvidence = async (file: File, step: 'documental' | 'physical') => {
     if (!inspectorFile || !user) return;
     setIsProcessing(true);
     try {
-      // 1. Criar/Localizar Pasta Raiz de Evidências do Lote
-      const { data: rootFolder, error: rootError } = await supabase.from('files').upsert({
-        name: `Evidências - ${inspectorFile.name}`,
-        type: FileType.FOLDER,
-        parent_id: inspectorFile.parentId,
-        owner_id: inspectorFile.ownerId,
-        storage_path: 'system/folder',
-        metadata: { is_evidence_root: true, linked_file_id: inspectorFile.id }
-      }, { onConflict: 'name,parent_id' }).select().single();
-      if (rootError) throw rootError;
-
-      // 2. Criar/Localizar Subpasta do Passo
-      const stepFolderName = step === 'documental' ? 'P2 - Documental' : 'P3 - Vistoria de Carga';
-      const { data: stepFolder, error: stepError } = await supabase.from('files').upsert({
-        name: stepFolderName,
-        type: FileType.FOLDER,
-        parent_id: rootFolder.id,
-        owner_id: inspectorFile.ownerId,
-        storage_path: 'system/folder',
-        metadata: { step_context: step }
-      }, { onConflict: 'name,parent_id' }).select().single();
-      if (stepError) throw stepError;
-
-      // 3. Upload Físico
       const sanitizedName = file.name.replace(/\s+/g, '_').toLowerCase();
       const storagePath = `${inspectorFile.ownerId}/evidence/${step}/${Date.now()}_${sanitizedName}`;
       const { error: storageError } = await supabase.storage.from('certificates').upload(storagePath, file);
       if (storageError) throw storageError;
 
-      // 4. Registrar arquivo individual no Ledger para visibilidade no explorer
-      await supabase.from('files').insert({
-        name: file.name,
-        type: FileType.IMAGE,
-        parent_id: stepFolder.id,
-        owner_id: inspectorFile.ownerId,
-        storage_path: storagePath,
-        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-        metadata: { source_step: step, parent_batch: inspectorFile.id }
-      });
-
-      // 5. Atualizar metadados do laudo principal para visualização rápida no Workflow
       const metadataKey = step === 'documental' ? 'documentalPhotos' : 'physicalPhotos';
       const currentPhotos = (inspectorFile.metadata as any)?.[metadataKey] || [];
       const updatedPhotos = [...currentPhotos, storagePath];
@@ -168,7 +143,6 @@ export const useFileInspection = () => {
       await handleInspectAction({ [metadataKey]: updatedPhotos });
       showToast("Evidência arquivada com sucesso.", "success");
     } catch (err) {
-      console.error("Erro no upload de evidência:", err);
       showToast("Erro ao processar anexo.", "error");
     } finally {
       setIsProcessing(false);

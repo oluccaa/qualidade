@@ -1,12 +1,15 @@
+
 import React from 'react';
 import { useQualityPortfolio } from '../hooks/useQualityPortfolio.ts';
 import { 
-  ArrowRight, AlertCircle, MessageSquare, ShieldCheck, 
-  Clock, Send, CheckCircle2, FileText, Activity
+  ArrowRight, AlertCircle, ShieldCheck, 
+  Clock, Send, CheckCircle2, FileText,
+  ChevronDown, Circle, PenTool, UserCheck, Hourglass,
+  Workflow, Activity, Kanban
 } from 'lucide-react';
 import { QualityLoadingState } from '../components/ViewStates.tsx';
 import { useNavigate } from 'react-router-dom';
-import { QualityStatus, UserRole, normalizeRole, FileNode } from '../../../../types/index.ts';
+import { FileNode, UserRole, normalizeRole, SteelBatchMetadata } from '../../../../types/index.ts';
 import { useAuth } from '../../../../context/authContext.tsx';
 
 export const QualityPortfolioView: React.FC = () => {
@@ -17,182 +20,233 @@ export const QualityPortfolioView: React.FC = () => {
   const role = normalizeRole(user?.role);
   const isClient = role === UserRole.CLIENT;
 
-  if (isLoading) return <QualityLoadingState message="Sincronizando Backlog Técnico..." />;
+  if (isLoading) return <QualityLoadingState message="Sincronizando Fluxo de Auditoria..." />;
 
   const isEmpty = pendingFiles.length === 0 && sentFiles.length === 0 && 
                   rejectedFiles.length === 0 && approvedFiles.length === 0;
 
+  const totalAssets = pendingFiles.length + sentFiles.length + rejectedFiles.length + approvedFiles.length;
+
   if (isEmpty) {
     return (
-        <div className="py-24 bg-white border border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-center px-10 animate-in fade-in zoom-in-95 duration-700 shadow-sm">
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 md:px-10 py-20 animate-in fade-in zoom-in-95 duration-700">
             <div className="relative mb-8">
-                <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full animate-pulse" />
-                <div className="w-24 h-24 bg-emerald-50 border-2 border-emerald-100 rounded-3xl flex items-center justify-center relative z-10 shadow-inner">
-                    <ShieldCheck size={48} className="text-emerald-500" />
+                <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full animate-pulse" />
+                <div className="w-20 h-20 bg-emerald-50 border border-emerald-200 rounded-3xl flex items-center justify-center relative z-10">
+                    <ShieldCheck size={40} className="text-emerald-600" />
                 </div>
             </div>
-            <h3 className="text-lg font-black text-slate-800 uppercase tracking-[4px]">Tudo em conformidade</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 max-w-xs leading-relaxed">
-              Seu fluxo de trabalho está limpo. <br/>Não há certificados pendentes de ação.
+            <h3 className="text-lg font-extrabold text-slate-800 uppercase tracking-wider">Tudo em conformidade</h3>
+            <p className="text-sm font-medium text-slate-500 mt-2 max-w-xs leading-relaxed">
+              Não há ativos pendentes no pipeline de auditoria neste momento.
             </p>
         </div>
     );
   }
 
   return (
-    <div className="space-y-16 animate-in fade-in duration-700 pb-20">
+    <div className="flex flex-col w-full pb-20 font-sans">
       
-      {/* 1. CONTESTAÇÕES E DIVERGÊNCIAS (CRÍTICO) */}
-      {rejectedFiles.length > 0 && (
-        <section className="space-y-6">
-            <header className="flex items-center justify-between border-b border-red-100 pb-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <AlertCircle size={18} />
-                    </div>
-                    <h3 className="text-xs font-black uppercase tracking-[3px] text-red-600">
-                        {isClient ? "Ações de Retificação Requeridas" : `Contestações Ativas (${rejectedFiles.length})`}
-                    </h3>
+      {/* Control Deck */}
+      <div className="shrink-0 mb-8 px-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex items-center gap-5">
+                <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg shrink-0">
+                    <Kanban size={24} />
                 </div>
-                <span className="text-[9px] font-black bg-red-600 text-white px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">Prioridade Máxima</span>
-            </header>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rejectedFiles.map(file => (
-                <FileWorkflowCard 
-                    key={file.id} 
-                    file={file} 
-                    variant="critical"
-                    onClick={() => navigate(`/quality/inspection/${file.id}`)}
-                />
-            ))}
+                <div>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-none">
+                        Monitoramento de Fluxo
+                    </h2>
+                    <p className="text-sm font-semibold text-slate-500 mt-1.5 uppercase tracking-widest flex items-center gap-2">
+                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                       Tempo Real: {totalAssets} Ativos em Esteira
+                    </p>
+                </div>
             </div>
-        </section>
-      )}
 
-      {/* 2. PENDÊNCIAS DE TRIAGEM (AGUARDANDO ABERTURA) */}
-      {pendingFiles.length > 0 && (
-        <section className="space-y-6">
-            <header className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center shadow-sm">
-                    <Clock size={18} />
-                </div>
-                <h3 className="text-xs font-black uppercase tracking-[3px] text-slate-500">
-                    {isClient ? "Novos Recebimentos (Ação Vital)" : `Aguardando Triagem Técnica (${pendingFiles.length})`}
-                </h3>
-            </header>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {pendingFiles.map(file => (
-                <FileWorkflowCard 
-                    key={file.id} 
-                    file={file} 
-                    variant="pending"
-                    onClick={() => navigate(`/quality/inspection/${file.id}`)}
-                />
-            ))}
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl">
+                <Workflow size={16} className="text-blue-600" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-700">Pipeline B2B Ativo</span>
             </div>
-        </section>
-      )}
+        </div>
+      </div>
 
-      {/* 3. EM CONFERÊNCIA (AGUARDANDO PARCEIRO) */}
-      {sentFiles.length > 0 && (
-        <section className="space-y-6">
-            <header className="flex items-center gap-3 border-b border-blue-100 pb-4">
-                <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-                    <Send size={18} />
-                </div>
-                <h3 className="text-xs font-black uppercase tracking-[3px] text-blue-600">
-                    {isClient ? `Meus Certificados em Análise (${sentFiles.length})` : "Em Conferência com Parceiro"}
-                </h3>
-            </header>
+      {/* Board Kanban - Acessibilidade de Contraste Melhorada */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 px-4">
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {sentFiles.map(file => (
-                <FileWorkflowCard 
-                    key={file.id} 
-                    file={file} 
-                    variant="active"
-                    onClick={() => navigate(`/quality/inspection/${file.id}`)}
-                />
-            ))}
-            </div>
-        </section>
-      )}
+            <KanbanColumn 
+                title={isClient ? "Ação Requerida" : "Contestações"}
+                subtitle="Prioridade Crítica"
+                count={rejectedFiles.length}
+                color="red"
+                icon={AlertCircle}
+                items={rejectedFiles}
+                onCardClick={(id) => navigate(`/quality/inspection/${id}`)}
+                emptyMessage="Sem divergências."
+                userRole={role}
+            />
 
-      {/* 4. FINALIZADOS (HISTÓRICO) */}
-      {approvedFiles.length > 0 && (
-        <section className="space-y-6">
-            <header className="flex items-center gap-3 border-b border-emerald-100 pb-4 opacity-70">
-                <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
-                    <CheckCircle2 size={18} />
-                </div>
-                <h3 className="text-xs font-black uppercase tracking-[3px] text-emerald-700">Ativos Homologados / Concluídos</h3>
-            </header>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {approvedFiles.map(file => (
-                <FileWorkflowCard 
-                    key={file.id} 
-                    file={file} 
-                    variant="success"
-                    onClick={() => navigate(`/quality/inspection/${file.id}`)}
-                />
-            ))}
-            </div>
-        </section>
-      )}
+            <KanbanColumn 
+                title={isClient ? "Recebidos" : "Triagem Técnica"}
+                subtitle="Aguardando Análise"
+                count={pendingFiles.length}
+                color="amber"
+                icon={Clock}
+                items={pendingFiles}
+                onCardClick={(id) => navigate(`/quality/inspection/${id}`)}
+                emptyMessage="Fila de triagem limpa."
+                userRole={role}
+            />
+
+            <KanbanColumn 
+                title={isClient ? "Em Análise Vital" : "Em Conferência"}
+                subtitle="Validação em Curso"
+                count={sentFiles.length}
+                color="blue"
+                icon={Send}
+                items={sentFiles}
+                onCardClick={(id) => navigate(`/quality/inspection/${id}`)}
+                emptyMessage="Esteira vazia."
+                userRole={role}
+            />
+
+            <KanbanColumn 
+                title="Homologados"
+                subtitle="Protocolo Concluído"
+                count={approvedFiles.length}
+                color="emerald"
+                icon={CheckCircle2}
+                items={approvedFiles}
+                onCardClick={(id) => navigate(`/quality/inspection/${id}`)}
+                emptyMessage="Nenhum histórico."
+                userRole={role}
+            />
+      </div>
     </div>
   );
 };
 
-interface CardProps {
-    file: FileNode;
-    variant: 'critical' | 'pending' | 'active' | 'success';
-    onClick: () => void;
+interface KanbanColumnProps {
+    title: string;
+    subtitle: string;
+    count: number;
+    color: 'red' | 'amber' | 'blue' | 'emerald';
+    icon: React.ElementType;
+    items: FileNode[];
+    onCardClick: (id: string) => void;
+    emptyMessage: string;
+    userRole: UserRole;
 }
 
-const FileWorkflowCard: React.FC<CardProps> = ({ file, variant, onClick }) => {
-    const styles = {
-        critical: 'border-red-100 hover:border-red-500 shadow-red-500/5 hover:shadow-red-500/10',
-        pending: 'border-slate-200 hover:border-amber-400 shadow-slate-900/5',
-        active: 'border-blue-100 hover:border-blue-500 shadow-blue-500/5',
-        success: 'border-emerald-100 hover:border-emerald-500 opacity-80 hover:opacity-100'
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
+    title, subtitle, count, color, icon: Icon, items, onCardClick, emptyMessage, userRole
+}) => {
+    
+    const themes = {
+        red: { header: 'bg-red-50 text-red-800 border-red-200', dot: 'bg-red-600', count: 'bg-red-600 text-white' },
+        amber: { header: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-600', count: 'bg-amber-600 text-white' },
+        blue: { header: 'bg-blue-50 text-blue-800 border-blue-200', dot: 'bg-blue-600', count: 'bg-blue-600 text-white' },
+        emerald: { header: 'bg-emerald-50 text-emerald-800 border-emerald-200', dot: 'bg-emerald-600', count: 'bg-emerald-600 text-white' },
     };
 
-    const statusIcons = {
-        critical: <AlertCircle size={14} className="text-red-500" />,
-        pending: <Clock size={14} className="text-amber-500" />,
-        active: <Send size={14} className="text-blue-500" />,
-        success: <ShieldCheck size={14} className="text-emerald-500" />
-    };
+    const theme = themes[color];
+
+    return (
+        <div className="flex flex-col gap-4">
+            <header className={`p-4 rounded-2xl border-2 flex items-center justify-between shadow-sm ${theme.header}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${theme.dot}`} />
+                    <div>
+                        <h3 className="text-xs font-extrabold uppercase tracking-widest leading-none">{title}</h3>
+                        <p className="text-[10px] font-semibold opacity-70 mt-1">{subtitle}</p>
+                    </div>
+                </div>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${theme.count}`}>
+                    {count}
+                </span>
+            </header>
+
+            <div className="flex flex-col gap-3 min-h-[150px]">
+                {items.length === 0 ? (
+                    <div className="py-10 flex flex-col items-center justify-center text-slate-300 border border-dashed border-slate-200 rounded-2xl bg-white/50">
+                        <Icon size={20} className="mb-2 opacity-30" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{emptyMessage}</span>
+                    </div>
+                ) : (
+                    items.map(item => (
+                        <KanbanCard 
+                            key={item.id} 
+                            file={item} 
+                            color={color} 
+                            onClick={() => onCardClick(item.id)} 
+                            userRole={userRole}
+                        />
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+const KanbanCard: React.FC<{ file: FileNode; color: 'red' | 'amber' | 'blue' | 'emerald'; onClick: () => void; userRole: UserRole }> = ({ file, onClick, userRole }) => {
+    const statusAction = getActionStatus(file.metadata, userRole);
+    const StatusIcon = statusAction.icon;
 
     return (
         <div 
             onClick={onClick}
-            className={`bg-white p-6 rounded-[2rem] border-2 transition-all group cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[180px] ${styles[variant]}`}
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group"
         >
-            <div className="relative z-10 flex flex-col flex-1">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-inner">
-                        <FileText size={20} />
-                    </div>
-                    {statusIcons[variant]}
+            <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                    <h4 className="text-xs font-bold text-slate-800 leading-snug pr-4">
+                        {file.name}
+                    </h4>
+                    <FileText size={16} className="text-slate-300 shrink-0" />
                 </div>
                 
-                <h4 className="text-[13px] font-black text-slate-800 uppercase leading-tight truncate mb-2">{file.name}</h4>
-                
-                {file.metadata?.clientObservations && variant === 'critical' && (
-                    <p className="text-[10px] text-slate-400 font-medium italic line-clamp-2 leading-relaxed">
-                        "{file.metadata.clientObservations}"
-                    </p>
-                )}
-            </div>
+                <div className="flex items-center gap-2">
+                    <StatusIcon size={12} className={statusAction.color} />
+                    <span className={`text-[10px] font-bold uppercase tracking-tight truncate ${statusAction.color}`}>
+                        {statusAction.text}
+                    </span>
+                </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
-                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest group-hover:text-slate-900 transition-colors">Ver Workflow</span>
-                <ArrowRight size={14} className="text-slate-300 group-hover:translate-x-1 transition-all" />
+                <div className="pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Passo {file.metadata?.currentStep || 1}/7</span>
+                    </div>
+                    {file.metadata?.batchNumber && (
+                        <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                            Lote: {file.metadata.batchNumber}
+                        </span>
+                    )}
+                </div>
             </div>
         </div>
     );
+};
+
+const getActionStatus = (metadata: SteelBatchMetadata | undefined, role: UserRole) => {
+    if (!metadata) return { text: "Dados Indisponíveis", icon: AlertCircle, color: "text-slate-400" };
+    
+    const step = metadata.currentStep;
+    const sigs = metadata.signatures || {};
+    const isClient = role === UserRole.CLIENT;
+
+    if (step === 7) return { text: "Protocolo Finalizado", icon: CheckCircle2, color: "text-emerald-700" };
+
+    if (step === 6) {
+        return { text: "Assinatura Pendente", icon: UserCheck, color: "text-blue-700" };
+    }
+
+    if (step === 5) {
+        return isClient 
+            ? { text: "Ação: Seu Aceite", icon: PenTool, color: "text-orange-700 font-black" }
+            : { text: "Aguardando Cliente", icon: UserCheck, color: "text-slate-600" };
+    }
+
+    return { text: "Em Auditoria", icon: Clock, color: "text-slate-600" };
 };

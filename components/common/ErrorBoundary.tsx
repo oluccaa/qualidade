@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, ShieldAlert, Copy, ChevronDown, ChevronUp, DatabaseZap } from 'lucide-react';
 
 interface Props {
@@ -17,10 +17,10 @@ interface State {
  * Proteção de última instância para falhas catastróficas.
  * Projetado para funcionar mesmo se o sistema de estilos ou tradução falhar.
  */
-// Use React.Component for robust inheritance and visibility of setState/props in TypeScript
-export class ErrorBoundary extends React.Component<Props, State> {
+// Use Component for robust inheritance and visibility of setState/props in TypeScript
+export class ErrorBoundary extends Component<Props, State> {
   // State initialization following standard class component pattern
-  public override state: State = {
+  public state: State = {
     hasError: false,
     error: null,
     errorInfo: null,
@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log forense para auditoria
     console.error('[FATAL_SYSTEM_CRASH]', {
       message: error.message,
@@ -68,7 +68,7 @@ Component Stack: ${this.state.errorInfo?.componentStack}
     alert('Relatório de erro copiado para a área de transferência.');
   };
 
-  public override render(): ReactNode {
+  public render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans text-slate-300">

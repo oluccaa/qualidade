@@ -42,8 +42,8 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>((p
       clearSelection: () => {} 
   }));
 
-  if (loading && files.length === 0) return <LoadingState message="Acessando Cluster Industrial..." />;
-  if (!loading && files.length === 0) return <EmptyState t={t} />;
+  if (loading && files.length === 0) return <div className="py-20"><LoadingState message="Acessando Cluster Industrial..." /></div>;
+  if (!loading && files.length === 0) return <div className="py-20"><EmptyState t={t} /></div>;
 
   const viewProps = {
     files,
@@ -57,17 +57,19 @@ export const FileExplorer = forwardRef<FileExplorerHandle, FileExplorerProps>((p
     userRole,
   };
 
+  // REMOVIDO: h-full e overflow-y-auto. Agora expande com o conteúdo.
   return (
-    <div className="w-full h-full overflow-y-auto custom-scrollbar bg-slate-50/50">
-      <div className="p-4 md:p-6 lg:p-8 min-h-full w-full">
-        {/* Removida a trava de largura fixa para expansão dinâmica fluida */}
-        <div className="w-full pb-40">
+    <div className="w-full">
+      <div className="p-4 md:p-6 lg:p-8 w-full">
+        <div className="w-full">
           {viewMode === 'list' ? (
+            // Lista com fundo branco e bordas para contraste
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden w-full">
               <FileListView {...viewProps} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 4xl:grid-cols-8 gap-4 md:gap-6 w-full">
+            // Grid fluido
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 w-full">
               <FileGridView {...viewProps} />
             </div>
           )}

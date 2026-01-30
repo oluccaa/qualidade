@@ -44,7 +44,7 @@ export const SidebarQuality: React.FC<SidebarQualityProps> = ({
   };
 
   return (
-    <aside className={`hidden md:flex flex-col bg-white border-r border-slate-200 shadow-sm z-[60] relative transition-all duration-500 ${isCollapsed ? 'w-20' : 'w-72'}`}>
+    <aside className={`hidden md:flex flex-col h-full bg-white border-r border-slate-200 shadow-sm z-[60] relative transition-all duration-500 ${isCollapsed ? 'w-20' : 'w-72'}`}>
       <button 
         onClick={onToggle} 
         className="absolute -right-3.5 top-10 z-[70] bg-white text-slate-400 border border-slate-200 rounded-full h-7 w-7 flex items-center justify-center shadow-sm hover:text-[#132659] hover:border-blue-300 transition-all active:scale-90"
@@ -95,7 +95,7 @@ export const SidebarQuality: React.FC<SidebarQualityProps> = ({
         ))}
       </nav>
 
-      <div className="p-4 bg-slate-50 border-t border-slate-100 space-y-2">
+      <div className="mt-auto p-4 bg-slate-50 border-t border-slate-100 space-y-2">
         {!isCollapsed && (
           <button
             onClick={onNavigateToSettings}

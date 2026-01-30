@@ -4,80 +4,84 @@ import { FileNode, SteelBatchMetadata, User, UserRole, normalizeRole } from '../
 import { fileService, partnerService } from '../../../../lib/services/index.ts';
 import { useToast } from '../../../../context/notificationContext.tsx';
 
+// Cache estático de URLs assinadas para evitar re-fetches
+const SIGNED_URL_CACHE = new Map<string, { url: string; expiry: number }>();
+
 export const useFilePreview = (user: User | null, initialFile: FileNode | null) => {
   const { showToast } = useToast();
   const [currentFile, setCurrentFile] = useState<FileNode | null>(initialFile);
   const [url, setUrl] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [pageNum, setPageNum] = useState(1);
-  const [zoom, setZoom] = useState(1.0);
   
-  const lastFetchTime = useRef<number>(0);
-  const isMounted = useRef(true);
-  const hasLoggedViewRef = useRef(false);
-
-  const loadFileDetails = useCallback(async (id: string, force = false) => {
-    if (!user || !id) return;
-    
-    // Evita múltiplas requisições idênticas em curto espaço de tempo (debounce técnico)
-    const now = Date.now();
-    if (!force && url && (now - lastFetchTime.current < 30000)) return;
-
-    setIsSyncing(true);
+  const cacheKey = `vital_viewer_state_${initialFile?.id}`;
+  const getCachedState = () => {
     try {
-        const fileData = await fileService.getFile(user, id);
-        if (!isMounted.current) return;
-        setCurrentFile(fileData);
-        
-        const signed = await fileService.getFileSignedUrl(user, id);
-        if (!isMounted.current) return;
-        
-        setUrl(signed);
-        lastFetchTime.current = Date.now();
+      const cached = sessionStorage.getItem(cacheKey);
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  };
 
-        if (normalizeRole(user.role) === UserRole.CLIENT && !hasLoggedViewRef.current) {
-            hasLoggedViewRef.current = true;
-            await partnerService.logFileView(user, fileData);
+  const cached = getCachedState();
+  const [pageNum, setPageNum] = useState(cached?.pageNum || 1);
+  const [zoom, setZoom] = useState(cached?.zoom || 1.25);
+  
+  const isMounted = useRef(true);
+  const activeFileId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!initialFile?.id) return;
+    sessionStorage.setItem(cacheKey, JSON.stringify({ pageNum, zoom }));
+  }, [pageNum, zoom, initialFile?.id, cacheKey]);
+
+  const loadFileDetails = useCallback(async (id: string) => {
+    if (!user || !id || activeFileId.current === id) return;
+    
+    activeFileId.current = id;
+    setIsSyncing(true);
+
+    try {
+        // Tenta pegar do cache antes de ir ao Supabase
+        let signedUrl = "";
+        const cached = SIGNED_URL_CACHE.get(id);
+        if (cached && cached.expiry > Date.now()) {
+            signedUrl = cached.url;
         }
+
+        const fetchPromise = signedUrl 
+          ? fileService.getFile(user, id) 
+          : Promise.all([fileService.getFile(user, id), fileService.getFileSignedUrl(user, id)]);
+
+        const result = await fetchPromise;
+        
+        if (!isMounted.current) return;
+
+        if (Array.isArray(result)) {
+            const [fileData, newUrl] = result;
+            setCurrentFile(fileData);
+            setUrl(newUrl);
+            SIGNED_URL_CACHE.set(id, { url: newUrl, expiry: Date.now() + 3500000 });
+        } else {
+            setCurrentFile(result as FileNode);
+            setUrl(signedUrl);
+        }
+
+        // Registro de visualização assíncrono
+        if (normalizeRole(user.role) === UserRole.CLIENT) {
+            partnerService.logFileView(user, (Array.isArray(result) ? result[0] : result) as FileNode);
+        }
+
     } catch (e: any) {
-        console.error("[useFilePreview] Falha na sincronização:", e);
-        if (isMounted.current) {
-            showToast("Conexão técnica interrompida. Tentando reestabelecer...", "warning");
-        }
+        if (isMounted.current) showToast("Erro na sincronização de segurança.", "error");
     } finally {
         if (isMounted.current) setIsSyncing(false);
     }
-  }, [user, url, showToast]);
-
-  // Listener de Visibilidade: O coração da correção para o "carregamento infinito"
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && initialFile?.id) {
-        const now = Date.now();
-        // Se a aba ficou escondida por mais de 5 minutos, a URL assinada pode estar instável
-        const needsRefresh = (now - lastFetchTime.current > 300000); 
-        if (needsRefresh || !url) {
-            loadFileDetails(initialFile.id, true);
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleVisibility);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleVisibility);
-    };
-  }, [initialFile?.id, url, loadFileDetails]);
+  }, [user, showToast]);
 
   useEffect(() => {
     isMounted.current = true;
-    if (user && initialFile?.id && !url) {
-        loadFileDetails(initialFile.id);
-    }
+    if (user && initialFile?.id) loadFileDetails(initialFile.id);
     return () => { isMounted.current = false; };
-  }, [initialFile?.id, user, url, loadFileDetails]);
+  }, [initialFile?.id, user, loadFileDetails]);
 
   const handleUpdateMetadata = useCallback(async (updatedMetadata: Partial<SteelBatchMetadata>) => {
     if (!currentFile) return;
@@ -89,28 +93,17 @@ export const useFilePreview = (user: User | null, initialFile: FileNode | null) 
                 ...prev,
                 metadata: { ...(prev.metadata || {}), ...updatedMetadata } as SteelBatchMetadata
             }) : null);
-            showToast("Ledger Vital sincronizado.", "success");
+            showToast("Ledger atualizado.", "success");
         }
     } catch (e: any) {
-        if (isMounted.current) showToast("Erro ao persistir no Ledger.", "error");
+        showToast("Erro na persistência.", "error");
     } finally {
         if (isMounted.current) setIsSyncing(false);
     }
   }, [currentFile, showToast]);
 
-  const handleDownload = useCallback(async () => {
-    if (!currentFile || !user) return;
-    try {
-        const downloadUrl = await fileService.getFileSignedUrl(user, currentFile.id);
-        window.open(downloadUrl, '_blank');
-    } catch (e) {
-        showToast("Falha no download.", "error");
-    }
-  }, [currentFile, user, showToast]);
-
   return {
     currentFile, url, isSyncing, pageNum, setPageNum, zoom, setZoom,
-    handleUpdateMetadata, handleDownload,
-    forceRefresh: () => initialFile?.id && loadFileDetails(initialFile.id, true)
+    handleUpdateMetadata, handleDownload: () => url && window.open(url, '_blank')
   };
 };

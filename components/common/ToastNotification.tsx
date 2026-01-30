@@ -12,37 +12,26 @@ interface ToastNotificationProps {
   duration?: number;
 }
 
-/**
- * Configuração de estilos baseada no tipo (O) Aberto para novos tipos.
- */
-const TOAST_VARIANTS: Record<ToastType, any> = {
+const TOAST_STYLES = {
   success: {
     icon: CheckCircle2,
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    border: 'border-emerald-200',
-    progress: 'bg-emerald-500',
+    classes: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    progressColor: 'bg-emerald-500',
   },
   error: {
     icon: XCircle,
-    bg: 'bg-red-50',
-    text: 'text-red-700',
-    border: 'border-red-200',
-    progress: 'bg-red-500',
+    classes: 'bg-red-50 border-red-200 text-red-700',
+    progressColor: 'bg-red-500',
   },
   warning: {
     icon: AlertTriangle,
-    bg: 'bg-orange-50',
-    text: 'text-orange-700',
-    border: 'border-orange-200',
-    progress: 'bg-orange-500',
+    classes: 'bg-orange-50 border-orange-200 text-orange-700',
+    progressColor: 'bg-orange-500',
   },
   info: {
     icon: Info,
-    bg: 'bg-blue-50',
-    text: 'text-blue-700',
-    border: 'border-blue-200',
-    progress: 'bg-[var(--color-detail-blue)]', // Usar a variável para o progresso do info
+    classes: 'bg-blue-50 border-blue-200 text-blue-700',
+    progressColor: 'bg-blue-500',
   },
 };
 
@@ -54,8 +43,8 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
   duration = 5000,
 }) => {
   const [progress, setProgress] = useState(100);
-  const styles = useMemo(() => TOAST_VARIANTS[type] || TOAST_VARIANTS.info, [type]);
-  const Icon = styles.icon;
+  const style = useMemo(() => TOAST_STYLES[type] || TOAST_STYLES.info, [type]);
+  const Icon = style.icon;
 
   useEffect(() => {
     const startTime = Date.now();
@@ -68,32 +57,32 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
         onClose(id);
         clearInterval(interval);
       }
-    }, 10);
+    }, 16); // ~60fps
 
     return () => clearInterval(interval);
   }, [id, duration, onClose]);
 
   return (
     <div
-      className={`relative w-80 min-h-[70px] p-4 rounded-xl shadow-lg border ${styles.bg} ${styles.border} animate-in fade-in slide-in-from-right-8 duration-300 transform-gpu overflow-hidden`}
+      className={`relative w-80 min-h-[70px] p-4 rounded-xl shadow-xl border ${style.classes} animate-in fade-in slide-in-from-right-8 duration-300 overflow-hidden flex flex-col justify-center`}
       role="alert"
       aria-live="assertive"
     >
-      <div className="flex items-center gap-3">
-        <Icon size={20} className={`${styles.text} shrink-0`} />
-        <p className={`flex-1 text-sm font-medium ${styles.text}`}>{message}</p>
+      <div className="flex items-start gap-3 relative z-10">
+        <Icon size={20} className="shrink-0 mt-0.5" strokeWidth={2.5} />
+        <p className="flex-1 text-xs font-bold leading-relaxed">{message}</p>
         <button
           onClick={() => onClose(id)}
-          className={`p-1 -mr-2 rounded-full ${styles.text} hover:bg-black/5 transition-colors`}
+          className="p-1 -mr-2 -mt-2 rounded-full hover:bg-black/5 transition-colors opacity-60 hover:opacity-100"
+          aria-label="Fechar notificação"
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       </div>
       
-      {/* Barra de Progresso - (S) Elemento visual isolado */}
       <div className="absolute bottom-0 left-0 h-1 w-full bg-black/5">
         <div
-          className={`h-full ${styles.progress} transition-all duration-75 ease-linear`}
+          className={`h-full ${style.progressColor} transition-all duration-75 ease-linear`}
           style={{ width: `${progress}%` }}
         />
       </div>

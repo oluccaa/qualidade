@@ -4,7 +4,7 @@ import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { User, UserRole, ClientOrganization, AccountStatus, normalizeRole } from '../../../../types/index.ts';
 import { userService, adminService } from '../../../../lib/services/index.ts';
-import { UserFormData } from '../components/AdminModals.tsx';
+import { UserFormData } from '../modals/UserManagementModal.tsx';
 
 interface UseAdminUserProps {
   setIsSaving: (state: boolean) => void;

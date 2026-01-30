@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/layout/MainLayout.tsx';
@@ -25,8 +26,8 @@ const QualityDashboard: React.FC = () => {
 
   return (
     <Layout title="Centro de Operações Técnicas">
-      <div className="space-y-8 animate-in fade-in duration-700">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+      <div className="flex flex-col flex-1 h-full space-y-8 animate-in fade-in duration-700">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 shrink-0">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white text-blue-600 rounded-2xl shadow-sm border border-slate-200">
                   <Zap size={24} />
@@ -43,7 +44,9 @@ const QualityDashboard: React.FC = () => {
             </div>
         </header>
         
-        <QualityOverview />
+        <div className="flex-1 min-h-0">
+            <QualityOverview />
+        </div>
       </div>
     </Layout>
   );

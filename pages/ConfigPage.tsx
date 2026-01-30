@@ -6,27 +6,16 @@ import { ChangePasswordModal } from '../components/features/auth/ChangePasswordM
 import { PrivacyModal } from '../components/common/PrivacyModal.tsx';
 import { Lock, ShieldCheck, Settings as SettingsIcon, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/authContext.tsx';
-import { ClientLayout } from '../components/layout/ClientLayout.tsx';
-import { UserRole, normalizeRole } from '../types/index.ts';
 
 const ConfigPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const userRole = normalizeRole(user?.role);
-  const isClient = userRole === UserRole.CLIENT;
 
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
-  const LayoutComponent = isClient ? ClientLayout : Layout;
-
-  const clientLayoutProps = isClient ? {
-    activeView: "settings",
-    onViewChange: () => {},
-  } : {};
-
   return (
-    <LayoutComponent title={t('menu.settings')} {...clientLayoutProps}>
+    <Layout title={t('menu.settings')}>
       <ChangePasswordModal 
         isOpen={isChangePasswordModalOpen} 
         onClose={() => setIsChangePasswordModalOpen(false)} 
@@ -96,7 +85,7 @@ const ConfigPage: React.FC = () => {
             </div>
         </div>
       </div>
-    </LayoutComponent>
+    </Layout>
   );
 };
 

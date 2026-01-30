@@ -2,9 +2,9 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ClientLayout } from '../components/layout/ClientLayout.tsx';
+import { Layout } from '../components/layout/MainLayout.tsx';
 import ClientDashboard from './dashboards/ClientDashboard.tsx';
-import { PartnerLibraryView } from '../components/features/partner/views/PartnerLibraryView.tsx';
+import { ClientLibraryView } from '../components/features/client/views/ClientLibraryView.tsx';
 
 const ClientPage: React.FC = () => {
   const { t } = useTranslation();
@@ -20,15 +20,17 @@ const ClientPage: React.FC = () => {
   }, [setSearchParams]);
 
   return (
-    <ClientLayout 
+    <Layout 
       title={activeView === 'home' ? "Dashboard do Parceiro" : "Biblioteca de arquivos"} 
-      activeView={activeView} 
-      onViewChange={handleViewChange}
+      clientNav={{
+        activeView,
+        onViewChange: handleViewChange
+      }}
     >
       <main className="animate-in fade-in slide-in-from-bottom-3 duration-700">
-        {activeView === 'home' ? <ClientDashboard /> : <PartnerLibraryView />}
+        {activeView === 'home' ? <ClientDashboard /> : <ClientLibraryView />}
       </main>
-    </ClientLayout>
+    </Layout>
   );
 };
 

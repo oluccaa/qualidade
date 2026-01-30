@@ -1,3 +1,4 @@
+
 export const pt = {
   common: {
     welcome: "Bem-vindo",
@@ -50,7 +51,7 @@ export const pt = {
       subtitle: "Controle rigoroso de vereditos industriais.",
       partnerSubtitle: "Verificação e assinatura de certificados homologados.",
       steps: {
-        step1: "1. Liberação Vital (SGQ)",
+        step1: "1. Triagem Inicial (SGQ)",
         step2: "2. Conferência de Dados",
         step3: "3. Vistoria de Carga",
         step4: "4. Arbitragem Técnica",
@@ -74,7 +75,7 @@ export const pt = {
         physicalState: "Estado Físico (Flags de Recebimento)",
         physicalNotes: "Observações de Campo",
         physicalNotesPlaceholder: "Relate as condições de recepção do material no local...",
-        approveLoad: "Aprovar Carga",
+        approveLoad: "Aprobar Carga",
         rejectLoad: "Rejeitar Carga",
         fullCompliance: "Conformidade Plena Detectada",
         noDivergence: "Sem divergências impeditivas. Arbitragem concluída automaticamente.",
@@ -404,7 +405,7 @@ export const pt = {
     currentError: "A senha atual fornecida está incorreta.",
     new: "Novo Segredo Técnico",
     confirm: "Validar Novo Segredo",
-    matchError: "As credenciais não coincidem.",
+    matchError: "As credenciales não coincidem.",
     success: "Senha atualizada com sucesso!",
     errorUpdatingPassword: "Falha no serviço de atualização de credenciais.",
     submit: "Aplicar Política de Segurança",

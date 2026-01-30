@@ -5,7 +5,8 @@ import { useToast } from '../../../../context/notificationContext.tsx';
 import { useTranslation } from 'react-i18next';
 import { User, ClientOrganization, UserRole, AccountStatus } from '../../../../types/index.ts';
 import { userService, adminService } from '../../../../lib/services/index.ts';
-import { UserFormData, ClientFormData } from '../../admin/components/AdminModals.tsx';
+import { UserFormData } from '../../admin/modals/UserManagementModal.tsx';
+import { ClientFormData } from '../../admin/modals/ClientManagementModal.tsx';
 
 /**
  * Hook Especializado: Ações e Formulários de Gestão de Clientes

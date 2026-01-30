@@ -4,7 +4,7 @@ import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { ClientOrganization, User, AccountStatus } from '../../../../types/index.ts';
 import { adminService } from '../../../../lib/services/index.ts';
-import { ClientFormData } from '../components/AdminModals.tsx';
+import { ClientFormData } from '../modals/ClientManagementModal.tsx';
 
 interface UseAdminClientProps {
   setIsSaving: (state: boolean) => void;
@@ -12,16 +12,19 @@ interface UseAdminClientProps {
   qualityAnalysts: User[];
 }
 
-/**
- * Hook de Gestão de Clientes (Clean Code)
- */
 export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityAnalysts }: UseAdminClientProps) => {
   const { user } = useAuth();
   const { showToast } = useToast();
 
   const [clientsList, setClientsList] = useState<ClientOrganization[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Paginação
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientOrganization | null>(null);
   
@@ -36,28 +39,23 @@ export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityA
   const loadClients = useCallback(async () => {
     setIsLoadingClients(true);
     try {
-      const response = await adminService.getClients();
+      const response = await adminService.getClients({ search: searchTerm }, page, pageSize);
       setClientsList(response.items);
+      setTotalItems(response.total);
     } catch (err: any) {
       const msg = err?.message || err?.details || 'Erro ao carregar portfólio';
       showToast(msg, 'error');
     } finally {
       setIsLoadingClients(false);
     }
-  }, [showToast]);
+  }, [showToast, searchTerm, page, pageSize]);
 
   useEffect(() => {
-    if (user) loadClients();
+    if (user) {
+        const timer = setTimeout(loadClients, 300);
+        return () => clearTimeout(timer);
+    }
   }, [user, loadClients]);
-
-  const filteredClients = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return clientsList.filter(c => 
-      c.name.toLowerCase().includes(term) || 
-      c.cnpj.includes(term) ||
-      (c.qualityAnalystName?.toLowerCase().includes(term))
-    );
-  }, [clientsList, searchTerm]);
 
   const handleSaveClient = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +76,6 @@ export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityA
       setIsClientModalOpen(false);
       await loadClients();
     } catch (err: any) {
-      // FIX: Extração inteligente de mensagem de erro de objetos do Supabase
       const msg = err?.message || err?.details || 'Falha na persistência de dados técnicos.';
       showToast(msg, 'error');
     } finally {
@@ -110,10 +107,15 @@ export const useAdminClientManagement = ({ setIsSaving, isSavingGlobal, qualityA
   }, []);
 
   return {
-    filteredClients,
+    clientsList,
+    totalItems,
     isLoadingClients,
     searchTerm,
     setSearchTerm,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
     isClientModalOpen,
     setIsClientModalOpen,
     editingClient,

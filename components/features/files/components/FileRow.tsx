@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { CheckSquare, Square, Clock, HardDrive, Eye, Edit2, Trash2, FileText, Folder } from 'lucide-react';
+import { CheckSquare, Square, Clock, Eye, Edit2, Trash2, FileText, Folder, MoreHorizontal } from 'lucide-react';
 import { FileNode, FileType, UserRole } from '../../../../types/index.ts';
 import { FileStatusBadge } from './FileStatusBadge.tsx';
 
@@ -23,41 +24,52 @@ export const FileRow: React.FC<FileRowProps> = ({
   
   return (
     <div 
-      className={`group flex items-center px-8 py-4 hover:bg-slate-50 transition-all cursor-pointer relative border-b border-slate-100 last:border-0
-        ${isSelected ? 'bg-blue-50/50' : ''}`}
+      className={`group flex items-center px-6 py-4 hover:bg-slate-50 transition-all cursor-pointer relative border-b border-slate-100 last:border-0
+        ${isSelected ? 'bg-blue-50/40' : ''}`}
       onClick={() => isFolder ? onNavigate(file.id) : onPreview(file)}
     >
-      <div className="flex-1 min-w-0 flex items-center gap-4">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-slate-100 bg-slate-50 group-hover:bg-white transition-colors ${isSelected ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-slate-400'}`}>
-          {isFolder ? <Folder size={18} /> : <FileText size={18} />}
+      <div className="flex-1 min-w-0 flex items-center gap-5">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-300
+            ${isSelected 
+                ? 'bg-blue-600 text-white border-blue-500 shadow-md' 
+                : 'bg-slate-50 text-slate-400 border-slate-100 group-hover:bg-white group-hover:text-blue-500'}`}>
+          {isFolder ? <Folder size={20} strokeWidth={2.5} /> : <FileText size={20} strokeWidth={2.5} />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <span className={`text-[13px] tracking-tight uppercase transition-colors truncate ${isSelected || isFolder ? 'font-bold text-slate-900' : 'font-medium text-slate-600 group-hover:text-slate-900'}`}>
+          <div className="space-y-0.5">
+            <span className={`text-sm tracking-tight transition-colors truncate block ${isSelected || isFolder ? 'font-bold text-slate-900' : 'font-semibold text-slate-700 group-hover:text-blue-600'}`}>
               {file.name}
             </span>
+            <div className="flex items-center gap-3">
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{file.size || 'VITAL CLOUD'}</span>
+               {file.metadata?.batchNumber && (
+                   <span className="text-[9px] font-black text-blue-600/60 uppercase tracking-tighter bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">Lote {file.metadata.batchNumber}</span>
+               )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="w-32">
+      <div className="w-40 hidden lg:flex items-center gap-2">
+         <Clock size={12} className="text-slate-300" />
+         <span className="text-[11px] font-bold text-slate-400 uppercase">{new Date(file.updatedAt).toLocaleDateString()}</span>
+      </div>
+
+      <div className="w-36 flex justify-center scale-90 origin-center">
         {!isFolder && <FileStatusBadge status={file.metadata?.status} />}
       </div>
 
-      <div className="w-24 flex items-center justify-end gap-1">
+      <div className="w-28 flex items-center justify-end gap-2">
         {!isClient && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={(e) => { e.stopPropagation(); onRename(file); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all" title="Renomear"><Edit2 size={14} /></button>
-            {!isRootFolder && (
-              <button onClick={(e) => { e.stopPropagation(); onDelete(file.id); }} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all" title="Excluir"><Trash2 size={14} /></button>
-            )}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+            <button onClick={(e) => { e.stopPropagation(); onRename(file); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-xl border border-transparent hover:border-slate-200 transition-all"><MoreHorizontal size={16} /></button>
           </div>
         )}
         <button 
           onClick={(e) => { e.stopPropagation(); onToggleSelection(file.id); }}
-          className={`p-1.5 rounded-lg transition-all ${isSelected ? 'text-blue-600' : 'text-slate-200 hover:text-slate-400'}`}
+          className={`p-2.5 rounded-xl transition-all ${isSelected ? 'text-blue-600 bg-blue-50' : 'text-slate-200 hover:text-slate-400'}`}
         >
-          {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+          {isSelected ? <CheckSquare size={22} strokeWidth={2.5} /> : <Square size={22} />}
         </button>
       </div>
     </div>

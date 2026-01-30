@@ -3,38 +3,53 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/authContext.tsx';
-import { SidebarQuality } from './SidebarQuality.tsx';
-import { SidebarAdmin } from './SidebarAdmin.tsx';
-import { SidebarClient } from './SidebarClient.tsx';
-import { Header } from './Header.tsx';
-import { MobileNavigation } from './MobileNavigation.tsx';
-import { CookieBanner } from '../common/CookieBanner.tsx';
-import { MaintenanceBanner } from '../common/MaintenanceBanner.tsx';
 import { useLayoutState } from './hooks/useLayoutState.ts';
 import { useSystemSync } from './hooks/useSystemSync.ts';
 import { UserRole, normalizeRole } from '../../types/index.ts';
 
-interface LayoutProps {
-  children: React.ReactNode;
-  title: string;
+// Components
+import { SidebarQuality } from './SidebarQuality.tsx';
+import { SidebarAdmin } from './SidebarAdmin.tsx';
+import { SidebarClient } from './SidebarClient.tsx';
+import { TopNavigation } from './TopNavigation.tsx';
+import { MobileNavigation } from './MobileNavigation.tsx';
+import { CookieBanner } from '../common/CookieBanner.tsx';
+import { MaintenanceBanner } from '../common/MaintenanceBanner.tsx';
+import { ClientDock } from './ClientDock.tsx';
+
+// --- Types ---
+
+interface ClientNavProps {
+  activeView: string;
+  onViewChange: (view: string) => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
+interface AppLayoutProps {
+  children: React.ReactNode;
+  title: string;
+  clientNav?: ClientNavProps;
+}
+
+// --- Sidebar Factory ---
+
+const SIDEBAR_REGISTRY = {
+  [UserRole.ADMIN]: SidebarAdmin,
+  [UserRole.QUALITY]: SidebarQuality,
+  [UserRole.CLIENT]: SidebarClient,
+};
+
+export const Layout: React.FC<AppLayoutProps> = ({ children, title, clientNav }) => {
   const { user, logout, systemStatus: authSystemStatus } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  
   const role = normalizeRole(user?.role);
-
   const layout = useLayoutState();
   const system = useSystemSync(user, authSystemStatus);
 
-  const handleNavigateBack = () => {
-    navigate(-1);
-  };
+  const SidebarComponent = SIDEBAR_REGISTRY[role] || SidebarClient;
 
-  const handleNavigateToSettingsPage = () => {
-    navigate('/settings');
-  };
+  const handleNavigateToSettings = () => navigate('/settings');
 
   const commonSidebarProps = {
     user,
@@ -42,55 +57,66 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     isCollapsed: layout.sidebarCollapsed,
     onToggle: layout.toggleSidebar,
     onLogout: logout,
-    onNavigateToSettings: handleNavigateToSettingsPage,
+    onNavigateToSettings: handleNavigateToSettings,
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
-      <a href="#main-content" className="skip-link">{t('common.skipToContent') || 'Pular para o conteúdo'}</a>
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans selection:bg-blue-100 selection:text-blue-900">
+      <a href="#main-content" className="skip-link">
+        {t('common.skipToContent') || 'Pular para conteúdo'}
+      </a>
+      
       <CookieBanner />
 
-      <aside aria-label="Navegação Lateral Principal" className="shrink-0 h-full">
-        {role === UserRole.ADMIN && <SidebarAdmin {...commonSidebarProps} />}
-        {role === UserRole.QUALITY && <SidebarQuality {...commonSidebarProps} />}
-        {role === UserRole.CLIENT && <SidebarClient {...commonSidebarProps} />}
+      {/* Sidebar Desktop */}
+      <aside aria-label="Navegação Principal" className="shrink-0 h-full z-50 hidden md:block">
+        <SidebarComponent {...commonSidebarProps} />
       </aside>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <div role="status" aria-live="polite" className="shrink-0">
+      {/* Área de Conteúdo - Flex Coluna Total */}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
+        
+        {/* Banner de Manutenção (Topo) */}
+        <div role="status" aria-live="polite" className="shrink-0 z-50">
           <MaintenanceBanner status={system.status} isAdmin={role === UserRole.ADMIN} />
         </div>
         
-        <Header 
-          title={title} 
-          user={user} 
-          role={role} 
-          unreadCount={system.unreadCount} 
-          onLogout={logout}
-          onOpenMobileMenu={layout.openMobileMenu} 
-          onNavigateBack={handleNavigateBack}
-        />
-
+        {/* Main: Ocupa o restante da tela, mas NÃO rola. A View interna decidirá o scroll. */}
         <main 
           id="main-content"
           role="main"
-          className="flex-1 flex flex-col min-h-0 bg-transparent p-4 md:p-6 lg:p-8 relative overflow-y-auto custom-scrollbar"
+          className="flex-1 flex flex-col min-h-0 bg-slate-50 relative overflow-hidden"
           aria-label={title}
         >
-          {/* h-full removido para evitar colapso; flex-1 garante que o conteúdo tome o máximo de altura possível */}
-          <div className="w-full flex-1 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-3 duration-700 min-h-full">
+          {/* Header Superior (Sticky/Static) */}
+          <TopNavigation />
+
+          {/* 
+             CONTAINER DE CONTEÚDO:
+             Removido paddings pb-24 e md:pb-8 que causavam o espaço branco no fundo.
+             Agora o children (a view) tem controle total da altura.
+          */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {children}
           </div>
         </main>
 
+        {/* Navegação Mobile */}
         <MobileNavigation 
           user={user}
           userRole={role}
           isMenuOpen={layout.mobileMenuOpen}
           onCloseMenu={layout.closeMobileMenu}
           onLogout={logout}
-          onNavigateToSettings={handleNavigateToSettingsPage} 
+          onNavigateToSettings={handleNavigateToSettings} 
         />
+
+        {role === UserRole.CLIENT && clientNav && (
+          <ClientDock 
+            activeView={clientNav.activeView} 
+            onViewChange={clientNav.onViewChange}
+          />
+        )}
       </div>
     </div>
   );

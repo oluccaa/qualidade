@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { List, LayoutGrid, UploadCloud, FolderPlus, Trash2, MoreHorizontal, Download, Search, Filter, X } from 'lucide-react';
+import { List, LayoutGrid, UploadCloud, FolderPlus, Trash2, MoreHorizontal, Download, Search, X, Filter } from 'lucide-react';
 import { BreadcrumbItem, FileNode, UserRole } from '../../../../types/index.ts';
 import { Breadcrumbs } from './Breadcrumbs.tsx';
 import { useTranslation } from 'react-i18next';
@@ -29,79 +30,87 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
   const isClient = userRole === UserRole.CLIENT;
 
   return (
-    <div className="bg-white border-b border-slate-200 flex flex-col shrink-0 z-20">
+    <div className="flex flex-col w-full gap-4">
       
       {/* Top Bar: Navigation & Hierarchy */}
-      <div className="px-6 py-4 flex items-center justify-between gap-4 border-b border-slate-50">
-        <div className="flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
           <Breadcrumbs breadcrumbs={breadcrumbs} onNavigate={onNavigate} />
         </div>
 
-        <div className="flex items-center gap-2">
-           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+        <div className="flex items-center justify-between lg:justify-end gap-3">
+           <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200/50">
              <button 
                 onClick={() => onViewChange('list')} 
-                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`p-2 rounded-xl transition-all duration-300 ${viewMode === 'list' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
                 title={t('files.listView')}
              >
-                <List size={18}/>
+                <List size={18} strokeWidth={2.5} />
              </button>
              <button 
                 onClick={() => onViewChange('grid')} 
-                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`p-2 rounded-xl transition-all duration-300 ${viewMode === 'grid' ? 'bg-white shadow-md text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
                 title={t('files.gridView')}
              >
-                <LayoutGrid size={18}/>
+                <LayoutGrid size={18} strokeWidth={2.5} />
              </button>
            </div>
+           
+           <button className="lg:hidden p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500">
+              <Filter size={20} />
+           </button>
         </div>
       </div>
 
       {/* Main Actions Area */}
-      <div className="px-6 py-3 flex flex-wrap items-center justify-between gap-4 bg-slate-50/30">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         
         {/* Search Input */}
-        <div className="relative group flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+        <div className="relative group w-full md:max-w-xl">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
           <input 
             type="text" 
             placeholder={t('files.traceability')}
-            className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600/30 transition-all placeholder:text-slate-400 shadow-sm" 
+            className="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-[1.5rem] text-sm font-medium outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600/30 transition-all placeholder:text-slate-400 shadow-sm" 
             value={searchTerm} 
             onChange={e => onSearchChange(e.target.value)} 
           />
           {searchTerm && (
               <button 
                 onClick={() => onSearchChange('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-slate-600 transition-all"
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 bg-slate-100 text-slate-400 hover:text-slate-600 rounded-full transition-all"
               >
-                  <X size={14} />
+                  <X size={14} strokeWidth={3} />
               </button>
           )}
         </div>
 
-        {/* Global Context Actions or Selection Actions */}
-        <div className="flex items-center gap-3">
+        {/* Action Sets */}
+        <div className="flex items-center gap-3 w-full md:w-auto">
           {selectedCount > 0 ? (
-            <div className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-2xl shadow-lg shadow-blue-600/20 animate-in zoom-in-95">
-                <span className="text-[10px] font-black uppercase tracking-widest mr-2 border-r border-white/20 pr-3">{selectedCount} {t(selectedCount === 1 ? 'files.itemSelected' : 'files.itemsSelected')}</span>
-                <button onClick={onDownloadSelected} className="p-1.5 hover:bg-white/10 rounded-lg" title={t('common.save')}><Download size={14}/></button>
-                {!isClient && (
-                    <>
-                        <button onClick={onRenameSelected} className="p-1.5 hover:bg-white/10 rounded-lg" title={t('files.rename.title')}><MoreHorizontal size={14}/></button>
-                        <button onClick={onDeleteSelected} className="p-1.5 hover:bg-red-500 rounded-lg" title={t('common.delete')}><Trash2 size={14}/></button>
-                    </>
-                )}
+            <div className="flex items-center gap-2 bg-[#0f172a] text-white px-5 py-2.5 rounded-[1.5rem] shadow-2xl animate-in zoom-in-95 w-full md:w-auto justify-center">
+                <span className="text-[10px] font-black uppercase tracking-[2px] mr-3 border-r border-white/10 pr-4">
+                  {selectedCount} {t(selectedCount === 1 ? 'files.itemSelected' : 'files.itemsSelected')}
+                </span>
+                <div className="flex items-center gap-1">
+                    <ToolbarAction icon={Download} onClick={onDownloadSelected} />
+                    {!isClient && (
+                        <>
+                            <ToolbarAction icon={MoreHorizontal} onClick={onRenameSelected} />
+                            <ToolbarAction icon={Trash2} onClick={onDeleteSelected} variant="danger" />
+                        </>
+                    )}
+                </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 w-full md:w-auto">
               {!isClient && (
                 <>
-                  <button onClick={onUploadClick} className="flex items-center gap-2.5 px-5 py-2.5 bg-[#081437] text-white rounded-2xl text-[10px] font-black uppercase tracking-[2px] hover:bg-slate-800 transition-all active:scale-95 shadow-md">
-                    <UploadCloud size={16} className="text-blue-400" /> {t('files.upload.button')}
+                  <button onClick={onUploadClick} className="flex-1 md:flex-none flex items-center justify-center gap-3 px-8 py-3.5 bg-blue-600 text-white rounded-2xl text-[11px] font-extrabold uppercase tracking-[2px] hover:bg-blue-700 transition-all active:scale-95 shadow-xl shadow-blue-600/20">
+                    <UploadCloud size={18} strokeWidth={2.5} /> {t('files.upload.button')}
                   </button>
-                  <button onClick={onCreateFolderClick} className="p-2.5 text-slate-500 hover:text-slate-900 bg-white border border-slate-200 rounded-2xl transition-all shadow-sm" title={t('files.createFolder.button')}>
-                    <FolderPlus size={18} />
+                  <button onClick={onCreateFolderClick} className="p-3.5 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-2xl transition-all shadow-sm hover:shadow-md" title={t('files.createFolder.button')}>
+                    <FolderPlus size={20} />
                   </button>
                 </>
               )}
@@ -112,3 +121,12 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
     </div>
   );
 };
+
+const ToolbarAction = ({ icon: Icon, onClick, variant = 'default' }: any) => (
+  <button 
+    onClick={onClick} 
+    className={`p-2 rounded-xl transition-all active:scale-90 ${variant === 'danger' ? 'hover:bg-red-500 text-red-400 hover:text-white' : 'hover:bg-white/10 text-slate-400 hover:text-white'}`}
+  >
+    <Icon size={18} strokeWidth={2.5} />
+  </button>
+);

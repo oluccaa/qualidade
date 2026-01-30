@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,10 @@ export const useQualityAuditLogs = (refreshTrigger: number) => {
   const [search, setSearch] = useState('');
   const [severityFilter, setSeverityFilter] = useState<AuditLog['severity'] | 'ALL'>('ALL');
   
+  // Paginação
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [investigation, setInvestigation] = useState<{ 
     isOpen: boolean; 
     targetLog: AuditLog | null; 
@@ -42,13 +46,37 @@ export const useQualityAuditLogs = (refreshTrigger: number) => {
     return () => clearTimeout(timer);
   }, [fetchLogs, refreshTrigger]);
 
+  const filteredLogs = useMemo(() => {
+    return logs.filter(l => {
+        const matchesSearch = l.userName.toLowerCase().includes(search.toLowerCase()) || 
+                             l.action.toLowerCase().includes(search.toLowerCase()) ||
+                             l.target.toLowerCase().includes(search.toLowerCase());
+        const matchesSeverity = severityFilter === 'ALL' || l.severity === severityFilter;
+        return matchesSearch && matchesSeverity;
+    });
+  }, [logs, search, severityFilter]);
+
+  const paginatedLogs = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredLogs.slice(start, start + pageSize);
+  }, [filteredLogs, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, severityFilter]);
+
   return {
-    qualityAuditLogs: logs,
+    qualityAuditLogs: paginatedLogs,
+    totalItems: filteredLogs.length,
     loadingAuditLogs: loading,
     auditLogSearch: search,
     setAuditLogSearch: setSearch,
     auditLogSeverityFilter: severityFilter,
     setAuditLogSeverityFilter: setSeverityFilter,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
     isAuditLogInvestigationModalOpen: investigation.isOpen,
     setIsAuditLogInvestigationModalOpen: (open: boolean) => setInvestigation(p => ({ ...p, isOpen: open })),
     auditLogInvestigationData: { 

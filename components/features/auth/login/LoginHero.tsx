@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, ShieldCheck, Cpu } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Cpu, ChevronDown } from 'lucide-react';
 
 const BACKGROUND_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/header_login.webp";
 const LOGO_URL = "https://wtydnzqianhahiiasows.supabase.co/storage/v1/object/public/public_assets/hero/logo.png";
@@ -10,7 +10,7 @@ export const LoginHero: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="relative z-10 flex flex-col w-full h-full text-white overflow-hidden pt-6 md:pt-8 lg:pt-10 xl:pt-12 px-8 md:px-12 lg:px-16 xl:px-20 2xl:px-24 pb-4 md:pb-6 lg:pb-8 xl:pb-10">
+    <div className="relative z-10 flex flex-col w-full h-full text-white overflow-hidden pt-12 md:pt-8 lg:pt-10 xl:pt-12 px-8 md:px-12 lg:px-16 xl:px-20 2xl:px-24 pb-24 md:pb-6 lg:pb-8 xl:pb-10">
       {/* Camada de Granulação Industrial Local */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" aria-hidden="true" />
       
@@ -25,11 +25,12 @@ export const LoginHero: React.FC = () => {
       />
 
       {/* Header: Logo Branca Sem Fundo e Sem Filtro */}
-      <div className="relative z-10 shrink-0 -mt-2 md:-mt-4 lg:-mt-6 animate-in fade-in slide-in-from-top-4 duration-1000">
+      {/* Ajuste: Tamanho reduzido conforme solicitado */}
+      <div className="relative z-10 shrink-0 mt-4 md:mt-6 lg:mt-8 animate-in fade-in slide-in-from-top-4 duration-1000">
         <img 
           src={LOGO_URL} 
           alt="Aços Vital - Logo Industrial" 
-          className="h-14 lg:h-18 xl:h-22 2xl:h-32 object-contain object-left drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]" 
+          className="h-12 md:h-16 lg:h-20 xl:h-24 2xl:h-32 object-contain object-left drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]" 
         />
       </div>
 
@@ -46,7 +47,7 @@ export const LoginHero: React.FC = () => {
               </span>
             </div>
             
-            <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-7xl font-black leading-[1.1] tracking-tight uppercase max-w-lg lg:max-w-2xl">
+            <h1 className="text-2xl md:text-3xl lg:text-3xl xl:text-4xl 2xl:text-7xl font-black leading-[1.1] tracking-tight uppercase max-w-lg lg:max-w-2xl">
               ESTRUTURAS<br/>
               <span className="text-white/70">DE CONFIANÇA.</span><br/>
               <span className="text-white/40">DADOS DE PRECISÃO.</span>
@@ -66,6 +67,13 @@ export const LoginHero: React.FC = () => {
                 <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-[1.5px]">Monitoramento Vital</span>
              </div>
           </div>
+        </div>
+      </div>
+
+      {/* MOBILE SCROLL INDICATOR - Ajustado para bottom-[9.75rem] (bottom-39) */}
+      <div className="absolute bottom-[9.75rem] left-0 w-full z-20 flex flex-col items-center gap-2 lg:hidden animate-bounce pointer-events-none">
+        <div className="p-2 bg-white/10 rounded-full backdrop-blur-md border border-white/20 shadow-lg">
+            <ChevronDown size={20} className="text-white" />
         </div>
       </div>
 

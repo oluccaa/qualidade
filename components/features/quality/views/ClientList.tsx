@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientHub } from '../components/ClientHub.tsx';
-import { ClientModal } from '../../admin/components/AdminModals.tsx';
+import { ClientManagementModal } from '../../admin/modals/ClientManagementModal.tsx';
 import { ClientListToolbar, ClientListFilters } from '../components/ClientListControls.tsx';
 import { ProcessingOverlay } from '../components/ViewStates.tsx';
 import { PaginationControls } from '../../../common/PaginationControls.tsx';
@@ -25,10 +25,10 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
   } = useQualityClientManagement(0);
 
   return (
-    <div className="w-full flex flex-col space-y-6 animate-in fade-in duration-500">
+    <div className="flex-1 flex flex-col space-y-6 animate-in fade-in duration-500 w-full h-full">
       {isProcessing && <ProcessingOverlay message="Atualizando Base de Dados..." />}
 
-      <ClientModal
+      <ClientManagementModal
         isOpen={clientModal.isOpen}
         onClose={() => clientModal.setOpen(false)}
         onSave={clientModal.save}
@@ -60,7 +60,7 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelectClient }) => {
         />
       </div>
 
-      <div className="w-full bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
         <ClientHub
           clients={sortedClients}
           onSelectClient={onSelectClient}

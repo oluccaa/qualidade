@@ -1,5 +1,6 @@
+
 import React, { useMemo } from 'react';
-import { Building2, FileWarning, ShieldCheck, Activity, ArrowUpRight, LucideIcon, Info } from 'lucide-react';
+import { Building2, FileWarning, ShieldCheck, Activity, ArrowUpRight, LucideIcon } from 'lucide-react';
 
 interface QualityOverviewCardsProps {
   totalClients: number;
@@ -15,11 +16,9 @@ interface KpiConfig {
     value: string | number;
     subtext: string;
     icon: LucideIcon;
-    color: string;
+    theme: 'dark' | 'alert' | 'success' | 'light';
     path: string;
-    shadow: string;
-    accent: string;
-    tooltip: string;
+    span?: string;
 }
 
 export const QualityOverviewCards: React.FC<QualityOverviewCardsProps> = ({ 
@@ -29,59 +28,52 @@ export const QualityOverviewCards: React.FC<QualityOverviewCardsProps> = ({
   totalRejected, 
   onNavigate 
 }) => {
+  
   const cardConfig: KpiConfig[] = useMemo(() => [
-    {
-      id: 'clients',
-      label: "Portfólio Ativo",
-      value: totalClients,
-      subtext: "Empresas Monitoradas",
-      icon: Building2,
-      color: "bg-slate-900",
-      shadow: "shadow-slate-900/20",
-      path: '/quality/portfolio',
-      accent: "text-blue-400",
-      tooltip: "Gerenciar base de empresas parceiras"
-    },
     {
       id: 'pending',
       label: "Urgência Técnica",
       value: totalPendingDocs,
       subtext: "Aguardando Triagem",
       icon: FileWarning,
-      color: "bg-[#b23c0e]",
-      shadow: "shadow-orange-900/20",
+      theme: totalPendingDocs > 0 ? 'alert' : 'light',
       path: '/quality/monitor',
-      accent: "text-white",
-      tooltip: "Certificados prioritários para análise"
+      span: 'md:col-span-1'
     },
     {
       id: 'compliance',
-      label: "Conformidade",
+      label: "Índice de Qualidade",
       value: `${complianceRate}%`,
-      subtext: "Ativos Aprovados",
+      subtext: "Conformidade Global",
       icon: ShieldCheck,
-      color: "bg-emerald-800",
-      shadow: "shadow-emerald-900/20",
+      theme: 'success',
       path: '/quality/audit',
-      accent: "text-white",
-      tooltip: "Índice global de qualidade industrial"
+      span: 'md:col-span-1'
+    },
+    {
+      id: 'clients',
+      label: "Portfólio Ativo",
+      value: totalClients,
+      subtext: "Empresas Monitoradas",
+      icon: Building2,
+      theme: 'light',
+      path: '/quality/portfolio',
+      span: 'md:col-span-1'
     },
     {
       id: 'alerts',
       label: "Contestações",
       value: totalRejected,
-      subtext: "Exige Intervenção",
+      subtext: "Requer Intervenção",
       icon: Activity,
-      color: totalRejected > 0 ? "bg-red-800" : "bg-slate-800",
-      shadow: "shadow-red-900/20",
+      theme: totalRejected > 0 ? 'dark' : 'light',
       path: '/quality/monitor',
-      accent: "text-white",
-      tooltip: "Certificados com divergência técnica"
+      span: 'md:col-span-1'
     }
   ], [totalClients, totalPendingDocs, complianceRate, totalRejected]);
 
   return (
-    <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" aria-label="Indicadores Críticos de Qualidade">
+    <>
       {cardConfig.map((card) => (
         <KpiCard 
             key={card.id} 
@@ -89,44 +81,50 @@ export const QualityOverviewCards: React.FC<QualityOverviewCardsProps> = ({
             onClick={() => onNavigate(card.path)} 
         />
       ))}
-    </nav>
+    </>
   );
 };
 
 const KpiCard: React.FC<{ card: KpiConfig; onClick: () => void }> = ({ card, onClick }) => {
     const Icon = card.icon;
     
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onClick();
-      }
+    const themes = {
+        alert: "bg-[#b23c0e] text-white border-none",
+        success: "bg-emerald-600 text-white border-none",
+        dark: "bg-slate-900 text-white border-none",
+        light: "bg-white text-slate-800 border border-slate-200"
+    };
+
+    const iconThemes = {
+        alert: "bg-white/20 text-white",
+        success: "bg-white/20 text-white",
+        dark: "bg-white/10 text-white",
+        light: "bg-slate-50 text-slate-400"
     };
 
     return (
         <div
             role="button"
-            tabIndex={0}
             onClick={onClick}
-            onKeyDown={handleKeyDown}
-            aria-label={`${card.label}: ${card.value}. ${card.subtext}. ${card.tooltip}`}
-            className="group bg-white p-7 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:-translate-y-1.5 transition-all text-left flex flex-col justify-between min-h-[190px] relative overflow-hidden focus-visible:ring-4 focus-visible:ring-blue-600/30 outline-none"
+            className={`group p-6 rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between min-h-[180px] relative overflow-hidden ${themes[card.theme]} ${card.span}`}
         >
-            <div className="flex justify-between items-start mb-6">
-              <div className={`p-3.5 rounded-2xl ${card.color} text-white shadow-xl ${card.shadow} group-hover:scale-110 transition-transform`} aria-hidden="true">
-                <Icon size={24} strokeWidth={2.5} className={card.accent} />
+            <div className="flex justify-between items-start z-10 relative">
+              <div className={`p-3 rounded-2xl ${iconThemes[card.theme]} transition-transform group-hover:scale-110`}>
+                <Icon size={24} strokeWidth={2.5} />
               </div>
-              <ArrowUpRight size={20} className="text-slate-300 group-hover:text-blue-600 transition-colors" aria-hidden="true" />
+              <ArrowUpRight size={20} className="opacity-50 group-hover:opacity-100 transition-opacity" />
             </div>
 
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-1.5">
-                  <span className="metadata-label">{card.label}</span>
-                  <Info size={12} className="text-slate-300" aria-hidden="true" />
-              </div>
-              <span className="text-4xl font-black text-slate-900 tracking-tighter leading-none">{card.value}</span>
-              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-2 opacity-90">{card.subtext}</p>
+            <div className="z-10 relative mt-4">
+              <span className="text-4xl font-black tracking-tighter leading-none block">{card.value}</span>
+              <p className="text-[10px] font-black uppercase tracking-[2px] mt-2 opacity-70">{card.label}</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest mt-1 opacity-90 border-t border-current/10 pt-2 inline-block">
+                  {card.subtext}
+              </p>
             </div>
+
+            {/* Background Decoration */}
+            <Icon size={100} className="absolute -right-4 -bottom-6 opacity-[0.07] rotate-12 pointer-events-none" />
         </div>
     );
 };

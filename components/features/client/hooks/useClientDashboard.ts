@@ -5,7 +5,7 @@ import { partnerService } from '../../../../lib/services/index.ts';
 import { FileNode } from '../../../../types/index.ts';
 import { DashboardStatsData } from '../../../../lib/services/interfaces.ts';
 
-export const usePartnerDashboard = () => {
+export const useClientDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStatsData | null>(null);
   const [recentFiles, setRecentFiles] = useState<FileNode[]>([]);
@@ -26,7 +26,7 @@ export const usePartnerDashboard = () => {
       setStats(statsRes);
       setRecentFiles(filesRes || []);
     } catch (error) {
-      console.error("Falha ao carregar dashboard do parceiro:", error);
+      console.error("Falha ao carregar dashboard do cliente:", error);
     } finally {
       setIsLoading(false);
     }

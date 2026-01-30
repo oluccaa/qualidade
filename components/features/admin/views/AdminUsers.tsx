@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, UserPlus, Loader2, Users as UsersIcon } from 'lucide-react';
 import { UserList } from '../components/UserList.tsx';
-import { UserModal } from '../components/AdminModals.tsx';
+import { UserManagementModal } from '../modals/UserManagementModal.tsx';
 import { PaginationControls } from '../../../common/PaginationControls.tsx';
 import { useUserCollection } from '../hooks/useUserCollection.ts';
 import { useUserFormState } from '../hooks/useUserFormState.ts';
@@ -32,7 +32,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({ setIsSaving, isSaving = 
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4">
-      <UserModal
+      <UserManagementModal
         isOpen={form.isOpen}
         onClose={() => form.setIsOpen(false)}
         onSave={form.handleSave}

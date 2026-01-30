@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../../context/authContext.tsx';
 import { useToast } from '../../../../context/notificationContext.tsx';
 import { AuditLog } from '../../../../types/index.ts';
-import { fileService } from '../../../../lib/services/index.ts';
+import { adminService } from '../../../../lib/services/index.ts';
 
 interface InvestigationState {
   targetLog: AuditLog | null;
@@ -11,10 +11,6 @@ interface InvestigationState {
   riskScore: number;
 }
 
-/**
- * Hook de Gestão de Auditoria (SRP)
- * Responsabilidade: Gerenciar logs forenses e lógica de investigação.
- */
 export const useAdminAuditLogs = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -23,6 +19,10 @@ export const useAdminAuditLogs = () => {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<AuditLog['severity'] | 'ALL'>('ALL');
+  
+  // Paginação
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
   const [investigationData, setInvestigationData] = useState<InvestigationState>({ 
@@ -36,7 +36,8 @@ export const useAdminAuditLogs = () => {
     
     setIsLoadingLogs(true);
     try {
-      const auditLogs = await fileService.getAuditLogs(user);
+      // Usamos o adminService para logs globais
+      const auditLogs = await adminService.getGlobalAuditLogs(user);
       setLogs(auditLogs);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -50,9 +51,6 @@ export const useAdminAuditLogs = () => {
     loadLogs();
   }, [loadLogs]);
 
-  /**
-   * Lógica de Filtragem (Memoizada para performance)
-   */
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
       const search = searchTerm.toLowerCase();
@@ -60,7 +58,7 @@ export const useAdminAuditLogs = () => {
         log.userName.toLowerCase().includes(search) || 
         log.action.toLowerCase().includes(search) || 
         log.target.toLowerCase().includes(search) || 
-        log.ip.includes(searchTerm);
+        (log.ip && log.ip.includes(searchTerm));
         
       const matchesSeverity = severityFilter === 'ALL' || log.severity === severityFilter;
       
@@ -68,9 +66,15 @@ export const useAdminAuditLogs = () => {
     });
   }, [logs, searchTerm, severityFilter]);
 
-  /**
-   * Lógica de Investigação Forense
-   */
+  const paginatedLogs = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredLogs.slice(start, start + pageSize);
+  }, [filteredLogs, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, severityFilter]);
+
   const handleOpenInvestigation = useCallback((log: AuditLog) => {
     const related = logs
       .filter(l => 
@@ -88,12 +92,17 @@ export const useAdminAuditLogs = () => {
   }, [logs]);
 
   return {
-    filteredLogs,
+    filteredLogs: paginatedLogs,
+    totalItems: filteredLogs.length,
     isLoadingLogs,
     searchTerm,
     setSearchTerm,
     severityFilter,
     setSeverityFilter,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
     isInvestigationModalOpen,
     setIsInvestigationModalOpen,
     investigationData,

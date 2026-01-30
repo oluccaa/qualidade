@@ -25,7 +25,7 @@ const AdminConsole: React.FC = () => {
     <Layout title="Terminal de Gestão Master">
       <div className="flex flex-col gap-6 pb-20 relative h-full">
         
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
              <div className="flex items-center gap-4">
                 <div className="p-3 bg-white text-slate-900 rounded-2xl shadow-sm border border-slate-200">
                     <Terminal size={24} />
@@ -45,7 +45,7 @@ const AdminConsole: React.FC = () => {
           </div>
         )}
 
-        <main className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <main className="flex-1 min-h-0 animate-in fade-in slide-in-from-bottom-4 duration-700 flex flex-col">
           <Suspense fallback={<TabLoadingIndicator />}>
             {activeTab === 'users' && <AdminUsers setIsSaving={setIsSaving} isSaving={isSaving} />}
             {activeTab === 'logs' && <AdminLogs />}
@@ -65,7 +65,7 @@ const AdminConsole: React.FC = () => {
 };
 
 const TabNavigation = ({ tabs, activeTab, onTabChange }: any) => (
-  <nav className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm inline-flex w-full overflow-x-auto no-scrollbar sticky top-2 z-30 backdrop-blur-md bg-white/90">
+  <nav className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm inline-flex w-full overflow-x-auto no-scrollbar sticky top-2 z-30 backdrop-blur-md bg-white/90 shrink-0">
     <div className="flex items-center gap-1 min-w-max w-full">
       {tabs.map((tab: any) => {
         const isActive = activeTab === tab.id;
@@ -86,7 +86,7 @@ const TabNavigation = ({ tabs, activeTab, onTabChange }: any) => (
 );
 
 const TabLoadingIndicator = () => (
-  <div className="flex flex-col items-center justify-center h-96 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200">
+  <div className="flex flex-col items-center justify-center w-full h-full bg-white rounded-3xl border border-dashed border-slate-200 flex-1 min-h-[60vh]">
     <Loader2 className="animate-spin mb-4 text-blue-500" size={32} />
     <p className="text-[10px] font-black uppercase tracking-[4px]">Carregando Módulo...</p>
   </div>

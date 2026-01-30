@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   AlertTriangle, History, Lock, Globe, ShieldCheck, CalendarClock 
 } from 'lucide-react';
 import { SystemStatus } from '../../../../types/index.ts';
-import { ScheduleMaintenanceModal } from '../components/AdminModals.tsx';
+import { SystemMaintenanceModal } from '../modals/SystemMaintenanceModal.tsx';
 import { useAdminSystemManagement } from '../hooks/useAdminSystemManagement.ts';
 
 interface AdminSettingsProps {
@@ -26,7 +27,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ systemStatus, setS
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
-      <ScheduleMaintenanceModal
+      <SystemMaintenanceModal
         isOpen={sysManager.isScheduleMaintenanceModalOpen}
         onClose={() => sysManager.setIsScheduleMaintenanceModalOpen(false)}
         onSave={sysManager.handleScheduleMaintenance}
@@ -85,7 +86,6 @@ const SystemStatusHeader = ({ status, onUpdate }: { status: SystemStatus, onUpda
             variant="danger" 
           />
         </div>
-      {/* Fix: Removed extraneous closing div tag that was causing a syntax error in JSX parsing */}
     </section>
   );
 };

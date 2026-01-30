@@ -35,7 +35,7 @@ export const CookieBanner: React.FC = () => {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-[120] p-4 md:p-6 flex justify-center animate-in slide-in-from-bottom-10 duration-500"
+      className="fixed bottom-[10px] left-0 right-0 z-[200] p-4 md:p-6 flex justify-center animate-in slide-in-from-bottom-10 duration-500"
       role="complementary"
     >
       <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-[2rem] shadow-2xl max-w-5xl w-full p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center gap-8 border border-white/10">

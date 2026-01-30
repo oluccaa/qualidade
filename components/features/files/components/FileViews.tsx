@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { FileNode, FileType, UserRole } from '../../../../types/index.ts';
 import { FileRow } from './FileRow.tsx';
@@ -23,38 +24,37 @@ export const FileListView: React.FC<FileViewProps> = ({
 }) => {
   return (
     <div className="min-w-full divide-y divide-slate-100 bg-white">
-      {/* Cabeçalho Refatorado para Clareza e Alinhamento */}
-      <div className="hidden md:flex items-center px-8 py-5 bg-slate-50 border-b border-slate-200">
+      {/* Cabeçalho Técnico */}
+      <div className="hidden md:flex items-center px-8 py-4 bg-slate-50/50 border-b border-slate-200">
         <div className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
-          Identificador / Nome do Ativo
+          Identificador do Ativo
         </div>
-        <div className="w-24 hidden lg:block text-right px-4 text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
-          Tamanho
+        <div className="w-40 hidden lg:block px-4 text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
+          Sincronização
         </div>
-        <div className="w-40 hidden md:block px-6 text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
-          Atualização
+        <div className="w-36 text-center text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
+          Conformidade
         </div>
-        <div className="w-32 text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
-          Status
-        </div>
-        <div className="w-24 text-right text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
-          Ações
+        <div className="w-28 text-right text-[10px] font-black text-slate-400 uppercase tracking-[3px]">
+          Seleção
         </div>
       </div>
       
-      {files.map((file) => (
-        <FileRow 
-          key={file.id}
-          file={file}
-          isSelected={selectedFileIds.includes(file.id)}
-          onNavigate={onNavigate}
-          onPreview={onSelectFileForPreview}
-          onToggleSelection={onToggleFileSelection}
-          onRename={onRename}
-          onDelete={onDelete}
-          userRole={userRole}
-        />
-      ))}
+      <div className="divide-y divide-slate-100">
+        {files.map((file) => (
+            <FileRow 
+            key={file.id}
+            file={file}
+            isSelected={selectedFileIds.includes(file.id)}
+            onNavigate={onNavigate}
+            onPreview={onSelectFileForPreview}
+            onToggleSelection={onToggleFileSelection}
+            onRename={onRename}
+            onDelete={onDelete}
+            userRole={userRole}
+            />
+        ))}
+      </div>
     </div>
   );
 };

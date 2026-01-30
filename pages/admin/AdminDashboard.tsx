@@ -5,7 +5,7 @@ import { Layout } from '../../components/layout/MainLayout.tsx';
 import { useAuth } from '../../context/authContext.tsx';
 import { useAdminPage } from '../../components/features/admin/hooks/useAdminPage.ts';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Users, ShieldCheck, Activity, ArrowRight } from 'lucide-react';
+import { Loader2, Users, ShieldCheck, Activity, ArrowRight, Terminal } from 'lucide-react';
 import { AdminOverview } from '../../components/features/admin/views/AdminOverview.tsx';
 import { normalizeRole, UserRole } from '../../types/index.ts';
 
@@ -24,7 +24,7 @@ const AdminDashboard: React.FC = () => {
 
   if (isLoading) return (
     <Layout title="Governança Master">
-        <div className="flex h-96 flex-col items-center justify-center text-slate-500 gap-6" role="status" aria-busy="true">
+        <div className="flex-1 h-full min-h-[60vh] flex flex-col items-center justify-center text-slate-500 gap-6" role="status" aria-busy="true">
             <Loader2 className="animate-spin text-blue-600" size={48} />
             <p className="text-xs font-black uppercase tracking-[6px] animate-pulse">Sincronizando Protocolos...</p>
         </div>
@@ -33,58 +33,37 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <Layout title="Dashboard de Governança">
-      <article className="space-y-10 pb-16">
-        {/* Hero Section - Foco em contraste e tamanho de fonte */}
-        <section 
-          className="bg-[#0f172a] rounded-[3rem] p-12 text-white relative overflow-hidden shadow-2xl border border-white/5"
-          aria-labelledby="hero-title"
-        >
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <span className="px-4 py-1.5 bg-blue-600 rounded-xl text-[10px] font-black uppercase tracking-[3px] shadow-lg shadow-blue-500/20">Root Engine</span>
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></div>
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[4px]">{t('dashboard.status.monitoringActive')}</span>
-                    </div>
-                    <h1 id="hero-title" className="text-5xl md:text-7xl font-black tracking-tighter leading-none uppercase">
-                        Gestão Global,<br/>
-                        <span className="text-white/40">{user?.name.split(' ')[0]}.</span>
-                    </h1>
-                </div>
-                <div className="bg-white/5 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-white/10 flex items-center gap-6 shadow-2xl">
-                    <div 
-                      className={`w-4 h-4 rounded-full ${systemStatus?.mode === 'ONLINE' ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-orange-500 animate-pulse shadow-orange-500/50'} shadow-lg`}
-                      aria-hidden="true"
-                    ></div>
-                    <div>
-                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-[3px]">Gateway de Segurança</p>
-                        <p className="text-lg font-black text-white mt-1 uppercase tracking-widest">{systemStatus?.mode || 'Sincronizando...'}</p>
-                    </div>
-                </div>
+      <article className="space-y-10 pb-16 px-6 md:px-8">
+        
+        {/* Header Compacto (o Hero agora é parte do Bento Grid em AdminOverview) */}
+        <header className="flex items-center gap-4 px-1">
+            <div className="p-3 bg-[#0f172a] text-white rounded-2xl shadow-lg">
+                <Terminal size={24} />
             </div>
-        </section>
+            <div>
+                <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Command Center</h1>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Visão Global • {user?.name.split(' ')[0]}
+                </p>
+            </div>
+        </header>
 
-        {/* Indicadores Seção */}
-        <section className="space-y-6" aria-labelledby="kpi-title">
-             <div className="flex items-center gap-4 ml-2">
-                <div className="h-[3px] w-10 bg-blue-600 rounded-full" aria-hidden="true"></div>
-                <h2 id="kpi-title" className="text-xs font-black uppercase tracking-[5px] text-slate-500">Métricas de Infraestrutura</h2>
-            </div>
+        {/* Grid Principal */}
+        <section aria-labelledby="kpi-title">
             <AdminOverview stats={adminStats} />
         </section>
 
-        {/* Atalhos Seção */}
-        <section className="space-y-8" aria-labelledby="actions-title">
+        {/* Atalhos Operacionais (Bento Style) */}
+        <section className="space-y-6">
             <div className="flex items-center gap-4 ml-2">
-                <div className="h-[3px] w-10 bg-orange-600 rounded-full" aria-hidden="true"></div>
-                <h2 id="actions-title" className="text-xs font-black uppercase tracking-[5px] text-slate-500">Comandos Operacionais</h2>
+                <div className="h-[3px] w-10 bg-slate-900 rounded-full" aria-hidden="true"></div>
+                <h2 className="text-xs font-black uppercase tracking-[5px] text-slate-400">Acesso Rápido</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                <QuickAction icon={Users} label="Gestão de Identidades" desc="Controle níveis de acesso de parceiros e analistas." path="/admin/console?tab=users" color="bg-blue-600" navigate={navigate} />
-                <QuickAction icon={Activity} label="Auditoria Forense" desc="Rastreabilidade completa de todas as ações no sistema." path="/admin/console?tab=logs" color="bg-slate-900" navigate={navigate} />
-                <QuickAction icon={ShieldCheck} label="Gateway de Segurança" desc="Controle de manutenção e firewall do portal." path="/admin/console?tab=settings" color="bg-emerald-600" navigate={navigate} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <QuickAction icon={Users} label="Identidades" desc="Gestão de Acessos" path="/admin/console?tab=users" color="bg-blue-600" navigate={navigate} />
+                <QuickAction icon={Activity} label="Auditoria" desc="Logs Forenses" path="/admin/console?tab=logs" color="bg-slate-900" navigate={navigate} />
+                <QuickAction icon={ShieldCheck} label="Gateway" desc="Segurança" path="/admin/console?tab=settings" color="bg-emerald-600" navigate={navigate} />
             </div>
         </section>
       </article>
@@ -95,17 +74,16 @@ const AdminDashboard: React.FC = () => {
 const QuickAction = ({ icon: Icon, label, desc, path, color, navigate }: any) => (
   <button 
     onClick={() => navigate(path)} 
-    aria-label={`${label}: ${desc}`}
-    className="flex items-start gap-6 p-8 bg-white border border-slate-200 rounded-[2.5rem] hover:border-blue-600 hover:shadow-2xl transition-all text-left group focus-visible:ring-4 focus-visible:ring-blue-600/20 outline-none"
+    className="flex items-center gap-5 p-5 bg-white border border-slate-200 rounded-[2rem] hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 transition-all text-left group"
   >
-    <div className={`p-5 rounded-2xl ${color} text-white shrink-0 group-hover:scale-110 transition-transform shadow-xl`}>
-        <Icon size={26} strokeWidth={2.5} />
+    <div className={`p-4 rounded-2xl ${color} text-white shrink-0 shadow-lg`}>
+        <Icon size={20} strokeWidth={2.5} />
     </div>
     <div className="flex-1 min-w-0">
-      <h3 className="font-black text-[#0f172a] text-lg uppercase tracking-tight leading-none mb-2">{label}</h3>
-      <p className="text-[11px] text-slate-500 leading-relaxed font-semibold uppercase tracking-tight opacity-70">{desc}</p>
+      <h3 className="font-black text-slate-900 text-sm uppercase tracking-tight">{label}</h3>
+      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide opacity-70">{desc}</p>
     </div>
-    <ArrowRight size={22} className="text-slate-200 group-hover:text-blue-600 group-hover:translate-x-2 transition-all mt-1" aria-hidden="true" />
+    <ArrowRight size={18} className="text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
   </button>
 );
 

@@ -1,188 +1,158 @@
-
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, Zap, Cpu, ShieldCheck } from 'lucide-react';
 
-/**
- * CONFIGURAÇÃO DO WORKER (Singleton)
- * Utilizamos o CDN da Cloudflare para garantir que o worker esteja sempre disponível.
- */
 const PDF_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 if (typeof window !== 'undefined' && (window as any).pdfjsLib) {
   (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
 }
 
+const GLOBAL_DOCUMENT_CACHE = new Map<string, any>();
+
 interface PdfViewportProps {
   url: string | null;
-  zoom: number;
   pageNum: number;
-  onPdfLoad: (numPages: number) => void;
-  onZoomChange?: (newZoom: number) => void;
+  zoom: number;
+  onPdfLoad: (numPages: number, pdfInstance: any) => void;
+  // Fix: Changed React.Node to React.ReactNode as React.Node is not a valid member of React in TypeScript
   renderOverlay?: (width: number, height: number) => React.ReactNode;
   isHandToolActive?: boolean;
 }
 
 export const PdfViewport: React.FC<PdfViewportProps> = ({ 
-  url, zoom, pageNum, onPdfLoad, onZoomChange, renderOverlay, isHandToolActive = false
+  url, pageNum, zoom, onPdfLoad, renderOverlay, isHandToolActive = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const bufferCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
+  const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
   
   const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  
-  const [drag, setDrag] = useState({ isDragging: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
-  
-  // Refs para controle de concorrência de renderização
-  const renderTaskRef = useRef<any>(null);
-  const isPageChangingRef = useRef<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const cleanup = useCallback(async () => {
-    if (renderTaskRef.current) {
-      try {
-        // Sinaliza o cancelamento
-        renderTaskRef.current.cancel();
-        // IMPORTANTE: Aguarda a promessa da tarefa cancelada ser rejeitada pelo pdf.js
-        // Isso garante que o canvas seja liberado pelo motor antes da próxima chamada.
-        await renderTaskRef.current.promise;
-      } catch (e) {
-        // O erro de 'RenderingCancelledException' é esperado aqui
-      } finally {
-        renderTaskRef.current = null;
-      }
-    }
-  }, []);
+  // Estados para Arraste (Pan)
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
   useEffect(() => {
     if (!url) return;
-    const loadPdf = async () => {
-      await cleanup();
-      setError(null);
-      setIsRendering(true);
+    let isActive = true;
+
+    const loadDocument = async () => {
+      if (GLOBAL_DOCUMENT_CACHE.has(url)) {
+        const cached = GLOBAL_DOCUMENT_CACHE.get(url);
+        setPdfDoc(cached);
+        onPdfLoad(cached.numPages, cached);
+        return;
+      }
+
+      setIsDownloading(true);
       try {
         const loadingTask = (window as any).pdfjsLib.getDocument({
           url,
-          withCredentials: false,
-          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/`,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
           cMapPacked: true,
+          disableAutoFetch: false,
+          disableStream: false,
         });
-        const pdf = await loadingTask.promise;
-        setPdfDoc(pdf);
-        onPdfLoad(pdf.numPages);
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          console.error("PDF Load Error:", err);
-          setError("Falha na carga do ativo técnico.");
+
+        const doc = await loadingTask.promise;
+        if (isActive) {
+          GLOBAL_DOCUMENT_CACHE.set(url, doc);
+          setPdfDoc(doc);
+          onPdfLoad(doc.numPages, doc);
         }
+      } catch (err) {
+        if (isActive) setError("Falha na sincronização do binário técnico.");
       } finally {
-        setIsRendering(false);
+        if (isActive) setIsDownloading(false);
       }
     };
-    loadPdf();
-    return () => { cleanup(); };
-  }, [url, cleanup, onPdfLoad]);
+
+    loadDocument();
+    return () => { isActive = false; };
+  }, [url, onPdfLoad]);
 
   const renderPage = useCallback(async () => {
-    if (!pdfDoc || !canvasRef.current) return;
-    
-    // Bloqueia múltiplas entradas simultâneas na mesma função
-    if (isPageChangingRef.current) return;
-    isPageChangingRef.current = true;
+    if (!pdfDoc || !visibleCanvasRef.current) return;
 
-    // Garante que a tarefa anterior morreu e o canvas está livre
-    await cleanup();
-    
+    if (renderTaskRef.current) {
+      try { renderTaskRef.current.cancel(); } catch (e) {}
+    }
+
     setIsRendering(true);
+    
     try {
       const page = await pdfDoc.getPage(pageNum);
-      const outputScale = window.devicePixelRatio || 1;
-      const viewport = page.getViewport({ scale: zoom });
-      
-      const canvas = canvasRef.current;
-      const bufferCanvas = bufferCanvasRef.current;
-      const context = canvas.getContext('2d', { alpha: false });
-      const bufferContext = bufferCanvas.getContext('2d', { alpha: false });
+      const pixelRatio = Math.max(window.devicePixelRatio || 1, 2); 
+      const viewport = page.getViewport({ scale: zoom * pixelRatio });
 
-      if (!context || !bufferContext) return;
+      const canvas = visibleCanvasRef.current;
+      const context = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
-      bufferCanvas.width = Math.floor(viewport.width * outputScale);
-      bufferCanvas.height = Math.floor(viewport.height * outputScale);
-      
-      const renderContext = {
-        canvasContext: bufferContext,
-        viewport: viewport,
-        transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
-      };
+      if (context) {
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.style.width = `${viewport.width / pixelRatio}px`;
+        canvas.style.height = `${viewport.height / pixelRatio}px`;
 
-      const renderTask = page.render(renderContext);
-      renderTaskRef.current = renderTask;
-      
-      // Aguarda a renderização no buffer
-      await renderTask.promise;
+        const renderTask = page.render({ 
+          canvasContext: context, 
+          viewport: viewport,
+          intent: 'display'
+        });
+        
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
 
-      // Desenha do buffer para o canvas principal de uma só vez (evita flickering)
-      canvas.width = bufferCanvas.width;
-      canvas.height = bufferCanvas.height;
-      context.drawImage(bufferCanvas, 0, 0);
-      setDimensions({ width: viewport.width, height: viewport.height });
-      
+        setDimensions({ 
+          width: viewport.width / pixelRatio, 
+          height: viewport.height / pixelRatio 
+        });
+      }
     } catch (err: any) {
       if (err.name !== 'RenderingCancelledException') {
-        console.error("Render error:", err);
+        console.error("Erro no motor Vital:", err);
       }
     } finally {
       setIsRendering(false);
-      isPageChangingRef.current = false;
     }
-  }, [pdfDoc, pageNum, zoom, cleanup]);
+  }, [pdfDoc, pageNum, zoom]);
 
-  useEffect(() => { 
-    renderPage(); 
+  useEffect(() => {
+    renderPage();
   }, [renderPage]);
 
-  // MANIPULAÇÃO DE PANNING (Mãozinha Premium)
+  // Lógica de Panning (Mãozinha)
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (!isHandToolActive) return;
-    if (!containerRef.current) return;
-
-    setDrag({
-      isDragging: true,
-      startX: e.clientX,
-      startY: e.clientY,
+    if (!isHandToolActive || !containerRef.current) return;
+    
+    setIsPanning(true);
+    panStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
       scrollLeft: containerRef.current.scrollLeft,
       scrollTop: containerRef.current.scrollTop
-    });
+    };
     containerRef.current.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!drag.isDragging || !containerRef.current) return;
-
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-
-    containerRef.current.scrollLeft = drag.scrollLeft - dx;
-    containerRef.current.scrollTop = drag.scrollTop - dy;
+    if (!isPanning || !containerRef.current) return;
+    
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    
+    containerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+    containerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (drag.isDragging && containerRef.current) {
-      setDrag(prev => ({ ...prev, isDragging: false }));
-      containerRef.current.releasePointerCapture(e.pointerId);
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-        if (!onZoomChange) return;
-        e.preventDefault();
-        const direction = e.deltaY < 0 ? 1 : -1;
-        // Mantido o limite de 50% (0.5)
-        onZoomChange(Math.max(0.5, Math.min(5, zoom + direction * 0.15)));
-    }
+    if (!isPanning) return;
+    setIsPanning(false);
+    if (containerRef.current) containerRef.current.releasePointerCapture(e.pointerId);
   };
 
   return (
@@ -192,65 +162,62 @@ export const PdfViewport: React.FC<PdfViewportProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onWheel={handleWheel}
-      className={`flex-1 overflow-auto bg-[#020617] relative custom-scrollbar flex justify-center items-start select-none touch-none outline-none ${
-        isHandToolActive 
-          ? (drag.isDragging ? 'cursor-grabbing no-scrollbar' : 'cursor-grab no-scrollbar') 
-          : 'cursor-default'
-      }`}
-      style={{ 
-        scrollBehavior: drag.isDragging ? 'auto' : 'smooth',
-        padding: '1rem'
-      }}
+      className={`relative w-full h-full overflow-auto bg-[#020617] flex justify-center custom-scrollbar p-2 md:p-12 transition-all duration-300 select-none
+        ${isHandToolActive ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}
+      `}
     >
-      <div 
-        className="fixed inset-0 pointer-events-none opacity-[0.07]" 
-        style={{ 
-          backgroundImage: `
-            radial-gradient(circle, #60a5fa 1px, transparent 1px),
-            linear-gradient(to right, #ffffff05 1px, transparent 1px),
-            linear-gradient(to bottom, #ffffff05 1px, transparent 1px)
-          `,
-          backgroundSize: '32px 32px, 128px 128px, 128px 128px'
-        }} 
-      />
       
-      <div className="fixed inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,_#1e293b_0%,_transparent_70%)]" />
+      {(isDownloading || (isRendering && dimensions.width === 0)) && (
+        <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[#020617]/95 backdrop-blur-2xl animate-in fade-in duration-500">
+           <div className="relative mb-10">
+              <div className="w-24 md:w-40 h-24 md:h-40 border-2 border-blue-500/10 rounded-full animate-ping absolute inset-0" />
+              <div className="w-24 md:w-40 h-24 md:h-40 border-t-4 border-blue-500 rounded-full animate-spin relative flex items-center justify-center">
+                 <div className="bg-blue-500/10 p-4 md:p-6 rounded-3xl backdrop-blur-xl border border-white/10">
+                    <Cpu className="text-blue-400 w-8 md:w-12 h-8 md:h-12 animate-pulse" />
+                 </div>
+              </div>
+           </div>
+           <h3 className="text-white text-[10px] font-black uppercase tracking-[5px] md:tracking-[10px] animate-pulse">Sincronizando Ledger</h3>
+        </div>
+      )}
 
       <div 
-        className="relative flex-shrink-0 transition-opacity duration-700 ease-out"
+        className="relative shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] md:shadow-[0_100px_200px_-40px_rgba(0,0,0,0.9)] bg-white transform-gpu origin-top shrink-0"
         style={{ 
           width: dimensions.width || 'auto', 
-          height: dimensions.height || 'auto', 
-          opacity: dimensions.width ? 1 : 0,
-          pointerEvents: isHandToolActive ? 'none' : 'auto'
+          height: dimensions.height || 'auto',
+          minHeight: '200px',
+          transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' 
         }}
       >
-        <div className="absolute inset-0 bg-black/60 blur-[60px] rounded-sm -z-10 translate-y-10 scale-[0.98]" />
+        <canvas 
+          ref={visibleCanvasRef} 
+          className={`block transition-opacity duration-500 ${dimensions.width > 0 ? 'opacity-100' : 'opacity-0'}`} 
+        />
         
-        <div className="bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_30px_100px_rgba(0,0,0,0.6)] rounded-sm overflow-hidden border border-white/10">
-            <canvas ref={canvasRef} style={{ width: dimensions.width, height: dimensions.height, display: 'block' }} />
-        </div>
-        
-        <div className={`absolute inset-0 z-10 ${isHandToolActive ? 'pointer-events-none' : 'pointer-events-auto'}`}>
-          {dimensions.width > 0 && renderOverlay && renderOverlay(dimensions.width, dimensions.height)}
-        </div>
-        
-        {isRendering && (
-          <div className="absolute top-8 right-8 z-[60] bg-blue-600/90 backdrop-blur-md p-2.5 rounded-full shadow-2xl animate-pulse ring-4 ring-blue-500/20">
-             <Loader2 size={16} className="animate-spin text-white" />
+        {renderOverlay && dimensions.width > 0 && (
+          <div className={`absolute inset-0 z-10 ${isHandToolActive ? 'pointer-events-none' : 'pointer-events-auto'}`}>
+            {renderOverlay(dimensions.width, dimensions.height)}
           </div>
+        )}
+
+        {isRendering && dimensions.width > 0 && (
+            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20 flex items-center gap-2 bg-[#020617]/80 px-3 py-1.5 rounded-xl shadow-2xl border border-white/10 animate-in slide-in-from-right-4">
+                <Zap className="w-3 h-3 text-yellow-400 animate-pulse" />
+                <span className="text-[8px] font-black text-white uppercase tracking-[1px]">Refinando...</span>
+            </div>
         )}
       </div>
 
       {error && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-[200] text-center animate-in fade-in p-6">
-            <AlertCircle size={64} className="text-red-500 mb-6 drop-shadow-[0_0_15px_rgba(239,68,68,0.4)]" />
-            <h3 className="text-white text-xl font-black uppercase tracking-[4px] mb-2">Erro de Viewport</h3>
-            <p className="text-slate-400 text-sm max-w-xs mx-auto mb-8 font-medium">O cluster industrial não conseguiu renderizar o laudo técnico.</p>
-            <button onClick={() => window.location.reload()} className="flex items-center gap-3 px-10 py-4 bg-blue-600 hover:bg-blue-50 text-white rounded-2xl text-[10px] font-black uppercase tracking-[3px] transition-all shadow-2xl active:scale-95">
-               <RefreshCw size={14} /> Reiniciar Protocolo
-            </button>
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/95 z-[200] p-6 backdrop-blur-xl">
+            <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto border border-red-500/20">
+                    <AlertTriangle className="text-red-500 w-8 h-8" />
+                </div>
+                <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">{error}</p>
+                <button onClick={() => window.location.reload()} className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-500 transition-all">Reconectar</button>
+            </div>
         </div>
       )}
     </div>

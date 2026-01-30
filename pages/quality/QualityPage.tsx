@@ -1,3 +1,4 @@
+
 import React, { Suspense, useState } from 'react';
 // Fix: Corrected relative path for Layout import
 import { Layout } from '../../components/layout/MainLayout.tsx';
@@ -41,9 +42,9 @@ const QualityPage: React.FC = () => {
 
   return (
     <Layout title={t('menu.qualityManagement')}>
-      <div className="flex flex-col relative w-full gap-6 pb-20">
+      <div className="flex flex-col relative w-full gap-6 pb-20 h-full">
         
-        <nav className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm inline-flex w-full overflow-x-auto no-scrollbar backdrop-blur-md bg-white/90">
+        <nav className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm inline-flex w-full overflow-x-auto no-scrollbar backdrop-blur-md bg-white/90 shrink-0">
           <div className="flex items-center gap-1 min-w-max w-full">
             {tabs.map((tab) => (
               <button
@@ -65,7 +66,7 @@ const QualityPage: React.FC = () => {
           </div>
         )}
 
-        <main className="min-h-[calc(100vh-250px)] animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <main className="flex-1 min-h-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <Suspense fallback={<ViewFallback />}>
                 {renderView()}
             </Suspense>
@@ -76,7 +77,7 @@ const QualityPage: React.FC = () => {
 };
 
 const ViewFallback = () => (
-  <div className="flex flex-col items-center justify-center h-96 bg-white rounded-[2rem] border border-dashed border-slate-200">
+  <div className="flex flex-col items-center justify-center w-full h-full bg-white rounded-[2rem] border border-dashed border-slate-200 min-h-[50vh]">
     <Loader2 className="animate-spin mb-4 text-blue-500" size={32} />
     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 animate-pulse">Sincronizando Módulo...</p>
   </div>
