@@ -143,15 +143,23 @@ export const SupabaseAdminService: IAdminService = {
       if (isNew && finalOrg.id) {
           const { data: existingFolder } = await supabase.from('files').select('id').eq('owner_id', finalOrg.id).is('parent_id', null).maybeSingle();
           if (!existingFolder) {
+              const sanitizedOrgName = finalOrg.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+              const folderStoragePath = `${finalOrg.id}/${sanitizedOrgName}`;
+              
+              // Cria a entrada no banco
               await supabase.from('files').insert({ 
                 name: finalOrg.name, 
                 type: 'FOLDER', 
                 parent_id: null, 
                 owner_id: finalOrg.id, 
-                storage_path: 'system/folder', 
+                storage_path: folderStoragePath, 
                 updated_at: new Date().toISOString(),
                 metadata: { status: 'SENT' } 
               });
+
+              // Cria a pasta física no Storage via arquivo de marcação
+              const emptyBlob = new Blob([''], { type: 'text/plain' });
+              await supabase.storage.from('certificates').upload(`${folderStoragePath}/.keep`, emptyBlob);
           }
       }
       return { 

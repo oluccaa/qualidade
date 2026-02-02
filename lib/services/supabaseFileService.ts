@@ -1,4 +1,3 @@
-
 import { supabase } from '../supabaseClient.ts';
 import { FileNode, FileType, BreadcrumbItem, User, UserRole, FileFilters, SteelBatchMetadata } from '../../types/index.ts';
 import { IFileService, PaginatedResponse, DashboardStatsData } from './interfaces.ts';
@@ -68,16 +67,35 @@ export const SupabaseFileService: IFileService = {
   },
 
   createFolder: async (user, parentId, name, ownerId) => {
+    const sanitizedFolderName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    // Se houver parentId, pegamos o path dele para compor o novo
+    let parentPath = ownerId || 'system';
+    if (parentId) {
+        const { data: parent } = await supabase.from('files').select('storage_path').eq('id', parentId).single();
+        if (parent?.storage_path) parentPath = parent.storage_path;
+    }
+    
+    const folderStoragePath = `${parentPath}/${sanitizedFolderName}`;
+
     const { data, error } = await supabase.from('files').insert({
         name,
         type: FileType.FOLDER,
         parent_id: parentId,
         owner_id: ownerId || null,
-        storage_path: 'system/folder',
+        storage_path: folderStoragePath,
         updated_at: new Date().toISOString()
     }).select().single();
     
     if (error) throw error;
+
+    // "Materializa" a pasta no Storage para visibilidade no dashboard do Supabase
+    try {
+        const emptyBlob = new Blob([''], { type: 'text/plain' });
+        await supabase.storage.from(STORAGE_BUCKET).upload(`${folderStoragePath}/.keep`, emptyBlob);
+    } catch (e) {
+        console.warn("[Storage] Erro ao criar marcador de pasta:", e);
+    }
+
     return toDomainFile(data);
   },
 
@@ -85,7 +103,12 @@ export const SupabaseFileService: IFileService = {
     if (!ownerId) throw new Error("Contexto organizacional ausente para o upload.");
     
     const uniqueId = crypto.randomUUID();
-    const folderPath = fileData.parentId || 'root';
+    let folderPath = ownerId;
+    
+    if (fileData.parentId) {
+        const { data: parent } = await supabase.from('files').select('storage_path').eq('id', fileData.parentId).single();
+        if (parent?.storage_path) folderPath = parent.storage_path;
+    }
     
     const sanitizedFileName = fileData.name
       .normalize("NFD")
@@ -93,7 +116,7 @@ export const SupabaseFileService: IFileService = {
       .replace(/\s+/g, "_")
       .replace(/[^a-zA-Z0-9._-]/g, "");
     
-    const filePath = `${ownerId}/${folderPath}/${uniqueId}-${sanitizedFileName}`;
+    const filePath = `${folderPath}/${uniqueId}-${sanitizedFileName}`;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -135,7 +158,7 @@ export const SupabaseFileService: IFileService = {
   deleteFile: async (user, fileIds) => {
     const { data: items } = await supabase.from('files').select('storage_path, type').in('id', fileIds);
     const physicalPaths = (items || [])
-      .filter(i => i.type !== FileType.FOLDER && i.storage_path !== 'system/folder')
+      .filter(i => i.type !== FileType.FOLDER)
       .map(i => i.storage_path);
 
     if (physicalPaths.length > 0) {
@@ -173,7 +196,7 @@ export const SupabaseFileService: IFileService = {
   },
 
   getSignedUrl: async (path) => {
-    if (!path || path === 'system/folder') return '';
+    if (!path) return '';
     
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(path, 3600);
     
